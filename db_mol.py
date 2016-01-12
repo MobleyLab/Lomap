@@ -97,9 +97,13 @@ class DB_Molecules(object):
 
                 # The scoring between the two molecules is performed by using different rules.
                 # The total score will be the product of all the single rules
-                MC.tmcsr(MC.loose_mcs_mol)
+                scr_strict = MC.ecr_score() * MC.tmcsr(MC.strict_mcs_mol) * MC.mcsr(MC.strict_mcs_mol) * MC.mncar(MC.strict_mcs_mol)
+                scr_loose =  MC.ecr_score() * MC.tmcsr(MC.loose_mcs_mol) * MC.mcsr(MC.loose_mcs_mol) * MC.mncar(MC.loose_mcs_mol)
 
- 
+                print scr_strict
+                print scr_loose
+
+
 class Molecule(object):
     """
     This Class stores the Rdkit molecule objects, their identification number and the total number of molecules loaded so far.  

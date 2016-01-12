@@ -79,6 +79,11 @@ class MCS(object):
 
             #print chiral_at_mcs
 
+            #For each mcs atom is we save its original index in a specified poperty. This is useful if 
+            #will be necessary to remove/add atoms from the mcs molecule
+            for at in mcs_mol.GetAtoms():
+                at.SetProp('org_idx',str(at.GetIdx()))
+
             return
 
 
@@ -355,6 +360,7 @@ class MCS(object):
 
             edit_mcs_mol = Chem.EditableMol(mcs_mol)
 
+            #WARNING: atom indexes are changed
             for i in conflict_mcs:
                 edit_mcs_mol.RemoveAtom(i)
 
@@ -369,6 +375,8 @@ class MCS(object):
         #copy of the original mcs
         #mcs_mol_copy = copy.copy(mcs_mol)
 
+        #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
         mcs_mol_copy = Chem.Mol(mcs_mol)
 
         orig_nha_mcs_mol = mcs_mol_copy.GetNumHeavyAtoms() 
@@ -377,24 +385,74 @@ class MCS(object):
         mcs_mol_copy, partial_ring = delete_broken_ring(mcs_mol_copy)
 
 
-        mcs_ring_at = set()
-        mcs_chiral_at = set()
+        mcs_ring_set = set()
+        mcs_chiral_set = set()
 
         for atom in mcs_mol_copy.GetAtoms():
                 if atom.IsInRing():
-                    mcs_ring_at.add(atom.GetIdx())
+                    mcs_ring_set.add(atom.GetIdx())
                 if atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW:
-                    mcs_chiral_at.add(atom.GetIdx())
-        
-        print mcs_ring_at
-        print mcs_chiral_at
+                    mcs_chiral_set.add(atom.GetIdx())
         
         
+        #Loop over the mcs chirial atoms to see if they are also ring atoms
+        delete_atoms = set()
+        
+        for atom_idx in mcs_chiral_set:
+            
+            if atom_idx in mcs_ring_set:
+                
+                at = mcs_mol_copy.GetAtomWithIdx(atom_idx)
+               
+                neighs = at.GetNeighbors()
+                neighs_set = set()
 
-        #################################HERE############################################
+                for atom in neighs:
+                    neighs_set.add(atom.GetIdx())
         
+                delete_atoms |= (neighs_set - mcs_ring_set)
+
+            else:
+                #If the chiral atom is not a ring atom, we simple delete it
+                delete_atom.add(atom_idx)
 
 
+        delete_atoms = list(delete_atoms)
+
+        delete_atoms.sort(reverse=True)
+    
+        edit_mcs_mol = Chem.EditableMol(mcs_mol_copy)
+
+        #WARNING atom indexes are changed
+        for idx in delete_atoms:
+            edit_mcs_mol.RemoveAtom(idx)
+
+        mcs_mol_copy = edit_mcs_mol.GetMol()
+        
+        fragments = Chem.rdmolops.GetMolFrags(mcs_mol_copy)
+
+        max_idx = 0
+        lgt_max = 0
+        
+        for idx in range(0,len(fragments)):
+            lgt = len(fragments[idx])
+            if lgt > lgt_max:
+                lgt_max = lgt
+                max_idx = idx
+    
+            
+        max_frag = fragments[max_idx]
+        
+        #The number of heavy atoms in the max fragment
+        max_frag_num_heavy_atoms = 0
+        for idx in max_frag:
+            at = mcs_mol_copy.GetAtomWithIdx(idx)
+            if at.GetAtomicNum() > 1:
+                max_frag_num_heavy_atoms += 1   
+
+
+        return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))     
+        
         
 if ("__main__" == __name__) :
     
