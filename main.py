@@ -6,7 +6,7 @@ import glob
 import sys, os
 import logging
 from rdkit import Chem
-from optparse import OptionParser
+
 
 
 # Logger setup
@@ -21,33 +21,31 @@ logging.basicConfig( format  = '%(asctime)s: %(message)s',
 
 
 
-def build_database(molid_list, options) :
+def mcs(molid_list,opt) :
     """
-    This function creates the molecules database and generates the matrix score.  
+    This function calculates the Maximum Common Subgraph (MCS) of the passed molecules.  
     
-    molid_list: A list of molecules instance of the defined Molecule class
-    opt: the parameters selected to perform the reseacrh of the MCS between a pair of molecules 
+    molid_list: A list of molecule structure objects
+    opt: the parameters selected to perform the reseacrh of the MCS
 
     """
 
     molecules = DB_Molecules(molid_list)
 
-    molecules.build_matrix(options)
+    molecules.score(opt)
     
 
 
 def startup() :
     """
-    The startup function, which will handle the command line interface.
+    The startup function, which will handle the command line interface and call the `main' function.
     """
-    
+    from optparse import OptionParser
 
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
     parser.add_option("-t", "--time", default = 20 , help = " Set the maximum time to perform the mcs search between pair of molecules")
     
     parser.add_option( "--debug", default = False, action = "store_true", help = "turn on debugging mode." )
-
-    #All the following parameters have been disabled and they need to be re-implemented as in the original Lomap code if possible
 
     # parser.add_option( "-m", "--mcs", metavar = "FILE",
     #                    help = "read MCS searching results directly from FILE and avoid searching again. " \
@@ -68,7 +66,6 @@ def startup() :
     # parser.add_option( "--save",  default = False, action = "store_true", help = "do not delete temporary files." )
     
     
-    #A tuple of options and arguments passed by the user
     (opt, args) = parser.parse_args()
 
     if (len( args ) == 0) :
@@ -78,15 +75,12 @@ def startup() :
     if (opt.debug) :
         logger.setLevel( logging.DEBUG )
         logging.debug( "Debugging mode is on." )
-     
-    # This list is used as container to handle all the molecules read in by using RdKit.
-    # All the molecules are instances of the allocated class Molecules
+        
     molid_list = []
 
     for a in args :
         logging.info( "Reading structures from '%s'..." % a )
         n = 0
-        # The .mol2 file format is the only supported so far
         mol_fnames = glob.glob( a + "/*.mol2" )
 
             
@@ -99,21 +93,21 @@ def startup() :
                 n += 1
                 logging.info( "    %d files found." % len( mol_fnames ) )
         
-            # The RDkit molecule object is read in as mol2 file. The molecule is not sanitized and 
-            # all the hydrogens are kept in place
             mol = Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False))
 
             molid_list.append(mol)
+
 
 
     logging.info( "--------------------------------------------" )
     logging.info( "Finish reading structure input files. %d structures in total" % len( molid_list ) )
     
     if (len( mol_fnames ) > 1) :
-        build_database(molid_list, opt)
+        mcs(molid_list, opt)
 
     
+    
+
         
-# main function         
 if ("__main__" == __name__) :
     startup()
