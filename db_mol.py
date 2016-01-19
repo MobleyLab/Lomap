@@ -1,16 +1,30 @@
 import copy
 import math
 import sys
+import mcs
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
-
+import numpy as np
 
 class DB_Molecules(object):
+    """
+    This class is used a container for all Molecule objects.  
+    The class implements indexing and slicing  
+    """
+
+
+
+    def __init__(self, molecules):
+        """
+        This function initializes the molecule database
     
-    def __init__(self,molecules):
+        molecules: A list of molecules instance of the defined Molecule class
+       
+        """
         
+        #Check the passed molecules objects
         if not isinstance(molecules, list):
             raise ValueError('The passed parents must be a list')
 
@@ -21,14 +35,14 @@ class DB_Molecules(object):
         # list container used to store the loaded molecules
         self.__list = molecules
 
-        # index used to perform index selection by using __iter__
+        # index used to perform index selection by using __iter__ function
         self.__ci = 0
 
     # index generator
     def __iter__(self):
         return self
 
-    # select the molecule duruning an iteration on the molecules
+    # select the molecule during an iteration
     def next(self):
         if self.__ci > len(self.__list) - 1:
             self.__ci = 0
@@ -37,7 +51,7 @@ class DB_Molecules(object):
             self.__ci = self.__ci + 1
             return self.__list[self.__ci - 1] 
             
-    # slicing and index selection funtion
+    # slicing and index selection function
     def __getitem__(self,index):
          return self.__list[index]
 
@@ -58,179 +72,55 @@ class DB_Molecules(object):
         
             self.__list.append(molecule)
 
-    # the total number of molecules
+    # This function recovers the total number of molecules currently stored in the database
     def nums(self):
         return len(self.__list)
 
-    # score the molecules
-    def score(self, options):
-       
-        #################################### RULES ##########################################
-
-        # ECR rule
-        def ecr(moli,molj):
-             
-            total_charge_moli = 0.0
-            
-            for atom in moli.GetAtoms():
-                total_charge_moli += float(atom.GetProp('_TriposPartialCharge'))
-
-            total_charge_molj = 0.0
-            for atom in molj.GetAtoms():
-                total_charge_molj += float(atom.GetProp('_TriposPartialCharge'))
-
-            if abs(total_charge_molj - total_charge_moli) < 1e-3:
-                scr_ecr = 1.0
-            else:
-                scr_ecr = 0.0
-
-            
-            return scr_ecr
-
-
-        # MCSR rule
-        def mcsr(moli, molj, mcs_patt, beta=0.1):
-            
-            mcs_mol = Chem.MolFromSmarts(mcs_patt.smartsString) 
+    
+    # This function build the matrix score by using the implemented class MCS (Maximum Common Subgraph)
+    def build_matrix(self, options):
         
-            # number heavy atoms
-            nha_moli = moli.GetNumHeavyAtoms()
-            nha_molj = molj.GetNumHeavyAtoms()
-            nha_mcs_mol = mcs_mol.GetNumHeavyAtoms()
-            
-            scr_mcsr = math.exp(-beta*(nha_moli + nha_molj - 2*nha_mcs_mol))
+        print 'Matrix scoring in progress....'   
 
-            return scr_mcsr
-
-        # MNACR rule
-        def mncar(mcs_patt, ths=3):
-            
-            mcs_mol = Chem.MolFromSmarts(mcs_patt.smartsString) 
-                
-            nha_mcs_mol = mcs_mol.GetNumHeavyAtoms()
-            
-            if nha_mcs_mol > ths:
-                scr_mncar = 1.0
-            else:
-                scr_mncar = 0.0 
-                
-            return scr_mncar
-
-
-        def tmcsr(moli, molj, mcs_pat, filename):
-            
-            mcs_mol = Chem.MolFromSmarts(mcs_pat.smartsString) 
-
-            orig_nha_mcs_mol = mcs_mol.GetNumHeavyAtoms() 
-
-            moli_sub = moli.GetSubstructMatch(mcs_mol)
-            molj_sub = molj.GetSubstructMatch(mcs_mol)
-            mcs_mol_sub = mcs_mol.GetSubstructMatch(mcs_mol)
-
-            map_mcs_mol_to_moli_sub = dict(zip(mcs_mol_sub,moli_sub))
-
-
-            moli_ring_set = set()
-            
-            for atom in moli.GetAtoms():
-                 if atom.IsInRing():
-                     moli_ring_set.add(atom.GetIdx())
-
-            
-
-
-
-                        
-
-            
-            # map_list = zip(moli_sub, molj_sub)
-
-            
-            # sys.exit(-1)
-
-            # Allchem.Compute2DCoords(moli)
-            # Allchem.Compute2DCoords(molj)
-
-            # from rdkit.Chem.Draw.MolDrawing import DrawingOptions
-            
-            # DrawingOptions.includeAtomNumbers=True
-
-            # img = Draw.MolsToGridImage([moli,molj], molsPerRow=2, subImgSize=(200,200),
-            #                            legends=['b','a'], highlightAtomLists=[moli_sub, molj_sub] )
-            
-            # img.save(filename)
-
-
-            # print map_list
-            
-            
-        
-        
-        #######################################################################
-
-
-        print 'Scoring.....'   
-
-        # parameters used in different rules
+        strict_mtx = np.zeros((self.nums(),self.nums()))
+        loose_mtx = np.zeros((self.nums(),self.nums()))
 
         for i in range(0,self.nums()-1):
             for j in range(i+1,self.nums()):
                 
+                # moli and molj are effectively RDKit molecule objects
                 moli = self[i].getMolecule()
                 molj = self[j].getMolecule()
 
-                moli_noh = AllChem.RemoveHs(moli)
-                molj_noh = AllChem.RemoveHs(molj)
-                
-                
-                strict_mcs = rdFMCS.FindMCS([moli_noh, molj_noh],
-                                        timeout=options.time, 
-                                        atomCompare=rdFMCS.AtomCompare.CompareAny, 
-                                        bondCompare=rdFMCS.BondCompare.CompareAny, 
-                                        matchValences=False, 
-                                        ringMatchesRingOnly=True, 
-                                        completeRingsOnly=True)
+                # The MCS object between moli and molj is created with the passed option parameters
+                MC = mcs.MCS(moli, molj, options)
 
-                loose_mcs = rdFMCS.FindMCS([moli_noh, molj_noh],
-                                       timeout=options.time, 
-                                       atomCompare=rdFMCS.AtomCompare.CompareAny, 
-                                       bondCompare=rdFMCS.BondCompare.CompareAny, 
-                                       matchValences=False, 
-                                       ringMatchesRingOnly = False, 
-                                       completeRingsOnly=False )
-                
+                # The scoring between the two molecules is performed by using different rules.
+                # The total score will be the product of all the single rules
+               
+                tmp_scr = MC.ecr() * MC.mncar()
 
-                if strict_mcs.canceled:
-                    print 'WARNING: timeout reached to find the MCS between molecules: %d and %d' % (moli.getID(),molj.getID())            
-                if loose_mcs.canceled:
-                    print 'WARNING: timeout reached to find the MCS between molecules: %d and %d' % (moli.getID(),molj.getID())
-                if strict_mcs.numAtoms == 0:
-                    print 'WARNING: no strict MCS was found between molecules: %d and %d' % (moli.getID(),molj.getID())
-                if loose_mcs.numAtoms == 0:
-                    print 'WARNING: no loose MCS was found between molecules: %d and %d' % (moli.getID(),molj.getID())
-                    
-
-                ecr_score = ecr(moli,molj)
-                
-                mcsr_score_strict = mcsr(moli_noh ,molj_noh, strict_mcs)
-                mcsr_score_loose = mcsr(moli_noh, molj_noh, loose_mcs)
-                            
-                mnca_score_strict = mncar(strict_mcs)
-                mnca_score_loose = mncar(loose_mcs)
-
-                
-                #tmcsr_score_strict = tmcsr(moli_noh, molj_noh, strict_mcs, 'strict.png')
-                tmcsr_score_loose = tmcsr(moli_noh, molj_noh, loose_mcs, 'loose.png')
-                
+                strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
+                loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
 
 
-                # print ecr_score, (mcsr_score_strict, mcsr_score_loose), (mnca_score_strict, mnca_score_loose)
-                
+                strict_mtx[i,j] = strict_scr
+                strict_mtx[j,i] = strict_scr
 
-                sys.exit(-1)
+                loose_mtx[i,j] = loose_scr
+                loose_mtx[j,i] = loose_scr
+
+
+        return strict_mtx, loose_mtx
+
 
 
 class Molecule(object):
+    """
+    This Class stores the Rdkit molecule objects, their identification number and the total number of molecules loaded so far.  
+
+    """
+
     # This variable is used to count the current total number of molecules
     # The variable is defined as private
     __total_molecules = 0
@@ -242,12 +132,12 @@ class Molecule(object):
         if not isinstance(molecule, Chem.rdchem.Mol):
             raise ValueError('The passed molecule object is not a RdKit molecule')
 
-        # The variable _molecule saves the current RDkit molecule object
+        # The variable __molecule saves the current RDkit molecule object
         # The variable is defined as private
         self.__molecule = molecule    
 
             
-        # The variable _ID saves the molecule identification number 
+        # The variable __ID saves the molecule identification number 
         # The variable is defined as private
         self.__ID = Molecule.__total_molecules
     
@@ -261,6 +151,8 @@ class Molecule(object):
     def getMolecule(self):
         return copy.copy(self.__molecule)
 
+
+    # This class function returns the current total number of molecules. 
     @staticmethod
     def get_mol_num():
         return Molecule.__total_molecules
