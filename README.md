@@ -3,8 +3,8 @@ Alchemical free energy calculations hold increasing promise
 as an aid to drug discovery efforts. However, applications of 
 these techniques in discovery projects have been relatively 
 few, partly because of the difficulty of planning and setting up 
-calculations. The original lead optimization mapper, LOMAP, was 
-introduced as an auto-mated algorithm to plan efficient relative 
+calculations. The lead optimization mapper (LOMAP) was 
+introduced as an automated algorithm to plan efficient relative 
 free energy calculations between potential ligands within 
 a substantial of compounds. The original LOMAP code was mainly
 based on commercial APIs such as OpenEye and Schrodinger. The aim 
