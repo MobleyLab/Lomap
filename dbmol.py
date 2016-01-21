@@ -1,20 +1,13 @@
-import copy
-import math
-import sys
-import mcs
 from rdkit import Chem
-from rdkit.Chem import rdFMCS
-from rdkit.Chem import AllChem
-from rdkit.Chem import Draw
 import numpy as np
+import mcs
+import sys
 
-class DB_Molecules(object):
+class DBMolecules(object):
     """
     This class is used a container for all Molecule objects.  
     The class implements indexing and slicing  
     """
-
-
 
     def __init__(self, molecules):
         """
@@ -98,11 +91,10 @@ class DB_Molecules(object):
                 # The scoring between the two molecules is performed by using different rules.
                 # The total score will be the product of all the single rules
                
-                tmp_scr = MC.ecr() * MC.mncar()
+                tmp_scr = MC.ecr() * MC.mncar() * MC.mcsr()
 
                 strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
                 loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
-
 
                 strict_mtx[i,j] = strict_scr
                 strict_mtx[j,i] = strict_scr
@@ -117,7 +109,8 @@ class DB_Molecules(object):
 
 class Molecule(object):
     """
-    This Class stores the Rdkit molecule objects, their identification number and the total number of molecules loaded so far.  
+    This Class stores the Rdkit molecule objects, their identification number 
+    and the total number of instantiated molecules 
 
     """
 
@@ -149,10 +142,11 @@ class Molecule(object):
 
     # This function returns the copy of the RDkit molecule object
     def getMolecule(self):
-        return copy.copy(self.__molecule)
+        mol_copy = Chem.Mol(self.__molecule)
+        return mol_copy
 
 
-    # This class function returns the current total number of molecules. 
+    # This class function returns the current total number of instantiated molecules. 
     @staticmethod
     def get_mol_num():
         return Molecule.__total_molecules

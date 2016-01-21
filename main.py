@@ -1,13 +1,13 @@
 """Main program
 """
 
-from  db_mol import *
+import dbmol 
 import glob
-import sys, os
 import logging
 from rdkit import Chem
-from optparse import OptionParser
 from rdkit import rdBase
+from optparse import OptionParser
+import sys, os
 
 # Logger setup
 logger = logging.getLogger()
@@ -23,14 +23,15 @@ logging.basicConfig( format  = '%(asctime)s: %(message)s',
 
 def build_database(molid_list, options) :
     """
-    This function creates the molecules database and generates the matrix score.  
+    This function creates the molecules database and generates the matrix score.
     
     molid_list: A list of molecules instance of the defined Molecule class
-    opt: the parameters selected to perform the reseacrh of the MCS between a pair of molecules 
+    opt: the parameters selected to perform the reseacrh of the MCS between 
+    a pair of molecules 
 
     """
 
-    molecules = DB_Molecules(molid_list)
+    molecules = dbmol.DBMolecules(molid_list)
 
     strict_mtx, loose_mtx =  molecules.build_matrix(options)
     
@@ -106,7 +107,7 @@ def startup() :
         
             # The RDkit molecule object is read in as mol2 file. The molecule is not sanitized and 
             # all the hydrogens are kept in place
-            mol = Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False))
+            mol = dbmol.Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False))
 
             molid_list.append(mol)
 
