@@ -85,8 +85,14 @@ class DBMolecules(object):
                 moli = self[i].getMolecule()
                 molj = self[j].getMolecule()
 
+                print 'Processing molecules:\n%s\n%s' % (self[i].getName(),self[j].getName())
+
                 # The MCS object between moli and molj is created with the passed option parameters
-                MC = mcs.MCS(moli, molj, options)
+                try:
+                    MC = mcs.MCS(moli, molj, options)
+                except:
+                    continue
+                
 
                 # The scoring between the two molecules is performed by using different rules.
                 # The total score will be the product of all the single rules
@@ -119,11 +125,16 @@ class Molecule(object):
     __total_molecules = 0
 
     # Initialization method
-    def __init__(self,molecule):
+    def __init__(self, molecule, molname):
         
         #Check Inputs
         if not isinstance(molecule, Chem.rdchem.Mol):
             raise ValueError('The passed molecule object is not a RdKit molecule')
+
+
+        if not isinstance(molname, str):
+             raise ValueError('The passed molecule name must be a string')
+        
 
         # The variable __molecule saves the current RDkit molecule object
         # The variable is defined as private
@@ -133,6 +144,11 @@ class Molecule(object):
         # The variable __ID saves the molecule identification number 
         # The variable is defined as private
         self.__ID = Molecule.__total_molecules
+
+        
+        # The variable __name saves the molecule identification name 
+        # The variable is defined as private
+        self.__name = molname
     
         Molecule.__total_molecules+=1
 
@@ -144,6 +160,11 @@ class Molecule(object):
     def getMolecule(self):
         mol_copy = Chem.Mol(self.__molecule)
         return mol_copy
+
+
+    # This function returns the molecule name
+    def getName(self):
+        return self.__name
 
 
     # This class function returns the current total number of instantiated molecules. 

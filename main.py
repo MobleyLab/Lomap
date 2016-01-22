@@ -107,10 +107,11 @@ def startup() :
         
             # The RDkit molecule object is read in as mol2 file. The molecule is not sanitized and 
             # all the hydrogens are kept in place
-            mol = dbmol.Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False))
+            mol = dbmol.Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False), os.path.basename( fname ))
 
             molid_list.append(mol)
 
+            
 
     logging.info( "--------------------------------------------" )
     logging.info( "Finish reading structure input files. %d structures in total" % len( molid_list ) )

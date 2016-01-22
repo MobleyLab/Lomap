@@ -137,8 +137,10 @@ class MCS(object):
             print 'WARNING: timeout reached to find the MCS between molecules: %d and %d' \
             % (self.moli.getID(),self.molj.getID())            
         if self.__mcs.numAtoms == 0:
-            print 'WARNING: no strict MCS was found between molecules: %d and %d' \
-            % (self.moli.getID(),self.molj.getID())
+            print 'WARNING: no MCS was found between molecules: %d and %d' \
+            % (self.moli.getName(),self.molj.getName())
+            raise ValueError()
+            
         
 
         # The found MCS pattern (smart strings) is converted to a RDkit molecule
@@ -302,7 +304,11 @@ class MCS(object):
                     edit_mcs_mol.RemoveAtom(i) 
                 
                 mcs_mol = edit_mcs_mol.GetMol()
-
+              
+                #The mcs molecule could be empty at this point
+                if not mcs_mol.GetNumAtoms():
+                    return mcs_mol
+                
                 #Deleting broken ring atoms if the atom rc > 0 and the atom is not 
                 #in a ring anymore
                 mcs_conflict = [ at.GetIdx()  for at in mcs_mol.GetAtoms() if int(at.GetProp('rc')) > 0 and not at.IsInRing()]
@@ -317,6 +323,9 @@ class MCS(object):
                     
                 mcs_mol = edit_mcs_mol.GetMol()
 
+                #The mcs molecule could be empty at this point
+                if not mcs_mol.GetNumAtoms():
+                    return mcs_mol
 
                 #Deleting eventually disconnected parts and keep the max fragment left
                 fragments = Chem.rdmolops.GetMolFrags(mcs_mol)
@@ -393,6 +402,10 @@ class MCS(object):
         #At this point the mcs_mol_copy has changed 
         mcs_mol_copy = delete_broken_ring()
 
+        #The mcs molecule could be empty at this point
+        if not mcs_mol_copy.GetNumAtoms():
+            return math.exp(-2*beta*(orig_nha_mcs_mol))
+
 
         #Deleting Chiral Atoms
         mcs_ring_set = set()
@@ -439,10 +452,14 @@ class MCS(object):
 
         mcs_mol_copy = edit_mcs_mol.GetMol()
 
+        
+        #The mcs molecule could be empty at this point
+        if not mcs_mol_copy.GetNumAtoms():
+            return math.exp(-2*beta*(orig_nha_mcs_mol))
+
 
         #self.draw_molecule(mcs_mol_copy)
 
-        
         fragments = Chem.rdmolops.GetMolFrags(mcs_mol_copy)
 
         max_idx = 0
@@ -465,7 +482,7 @@ class MCS(object):
                 max_frag_num_heavy_atoms += 1   
 
 
-        return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))     
+        return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))
         
         
 if ("__main__" == __name__) :
@@ -477,13 +494,15 @@ if ("__main__" == __name__) :
     (opt, args) = parser.parse_args()
 
 
-    mola = Chem.MolFromMol2File('data/mol1.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('data/mol2.mol2', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMol2File('data/mol2/2,6-dimethylnaphthalene.mol2', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMol2File('data/mol2/benzene.mol2', sanitize=False, removeHs=False)
     
     MC = MCS(mola,molb,opt)
 
     MC.draw_mcs()
     
+
+
     print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (MC.tmcsr(strict_flag=True), MC.tmcsr(strict_flag=False))
     print 'MCSR = ', MC.mcsr()
     print 'MNCAR = ', MC.mncar()
