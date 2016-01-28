@@ -31,12 +31,12 @@ def build_database(molid_list, options) :
 
     """
 
-    molecules = dbmol.DBMolecules(molid_list)
+    db_mol = dbmol.DBMolecules(molid_list)
 
-    strict_mtx, loose_mtx =  molecules.build_matrix(options)
+    db_mol.build_matrices(options)
     
-    print strict_mtx
-    print loose_mtx
+    print db_mol.strict_mtx
+    print db_mol.loose_mtx
 
 
 def startup() :
@@ -49,9 +49,11 @@ def startup() :
     print rdk_ver
 
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
-    parser.add_option("-t", "--time", default = 20 , help = " Set the maximum time to perform the mcs search between pair of molecules")
     
+    parser.add_option("-t", "--time", default = 20 , help = " Set the maximum time to perform the mcs search between pair of molecules")
     parser.add_option( "--debug", default = False, action = "store_true", help = "turn on debugging mode." )
+    parser.add_option("-p", "--parallel", default = 1, type='int' , help = " Set the parallel mode on. If an integer number N is specified, N processes will be executed")
+    
 
     #All the following parameters have been disabled and they need to be re-implemented as in the original Lomap code if possible
 
