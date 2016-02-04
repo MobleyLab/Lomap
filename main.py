@@ -31,12 +31,13 @@ def build_database(molid_list, options) :
 
     """
 
-    db_mol = dbmol.DBMolecules(molid_list)
+    db_mol = dbmol.DBMolecules(molid_list,options)
 
-    db_mol.build_matrices(options)
+    db_mol.build_matrices()
+    db_mol.build_graph()
     
-    print db_mol.strict_mtx
-    print db_mol.loose_mtx
+    # print db_mol.strict_mtx
+    # print db_mol.loose_mtx
 
 
 def startup() :

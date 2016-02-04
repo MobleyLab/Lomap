@@ -1,6 +1,7 @@
 from rdkit import Chem
 import numpy as np
 import mcs
+import graphgen
 import sys
 import math
 import multiprocessing
@@ -12,7 +13,7 @@ class DBMolecules(object):
     The class implements indexing and slicing  
     """
 
-    def __init__(self, molecules):
+    def __init__(self, molecules, options):
         """
         This function initializes the molecule database
     
@@ -37,6 +38,11 @@ class DBMolecules(object):
         # symmetric matrices used to store the mcs scoring 
         self.strict_mtx = SMatrix(shape=(0,))
         self.loose_mtx = SMatrix(shape=(0,))
+
+        # options to buid the MCS and other parameters
+        self.options = options
+        
+
 
     # index generator
     def __iter__(self):
@@ -78,7 +84,7 @@ class DBMolecules(object):
 
 
 
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, options):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx):
         
         # name = multiprocessing.current_process().name
         # print name
@@ -99,7 +105,7 @@ class DBMolecules(object):
 
             # The MCS object between moli and molj is created with the passed option parameters
             try:
-                MC = mcs.MCS(moli, molj, options)
+                MC = mcs.MCS(moli, molj, self.options)
             except:
                 print 'Skipping....'
                 continue
@@ -120,7 +126,7 @@ class DBMolecules(object):
 
 
     # This function build the matrix score by using the implemented class MCS (Maximum Common Subgraph)
-    def build_matrices(self, options):
+    def build_matrices(self):
         
         print 'Matrix scoring in progress....'   
         
@@ -131,14 +137,14 @@ class DBMolecules(object):
         l = self.nums()*(self.nums() - 1)/2
 
         
-        if options.parallel == 1:#Serial execution
-            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, options)
+        if self.options.parallel == 1:#Serial execution
+            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx)
         else:#Parallel execution
             
             print 'Parallel is on'
             
             #number of processors
-            np = options.parallel
+            np = self.options.parallel
 
             delta = l/np
             rem = l%np
@@ -168,17 +174,32 @@ class DBMolecules(object):
                 else:
                     j = l - 1
 
-                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, options))
+                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx))
                 p.start()
                 proc.append(p)
                     
             for p in proc:
                 p.join()
           
-                
-            self.strict_mtx = strict_mtx[:]
-            self.loose_mtx = loose_mtx[:]
             
+            self.strict_mtx[:] = strict_mtx[:]
+            self.loose_mtx[:] = loose_mtx[:]
+            
+
+
+    def build_graph(self):
+        
+        print 'Generating graph in progress ...'
+        
+        #ths = 0.05
+        #max_dist = 100
+        Graph = graphgen.GraphGen(self,0.5,6)
+
+        
+    
+        Graph.draw()
+
+        
 
 
 class SMatrix(np.ndarray):
