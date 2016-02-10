@@ -5,7 +5,7 @@
 # Authors: Dr Gaetano Calabro' and Dr David Mobley
 # This part of the code has been originally made by Jonathan Redmann, 
 # and Christopher Summa at Summa Lab, Dept. of Computer Science, 
-# University of New Orleanit and it has just been adapded to the new Lomap code
+# University of New Orleans and it has just been adapded to the new Lomap code
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,8 @@ import sys
 import matplotlib.pyplot as plt
 import copy
 from operator import itemgetter
+from rdkit.Chem import Draw
+from rdkit.Chem import AllChem
 
 class GraphGen(object):
     """
@@ -110,12 +112,8 @@ class GraphGen(object):
                 wgt = self.dbase.strict_mtx[i,j]
                 
                 if wgt > 0.0:
-                    compound_graph.add_edge(i,j,similarity = wgt) 
+                    compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True) 
         
-
-        # print self.G.nodes(data=True)
-        # print self.G.edges(data=True)
-
                     
         initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
         initialSubgraphList = [x for x in initialSubgraphGen]
@@ -211,7 +209,7 @@ class GraphGen(object):
                     subgraph.remove_edge(edge[0], edge[1])
 
                     if self.checkConstraints(subgraph, numberOfComponents) == False:
-                        subgraph.add_edge(edge[0], edge[1], similarity = edge[2])
+                        subgraph.add_edge(edge[0], edge[1], similarity = edge[2], strict_flag = True)
 
                 
 
@@ -382,7 +380,7 @@ class GraphGen(object):
             edgeToAddAdditionalInfo = sortedListAdditionalInfo[0]
             
             self.edgesAddedInFirstTreePass.append(edgeToAdd)
-            self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2])
+            self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag = False)
                         
             generator_graph = nx.connected_component_subgraphs(self.resultGraph)
             self.workingSubgraphsList = [x for x in generator_graph]
@@ -434,8 +432,8 @@ class GraphGen(object):
             sortedList = sorted(finalEdgesToCheck, key = itemgetter(2), reverse=True)
             edgeToAdd = sortedList[0]
             
-            self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2])
-            self.copyResultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2])
+            self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag = False)
+            self.copyResultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag = False)
             
             generator_graph = nx.connected_component_subgraphs(self.copyResultGraph)
             self.resultingSubgraphsList = [x for x in generator_graph]
@@ -449,34 +447,91 @@ class GraphGen(object):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def draw(self):
+
+    
+        fig = plt.figure(1,facecolor='white')
+
+        ax = plt.subplot(111)
+        plt.axis('off')
         
-        pos=nx.graphviz_layout( self.resultGraph,prog="neato")
+        pos=nx.graphviz_layout( self.resultGraph, prog="neato")
+
+        # #nodes
+        # nx.draw_networkx_nodes(self.resultGraph, pos, node_color = 'r', node_size = 700, node_shape='s')
+
+        
+        strict_edges = [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == True]
+        loose_edges =  [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == False]
+        
+        
+        edge_weight_strict = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == True])
+        edge_weight_loose = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == False])
+        
+
+        for key in edge_weight_strict:
+             edge_weight_strict[key] = round(edge_weight_strict[key],2)
+       
+
+        for key in edge_weight_loose:
+             edge_weight_loose[key] = round(edge_weight_loose[key],2)
+       
+ 
+        #node edge labels
+        nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_strict, font_color='g')
+        nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_loose, font_color='r')
 
         #nodes
-        nx.draw_networkx_nodes(self.resultGraph, pos, node_color = 'r', node_size = 700, node_shape='s')
+        nx.draw_networkx_nodes(self.resultGraph, pos)
 
-        #edges
-        nx.draw_networkx_edges(self.resultGraph, pos, edge_color='b')
+        #edges strict
+        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
         
-        #labels
-        nx.draw_networkx_labels( self.resultGraph, pos, font_size=18, font_family = 'sans-serif')
+        #edges loose
+        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
+  
+        trans = ax.transData.transform
+        trans2 = fig.transFigure.inverted().transform
 
+        cut = 1.0
+        xmax = cut * max(xx for xx, yy in pos.values())
+        ymax = cut * max(yy for xx, yy in pos.values())
+        
+        xmin = cut * min(xx for xx, yy in pos.values())
+        ymin = cut * min(yy for xx, yy in pos.values())
 
-        plt.axis('off')
-        plt.savefig('graph.png')
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymin, ymax)
+
+        h = 15
+        w = 15
+
+        mol_size = (100,100)
+
+        for each_node in self.resultGraph:
+            
+            id_mol = self.resultGraph.node[each_node]['ID']
+            mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
+            AllChem.Compute2DCoords(mol)
+            
+            img_mol = Draw.MolToImage(mol,mol_size)
+            
+            xx, yy = trans(pos[each_node])
+            xa, ya = trans2((xx,yy))
+            
+            nodesize_1 = (300.0/(h*120))
+            nodesize_2 = (300.0/(w*120))
+            
+            p2_2 = nodesize_2/2
+            p2_1 = nodesize_1/2
+         
+            a = plt.axes([xa - p2_2, ya - p2_1, nodesize_2, nodesize_1]) 
+            #self.resultGraph.node[id_mol]['image'] = img_mol
+            #a.imshow(self.resultGraph.node[each_node]['image'])
+            a.imshow(img_mol)
+            a.axis('off')
+                     
+        #plt.show()
+
+        ### plt.axis('off')
+        plt.savefig('graph.png', facecolor=fig.get_facecolor())
