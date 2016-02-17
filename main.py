@@ -23,24 +23,12 @@
 
 import dbmol 
 import glob
-import logging
 from rdkit import Chem
 from rdkit import rdBase
 from optparse import OptionParser
 import sys, os
 
-# Logger setup
-logger = logging.getLogger()
-if (logger.handlers) :
-    for handler in logger.handlers :
-        logger.removeHandler( handler )
         
-logging.basicConfig( format  = '%(asctime)s: %(message)s',
-                     datefmt = '%m/%d/%y %I:%M:%S',
-                     level   = logging.INFO )
-
-
-
 def build_database(molid_list, options) :
     """
     This function creates the molecules database and generates the matrix score.
@@ -54,6 +42,9 @@ def build_database(molid_list, options) :
     db_mol = dbmol.DBMolecules(molid_list,options)
 
     db_mol.build_matrices()
+    
+    #print db_mol.strict_mtx
+    #print db_mol.loose_mtx
     db_mol.build_graph()
     
 
@@ -69,12 +60,12 @@ def startup() :
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
     
     parser.add_option("-t", "--time", default = 20 , help = " Set the maximum time to perform the mcs search between pair of molecules")
-    parser.add_option( "--debug", default = False, action = "store_true", help = "turn on debugging mode." )
+    
     parser.add_option("-p", "--parallel", default = 1, type='int' , help = " Set the parallel mode on. If an integer number N is specified, N processes will be executed")
     
 
     #All the following parameters have been disabled and they need to be re-implemented as in the original Lomap code if possible
-
+    # parser.add_option( "--debug", default = False, action = "store_true", help = "turn on debugging mode." )
     # parser.add_option( "-m", "--mcs", metavar = "FILE",
     #                    help = "read MCS searching results directly from FILE and avoid searching again. " \
     #                           "FILE should be a Schrodinger canvasMCS output file in the CSV format." )
@@ -101,40 +92,34 @@ def startup() :
         parser.print_help()
         sys.exit( 0 )
 
-    if (opt.debug) :
-        logger.setLevel( logging.DEBUG )
-        logging.debug( "Debugging mode is on." )
-     
+         
     # This list is used as container to handle all the molecules read in by using RdKit.
     # All the molecules are instances of the allocated class Molecules
     molid_list = []
 
     for a in args :
-        logging.info( "Reading structures from '%s'..." % a )
+        print( "Reading structures from '%s'..." % a )
         n = 0
         # The .mol2 file format is the only supported so far
         mol_fnames = glob.glob( a + "/*.mol2" )
 
             
         for fname in mol_fnames :
-            if (n < 8) :
-                logging.info( "    %s" % os.path.basename( fname ) )
-            elif (n == 8) :
-                logging.info( "    (more)..." )
-                break
-                n += 1
-                logging.info( "    %d files found." % len( mol_fnames ) )
-        
             # The RDkit molecule object is read in as mol2 file. The molecule is not sanitized and 
             # all the hydrogens are kept in place
-            mol = dbmol.Molecule(Chem.MolFromMol2File(fname, sanitize=False, removeHs=False), os.path.basename( fname ))
-
+            try:
+                rdkit_mol = Chem.MolFromMol2File(fname, sanitize=False, removeHs=False)
+            except:
+                print('Error reading the file %s', os.path.basename( fname))
+            
+            mol = dbmol.Molecule(rdkit_mol, os.path.basename( fname ))
+            print  '    %s ID %s' % ( os.path.basename( fname ), mol.getID() ) 
             molid_list.append(mol)
 
             
 
-    logging.info( "--------------------------------------------" )
-    logging.info( "Finish reading structure input files. %d structures in total" % len( molid_list ) )
+    print( "--------------------------------------------" )
+    print( "Finish reading structure input files. %d structures in total" % len( molid_list ) )
     
     if (len( mol_fnames ) > 1) :
         build_database(molid_list, opt)

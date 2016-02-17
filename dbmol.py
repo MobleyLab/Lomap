@@ -25,6 +25,8 @@ import graphgen
 import sys
 import math
 import multiprocessing
+import networkx as nx
+
 
 
 class DBMolecules(object):
@@ -62,6 +64,8 @@ class DBMolecules(object):
         # options to buid the MCS and other parameters
         self.options = options
         
+
+        self.Graph = nx.Graph() 
 
 
     # index generator
@@ -127,7 +131,7 @@ class DBMolecules(object):
             try:
                 MC = mcs.MCS(moli, molj, self.options)
             except:
-                print 'Skipping....'
+                print 'Skipping MCS between molecules: %s and %s' % (self[i].getName(), self[j].getName())
                 continue
                 
 
@@ -148,7 +152,7 @@ class DBMolecules(object):
     # This function build the matrix score by using the implemented class MCS (Maximum Common Subgraph)
     def build_matrices(self):
         
-        print 'Matrix scoring in progress....'   
+        print('Matrix scoring in progress....')   
         
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
@@ -161,7 +165,7 @@ class DBMolecules(object):
             self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx)
         else:#Parallel execution
             
-            print 'Parallel is on'
+            print('Parallel is on')
             
             #number of processors
             np = self.options.parallel
@@ -209,17 +213,20 @@ class DBMolecules(object):
 
     def build_graph(self):
         
-        print 'Generating graph in progress ...'
+        print('Generating graph in progress ...')
         
         #ths = 0.05
         #max_dist = 100
-        Graph = graphgen.GraphGen(self,0.5,6)
+        Gr = graphgen.GraphGen(self,0.5,6)
 
-        
-    
-        Graph.draw()
+        #Networkx graph
+        self.Graph = Gr.getGraph()
 
-        
+        #print self.Graph.nodes(data=True)
+
+        Gr.draw()
+
+
 
 
 class SMatrix(np.ndarray):

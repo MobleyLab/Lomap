@@ -27,6 +27,8 @@ from optparse import OptionParser
 import sys
 import math
 
+
+
 class MCS(object):
     """
     This class is used to compute the Maximum Common Subgraph (MCS) between two
@@ -80,6 +82,9 @@ class MCS(object):
              
             #print map_mcs_mol_to_molj_sub
             
+            #Map between the two molecules
+            self.__map_moli_molj = zip( moli_sub, molj_sub)
+
             # An RDkit atomic property is defined to store the mapping to molj
             for idx in map_mcs_mol_to_molj_sub:
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_molj', str(idx[1]))
@@ -99,7 +104,7 @@ class MCS(object):
 
 
             if chiral_at_mcs:
-                print 'WARNING: Chiral atoms detected'
+                print('Chiral atoms detected')
 
             #For each mcs atom we save its original index in a specified 
             #property. This could be very usefull in the code development
@@ -151,33 +156,30 @@ class MCS(object):
                                           ringMatchesRingOnly=True, 
                                           completeRingsOnly=False, 
                                           matchChiralTag=False)
-                                        
+        
         # Checking
         if self.__mcs.canceled:
-            print 'WARNING: timeout reached to find the MCS between molecules: %d and %d' \
-            % (self.moli.getID(),self.molj.getID())            
+            print 'Timeout reached to find the MCS between molecules: %d and %d' \
+            % (self.moli.getID(),self.molj.getID())          
         if self.__mcs.numAtoms == 0:
-            print 'WARNING: no MCS was found between molecules: %d and %d' \
+            print 'No MCS was found between molecules: %d and %d' \
             % (self.moli.getName(),self.molj.getName())
             raise ValueError()
             
-        
-
         # The found MCS pattern (smart strings) is converted to a RDkit molecule
         self.mcs_mol = Chem.MolFromSmarts(self.__mcs.smartsString)
 
+        
+        try:#Sanitize the MCS molecule
+            with suppress_stdout_stderr():
+                Chem.SanitizeMol(self.mcs_mol)
 
-
-        #Sanitize the MCS molecule
-        try:
-            Chem.SanitizeMol(self.mcs_mol)
-        except:
-            print 'Sanitization Failed...'
+        except:    
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
-            if sanitFail: 
+            if sanitFail:
+                print 'Sanitization Failed...'
                 raise ValueError(sanitFail)
 
-        
         # Mapping between the found MCS molecule and moli,  molj
         map_mcs_mol()
 
@@ -192,6 +194,14 @@ class MCS(object):
 
 
         return
+
+    def getMap(self):
+        """
+        This function is used to return a list of the atom index pair generated
+        from themapping between the two molecules used to calculate the MCS.
+        """
+        return self.__map_moli_molj
+
 
     def draw_molecule(self,mol,fname='mol.png'):
         
@@ -224,7 +234,7 @@ class MCS(object):
         try:
             Chem.SanitizeMol(self.mcs_mol)
         except ValueError:
-            print "Sanitization failed...."
+            print('Sanitization failed....')
         
 
         moli_sub = moli_noh.GetSubstructMatch(self.mcs_mol)
@@ -457,7 +467,7 @@ class MCS(object):
 
             else:
                 #If the chiral atom is not a ring atom, we delete it
-                delete_atom.add(atom_idx)
+                delete_atoms.add(atom_idx)
 
 
         delete_atoms = list(delete_atoms)
@@ -504,7 +514,40 @@ class MCS(object):
 
         return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))
         
-        
+
+
+class suppress_stdout_stderr(object):
+    '''
+    This function has been pasted form intenret
+    A context manager for doing a "deep suppression" of stdout and stderr in 
+    Python, i.e. will suppress all print, even if the print originates in a 
+    compiled C/Fortran sub-function.
+       This will not suppress raised exceptions, since exceptions are printed
+    to stderr just before a script exits, and after the context manager has
+    exited (at least, I think that is why it lets exceptions through).      
+
+    '''
+    def __init__(self):
+        # Open a pair of null files
+        self.null_fds =  [os.open(os.devnull,os.O_RDWR) for x in range(2)]
+        # Save the actual stdout (1) and stderr (2) file descriptors.
+        self.save_fds = (os.dup(1), os.dup(2))
+
+    def __enter__(self):
+        # Assign the null pointers to stdout and stderr.
+        os.dup2(self.null_fds[0],1)
+        os.dup2(self.null_fds[1],2)
+
+    def __exit__(self, *_):
+        # Re-assign the real stdout/stderr back to (1) and (2)
+        os.dup2(self.save_fds[0],1)
+        os.dup2(self.save_fds[1],2)
+        # Close the null files
+        os.close(self.null_fds[0])
+        os.close(self.null_fds[1])
+
+
+
 if ("__main__" == __name__) :
    
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
@@ -514,18 +557,32 @@ if ("__main__" == __name__) :
     (opt, args) = parser.parse_args()
 
 
-    mola = Chem.MolFromMol2File('data/mol2/2,6-dimethylnaphthalene.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('data/mol2/benzene.mol2', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMol2File('mol2_file/18108.mol2', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMol2File('mol2_file/18110.mol2', sanitize=False, removeHs=False)
     
     MC = MCS(mola,molb,opt)
 
+    #print MC.getMap()
+
     MC.draw_mcs()
     
+    mcsr = MC.mcsr()
+    mncar =  MC.mncar()
+    ecr =  MC.ecr()
+    strict = MC.tmcsr(strict_flag=True)
+    loose = MC.tmcsr(strict_flag=False)
+
+    print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose)
+    print 'MCSR = ', mcsr
+    print 'MNCAR = ', mncar
+    print 'ECR = ', ecr
+    
+    tmp = mcsr * mncar * ecr
+    
+    print 'Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose)  
+
+    
 
 
-    print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (MC.tmcsr(strict_flag=True), MC.tmcsr(strict_flag=False))
-    print 'MCSR = ', MC.mcsr()
-    print 'MNCAR = ', MC.mncar()
-    print 'ECR = ', MC.ecr()
-    
-    
+
+

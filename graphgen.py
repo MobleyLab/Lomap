@@ -23,12 +23,14 @@
 
 
 import networkx as nx
+import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import copy
 from operator import itemgetter
 from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
+import os.path
 
 class GraphGen(object):
     """
@@ -50,6 +52,20 @@ class GraphGen(object):
         # A set of nodes that will be used to save nodes that are not a cycle cover for a given subgraph
         self.nonCycleNodesSet = set()
 
+
+        #Draw Parameters
+        
+        # Max number of displayed chemical compound images as graph nodes
+        self.max_images = 25
+        
+        # Max number of displayed nodes in the graph
+        self.max_nodes = 100
+
+        # Canvas resolution in pixel
+        self.max_canvas_size = (1400, 980)
+
+        self.edge_labels = False
+        
 
         # The following Section has been strongly copied/adapted from the original implementation
 
@@ -102,19 +118,19 @@ class GraphGen(object):
         
         for i in range(0, self.dbase.nums()):
             if i==0:
-                compound_graph.add_node(i,ID=self.dbase[i].getID())
+                compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
             
             for j in range(i+1, self.dbase.nums()):
                 
                 if i == 0:
-                    compound_graph.add_node(j,ID=self.dbase[j].getID())
+                    compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
                 
                 wgt = self.dbase.strict_mtx[i,j]
                 
                 if wgt > 0.0:
-                    compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True) 
+                    compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True)
         
-                    
+
         initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
         initialSubgraphList = [x for x in initialSubgraphGen]
 
@@ -446,92 +462,139 @@ class GraphGen(object):
 
 
 
+    def getGraph(self):
+        return self.resultGraph
+
+
 
     def draw(self):
 
-    
-        fig = plt.figure(1,facecolor='white')
+        A = nx.to_agraph(self.resultGraph)
+        nx.write_dot(self.resultGraph,'graph.dot')
+        
+        if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
+            print 'Graph .odt file has been generated...'
+            return
 
+
+        def max_dist_mol(mol):
+            
+            max_dist = 0.0
+            conf = mol.GetConformer()
+            
+            for i in range(0,conf.GetNumAtoms()):
+                
+                crdi = np.array([conf.GetAtomPosition(i).x,conf.GetAtomPosition(i).y,conf.GetAtomPosition(i).z])
+                
+                for j in range(i+1,conf.GetNumAtoms()):
+                    crdj = np.array([conf.GetAtomPosition(j).x,conf.GetAtomPosition(i).y,conf.GetAtomPosition(j).z])
+                    dist = np.linalg.norm(crdi-crdj)
+                    
+                    if dist > max_dist:
+                        max_dist = dist
+
+            return max_dist
+
+
+        fig = plt.figure(1,facecolor='white')
+        
+        fig.set_dpi(100)
+        
+        fig.set_size_inches(self.max_canvas_size[0]/fig.get_dpi(), self.max_canvas_size[1]/fig.get_dpi(), forward=True)
+        
         ax = plt.subplot(111)
         plt.axis('off')
         
         pos=nx.graphviz_layout( self.resultGraph, prog="neato")
 
-        # #nodes
-        # nx.draw_networkx_nodes(self.resultGraph, pos, node_color = 'r', node_size = 700, node_shape='s')
-
         
         strict_edges = [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == True]
         loose_edges =  [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == False]
-        
-        
-        edge_weight_strict = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == True])
-        edge_weight_loose = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == False])
-        
 
-        for key in edge_weight_strict:
-             edge_weight_strict[key] = round(edge_weight_strict[key],2)
+        node_labels = dict([(u, d['ID']) for u,d in self.resultGraph.nodes(data=True)])
+
+
+        #Draw nodes
+        nx.draw_networkx_nodes(self.resultGraph, pos , node_size=500, node_color='r')
+        #Draw node labels
+        nx.draw_networkx_labels(self.resultGraph, pos,labels=node_labels,font_size=10) 
+
+        
+        if self.edge_labels:
+            edge_weight_strict = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == True])
+            edge_weight_loose = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == False])
+        
+            for key in edge_weight_strict:
+                edge_weight_strict[key] = round(edge_weight_strict[key],2)
        
-
-        for key in edge_weight_loose:
-             edge_weight_loose[key] = round(edge_weight_loose[key],2)
+            for key in edge_weight_loose:
+                edge_weight_loose[key] = round(edge_weight_loose[key],2)
        
- 
-        #node edge labels
-        nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_strict, font_color='g')
-        nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_loose, font_color='r')
-
-        #nodes
-        nx.draw_networkx_nodes(self.resultGraph, pos)
-
-        #edges strict
-        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
-        
-        #edges loose
-        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
+            #edge strict    
+            nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_strict, font_color='g')
+            #edge loose
+            nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_loose, font_color='r')
+        else:
+            #edges strict
+            nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
+            #edges loose
+            nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
   
-        trans = ax.transData.transform
-        trans2 = fig.transFigure.inverted().transform
 
-        cut = 1.0
-        xmax = cut * max(xx for xx, yy in pos.values())
-        ymax = cut * max(yy for xx, yy in pos.values())
+        if nx.number_of_nodes(self.resultGraph) <= self.max_images:
+          
+            trans = ax.transData.transform
+            trans2 = fig.transFigure.inverted().transform
+
+            cut = 1.0
+
+            frame = 10 
+            xmax = cut * max(xx for xx, yy in pos.values()) + frame
+            ymax = cut * max(yy for xx, yy in pos.values()) + frame
         
-        xmin = cut * min(xx for xx, yy in pos.values())
-        ymin = cut * min(yy for xx, yy in pos.values())
+            xmin = cut * min(xx for xx, yy in pos.values()) - frame
+            ymin = cut * min(yy for xx, yy in pos.values()) - frame
 
-        plt.xlim(xmin, xmax)
-        plt.ylim(ymin, ymax)
+            plt.xlim(xmin, xmax)
+            plt.ylim(ymin, ymax)
 
-        h = 15
-        w = 15
+            h = 20
+            w = 20
 
-        mol_size = (100,100)
+            mol_size = (200,200)
 
-        for each_node in self.resultGraph:
+            for each_node in self.resultGraph:
             
-            id_mol = self.resultGraph.node[each_node]['ID']
-            mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
-            AllChem.Compute2DCoords(mol)
+                id_mol = self.resultGraph.node[each_node]['ID']
+                mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
             
-            img_mol = Draw.MolToImage(mol,mol_size)
+                # max_dist = max_dist_mol(mol)
+                # if max_dist > 7.0:
+                #     continue
+
+                AllChem.Compute2DCoords(mol)
             
-            xx, yy = trans(pos[each_node])
-            xa, ya = trans2((xx,yy))
+                img_mol = Draw.MolToImage(mol,mol_size)
+
             
-            nodesize_1 = (300.0/(h*120))
-            nodesize_2 = (300.0/(w*120))
+                xx, yy = trans(pos[each_node])
+                xa, ya = trans2((xx,yy))
             
-            p2_2 = nodesize_2/2
-            p2_1 = nodesize_1/2
+                nodesize_1 = (300.0/(h*100))
+                nodesize_2 = (300.0/(w*100))
+            
+                p2_2 = nodesize_2/2
+                p2_1 = nodesize_1/2
          
-            a = plt.axes([xa - p2_2, ya - p2_1, nodesize_2, nodesize_1]) 
-            #self.resultGraph.node[id_mol]['image'] = img_mol
-            #a.imshow(self.resultGraph.node[each_node]['image'])
-            a.imshow(img_mol)
-            a.axis('off')
-                     
-        #plt.show()
-
-        ### plt.axis('off')
-        plt.savefig('graph.png', facecolor=fig.get_facecolor())
+                a = plt.axes([xa - p2_2, ya - p2_1, nodesize_2, nodesize_1]) 
+                #self.resultGraph.node[id_mol]['image'] = img_mol
+                #a.imshow(self.resultGraph.node[each_node]['image'])
+                a.imshow(img_mol)
+                a.axis('off')
+             
+        
+        plt.show()
+        
+        #plt.savefig('graph.png', facecolor=fig.get_facecolor())
+        #print 'Graph .png file has been generated...'
+        return
