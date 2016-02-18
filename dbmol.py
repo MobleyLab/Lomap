@@ -113,8 +113,29 @@ class DBMolecules(object):
         # name = multiprocessing.current_process().name
         # print name
         # print 'a = %d, b = %d' % (a,b)
-        # print '\n'        
-    
+        # print '\n'  
+
+        #ECR Rule (Electrostatic rule)
+        def ecr(mol_i,mol_j):
+            
+            total_charge_mol_i = 0.0
+            
+            for atom in mol_i.GetAtoms():
+                total_charge_mol_i += float(atom.GetProp('_TriposPartialCharge'))
+
+            total_charge_mol_j = 0.0
+            
+            for atom in mol_j.GetAtoms():
+                total_charge_mol_j += float(atom.GetProp('_TriposPartialCharge'))
+
+            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
+                scr_ecr = 1.0
+            else:
+                scr_ecr = 0.0
+            
+            return scr_ecr
+        
+        
         n = self.nums()
     
         for k in range(a,b+1):
@@ -128,17 +149,22 @@ class DBMolecules(object):
             #print 'Processing molecules:\n%s\n%s' % (self[i].getName(),self[j].getName())
 
             # The MCS object between moli and molj is created with the passed option parameters
-            try:
-                MC = mcs.MCS(moli, molj, self.options)
-            except:
-                print 'Skipping MCS between molecules: %s and %s' % (self[i].getName(), self[j].getName())
+            ecr_score = ecr(moli, molj)
+
+            if ecr_score == 1.0:
+                try:
+                    print '-------------------------\nProcessing MCS molecules %s  -  %s' % (self[i].getName(),self[j].getName())
+                    MC = mcs.MCS(moli, molj, self.options)
+                except Exception:
+                    print 'Skipping MCS'
+                    continue
+            else:
                 continue
-                
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
                
-            tmp_scr = MC.ecr() * MC.mncar() * MC.mcsr()
+            tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
 
             strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
             loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
@@ -217,7 +243,7 @@ class DBMolecules(object):
         
         #ths = 0.05
         #max_dist = 100
-        Gr = graphgen.GraphGen(self,0.5,6)
+        Gr = graphgen.GraphGen(self,0.05,6)
 
         #Networkx graph
         self.Graph = Gr.getGraph()

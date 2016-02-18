@@ -26,7 +26,7 @@ from rdkit.Chem import Draw
 from optparse import OptionParser
 import sys
 import math
-
+from rdkit import RDLogger
 
 
 class MCS(object):
@@ -140,12 +140,22 @@ class MCS(object):
         # Local pointers to the passed molecules
         self.moli = moli
         self.molj = molj
-
+        
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
+        
         # Local pointers to the passed molecules without hydrogens
         # These variables are defined as private
-        self.__moli_noh = AllChem.RemoveHs(moli)
-        self.__molj_noh = AllChem.RemoveHs(molj)
-        
+        try:
+            self.__moli_noh = AllChem.RemoveHs(moli)
+            self.__molj_noh = AllChem.RemoveHs(molj)
+        except Exception:
+            self.__moli_noh = AllChem.RemoveHs(moli, sanitize=False)
+            self.__molj_noh = AllChem.RemoveHs(molj, sanitize=False)
+            
+            Chem.SanitizeMol(self.__moli_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
+            Chem.SanitizeMol(self.__molj_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
+            
 
         # MCS pattern calculation
         self.__mcs = rdFMCS.FindMCS([self.__moli_noh, self.__molj_noh],
@@ -171,10 +181,9 @@ class MCS(object):
 
         
         try:#Sanitize the MCS molecule
-            with suppress_stdout_stderr():
-                Chem.SanitizeMol(self.mcs_mol)
+            Chem.SanitizeMol(self.mcs_mol)
 
-        except:    
+        except Exception:    
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
             if sanitFail:
                 print 'Sanitization Failed...'
@@ -192,7 +201,8 @@ class MCS(object):
         # for at in self.mcs_mol.GetAtoms():
         #     print 'at = %d rc = %d' % (at.GetIdx(), int(at.GetProp('rc')))
 
-
+        lg.setLevel(RDLogger.WARNING)
+        
         return
 
     def getMap(self):
@@ -264,25 +274,25 @@ class MCS(object):
 
     ############ RULES ############
 
-    #ECR Rule (Electrostatic rule)
-    def ecr(self):
+    # #ECR Rule (Electrostatic rule)
+    # def ecr(self):
          
-        total_charge_moli = 0.0
+    #     total_charge_moli = 0.0
             
-        for atom in self.moli.GetAtoms():
-            total_charge_moli += float(atom.GetProp('_TriposPartialCharge'))
+    #     for atom in self.moli.GetAtoms():
+    #         total_charge_moli += float(atom.GetProp('_TriposPartialCharge'))
 
-        total_charge_molj = 0.0
-        for atom in self.molj.GetAtoms():
-            total_charge_molj += float(atom.GetProp('_TriposPartialCharge'))
+    #     total_charge_molj = 0.0
+    #     for atom in self.molj.GetAtoms():
+    #         total_charge_molj += float(atom.GetProp('_TriposPartialCharge'))
 
-        if abs(total_charge_molj - total_charge_moli) < 1e-3:
-            scr_ecr = 1.0
-        else:
-            scr_ecr = 0.0
+    #     if abs(total_charge_molj - total_charge_moli) < 1e-3:
+    #         scr_ecr = 1.0
+    #     else:
+    #         scr_ecr = 0.0
 
             
-        return scr_ecr
+    #     return scr_ecr
 
 
     # MCSR Rule
@@ -515,39 +525,6 @@ class MCS(object):
         return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))
         
 
-
-class suppress_stdout_stderr(object):
-    '''
-    This function has been pasted form intenret
-    A context manager for doing a "deep suppression" of stdout and stderr in 
-    Python, i.e. will suppress all print, even if the print originates in a 
-    compiled C/Fortran sub-function.
-       This will not suppress raised exceptions, since exceptions are printed
-    to stderr just before a script exits, and after the context manager has
-    exited (at least, I think that is why it lets exceptions through).      
-
-    '''
-    def __init__(self):
-        # Open a pair of null files
-        self.null_fds =  [os.open(os.devnull,os.O_RDWR) for x in range(2)]
-        # Save the actual stdout (1) and stderr (2) file descriptors.
-        self.save_fds = (os.dup(1), os.dup(2))
-
-    def __enter__(self):
-        # Assign the null pointers to stdout and stderr.
-        os.dup2(self.null_fds[0],1)
-        os.dup2(self.null_fds[1],2)
-
-    def __exit__(self, *_):
-        # Re-assign the real stdout/stderr back to (1) and (2)
-        os.dup2(self.save_fds[0],1)
-        os.dup2(self.save_fds[1],2)
-        # Close the null files
-        os.close(self.null_fds[0])
-        os.close(self.null_fds[1])
-
-
-
 if ("__main__" == __name__) :
    
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
@@ -557,8 +534,8 @@ if ("__main__" == __name__) :
     (opt, args) = parser.parse_args()
 
 
-    mola = Chem.MolFromMol2File('mol2_file/18108.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('mol2_file/18110.mol2', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMol2File('data/20561.mol2', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMol2File('data/20993.mol2', sanitize=False, removeHs=False)
     
     MC = MCS(mola,molb,opt)
 
@@ -568,16 +545,16 @@ if ("__main__" == __name__) :
     
     mcsr = MC.mcsr()
     mncar =  MC.mncar()
-    ecr =  MC.ecr()
+    #ecr =  MC.ecr()
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
 
     print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose)
     print 'MCSR = ', mcsr
     print 'MNCAR = ', mncar
-    print 'ECR = ', ecr
+    # print 'ECR = ', ecr
     
-    tmp = mcsr * mncar * ecr
+    tmp = mcsr * mncar 
     
     print 'Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose)  
 

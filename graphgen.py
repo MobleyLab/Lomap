@@ -56,7 +56,7 @@ class GraphGen(object):
         #Draw Parameters
         
         # Max number of displayed chemical compound images as graph nodes
-        self.max_images = 25
+        self.max_images = 15
         
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
@@ -123,7 +123,7 @@ class GraphGen(object):
             for j in range(i+1, self.dbase.nums()):
                 
                 if i == 0:
-                    compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
+                    compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[j].getName()))
                 
                 wgt = self.dbase.strict_mtx[i,j]
                 
@@ -471,7 +471,9 @@ class GraphGen(object):
 
         A = nx.to_agraph(self.resultGraph)
         nx.write_dot(self.resultGraph,'graph.dot')
-        
+        cmd = 'dot -Tps  graph.dot -o graph.ps'
+        os.system(cmd)
+
         if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
             print 'Graph .odt file has been generated...'
             return
