@@ -36,6 +36,7 @@ class MCS(object):
     
     """
 
+
     def __init__(self, moli, molj, options):
         """
         Inizialization function
@@ -59,8 +60,12 @@ class MCS(object):
             """
    
             # mcs indexes mapped back to the first molecule moli
-            moli_sub = self.__moli_noh.GetSubstructMatch(self.mcs_mol)
-              
+
+            if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
+                moli_sub = self.__moli_noh.GetSubstructMatch(self.mcs_mol) 
+            else:
+                raise ValueError('MCS Subgraph moli failed')
+                
             mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             
             # mcs to moli
@@ -73,10 +78,20 @@ class MCS(object):
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_moli', str(idx[1]))
 
             # mcs indexes mapped back to the second molecule molj 
-            molj_sub = self.__molj_noh.GetSubstructMatch(self.mcs_mol)
-              
-            mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
+
+            if self.__molj_noh.HasSubstructMatch(self.mcs_mol):
+                molj_sub = self.__molj_noh.GetSubstructMatch(self.mcs_mol)
+            else:
+                raise ValueError('MCS Subgraph molj failed')
              
+
+
+            if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
+                mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
+            else:
+                raise ValueError('MCS Subgraph failed')
+        
+   
             # mcs to molj
             map_mcs_mol_to_molj_sub = zip(mcsj_sub, molj_sub)
              
@@ -141,6 +156,7 @@ class MCS(object):
         self.moli = moli
         self.molj = molj
         
+        
         lg = RDLogger.logger()
         lg.setLevel(RDLogger.CRITICAL)
         
@@ -156,6 +172,7 @@ class MCS(object):
             Chem.SanitizeMol(self.__moli_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
             Chem.SanitizeMol(self.__molj_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
             
+
 
         # MCS pattern calculation
         self.__mcs = rdFMCS.FindMCS([self.__moli_noh, self.__molj_noh],
@@ -175,22 +192,27 @@ class MCS(object):
             print 'No MCS was found between molecules: %d and %d' \
             % (self.moli.getName(),self.molj.getName())
             raise ValueError()
+        
+
             
         # The found MCS pattern (smart strings) is converted to a RDkit molecule
         self.mcs_mol = Chem.MolFromSmarts(self.__mcs.smartsString)
 
-        
+                
         try:#Sanitize the MCS molecule
             Chem.SanitizeMol(self.mcs_mol)
-
         except Exception:    
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
             if sanitFail:
                 print 'Sanitization Failed...'
                 raise ValueError(sanitFail)
 
+    
         # Mapping between the found MCS molecule and moli,  molj
-        map_mcs_mol()
+        try:
+            map_mcs_mol()
+        except Exception:
+            raise ValueError('MCS Subgraph failed')
 
         #Set the ring counters for each molecule
         set_ring_counter(self.__moli_noh)
@@ -207,8 +229,8 @@ class MCS(object):
 
     def getMap(self):
         """
-        This function is used to return a list of the atom index pair generated
-        from themapping between the two molecules used to calculate the MCS.
+        This function is used to return a list of pair of the atom indexes generated
+        by the mapping between the teo molecules used to calculate the MCS.
         """
         return self.__map_moli_molj
 
@@ -219,14 +241,13 @@ class MCS(object):
         AllChem.Compute2DCoords(mol)
         Chem.Draw.MolToFile(mol,fname)
         
-        for at in mol.GetAtoms():
-            print 'atn = %d rc = %d org = %d to_molij = (%d,%d)' \
-                % (at.GetIdx(), int(at.GetProp('rc')),  
-                   int(at.GetProp('org_idx')),
-                   int(at.GetProp('to_moli')), int(at.GetProp('to_molj')))
+        # for at in mol.GetAtoms():
+        #     print 'atn = %d rc = %d org = %d to_molij = (%d,%d)' \
+        #         % (at.GetIdx(), int(at.GetProp('rc')),  
+        #            int(at.GetProp('org_idx')),
+        #            int(at.GetProp('to_moli')), int(at.GetProp('to_molj')))
         return
         
-
 
     def draw_mcs(self, fname = 'mcs.png'):
         """
@@ -234,27 +255,36 @@ class MCS(object):
         At this stage it is used as debugging tools
                     
         """
-   
+
         #Copy of the molecules
         moli_noh = Chem.Mol(self.__moli_noh)
         molj_noh = Chem.Mol(self.__molj_noh)
         mcs_mol = Chem.Mol(self.mcs_mol) 
-        
 
         try:
             Chem.SanitizeMol(self.mcs_mol)
         except ValueError:
             print('Sanitization failed....')
         
+        if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
+            moli_sub = moli_noh.GetSubstructMatch(mcs_mol)
+        else:
+            raise ValueError('MCS Subgraph moli failed')
+            
+        if self.__molj_noh.HasSubstructMatch(self.mcs_mol):
+            molj_sub = molj_noh.GetSubstructMatch(mcs_mol)
+        else:
+            raise ValueError('MCS Subgraph molj failed')
 
-        moli_sub = moli_noh.GetSubstructMatch(self.mcs_mol)
-        molj_sub = molj_noh.GetSubstructMatch(self.mcs_mol)
-
-        mcs_sub =  self.mcs_mol.GetSubstructMatch(self.mcs_mol)
         
+        if self.mcs_mol.HasSubstructMatch(self.mcs_mol): 
+            mcs_sub =  self.mcs_mol.GetSubstructMatch(mcs_mol)
+        else:
+            raise ValueError('MCS Subgraph failed')
+
         AllChem.Compute2DCoords(moli_noh)
         AllChem.Compute2DCoords(molj_noh)
-        AllChem.Compute2DCoords(self.mcs_mol)
+        AllChem.Compute2DCoords(mcs_mol)
                
         DrawingOptions.includeAtomNumbers=True
         
@@ -262,14 +292,13 @@ class MCS(object):
         molj_fname='Molj'
         mcs_fname = 'Mcs'
 
-        img = Draw.MolsToGridImage([moli_noh, molj_noh, self.mcs_mol], 
+        img = Draw.MolsToGridImage([moli_noh, molj_noh, mcs_mol], 
                                    molsPerRow=3, subImgSize=(400,400),
                                    legends=[moli_fname,molj_fname,mcs_fname], 
                                    highlightAtomLists=[moli_sub, molj_sub, mcs_sub] )
 
         img.save(fname)
 
-        
         return
 
     ############ RULES ############
@@ -302,7 +331,7 @@ class MCS(object):
         nha_moli = self.moli.GetNumHeavyAtoms()
         nha_molj = self.molj.GetNumHeavyAtoms()
         nha_mcs_mol = self.mcs_mol.GetNumHeavyAtoms()
-            
+        
         scr_mcsr = math.exp(-beta*(nha_moli + nha_molj - 2*nha_mcs_mol))
 
         return scr_mcsr
@@ -528,17 +557,22 @@ class MCS(object):
 if ("__main__" == __name__) :
    
     parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
-    parser.add_option("-t", "--time", default = 20 , help = " Set the maximum time to perform the mcs search between pair of molecules")
+    parser.add_option("-t", "--time", default = 300 , help = " Set the maximum time to perform the mcs search between pair of molecules")
     
     #A tuple of options and arguments passed by the user
     (opt, args) = parser.parse_args()
 
 
-    mola = Chem.MolFromMol2File('data/20561.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('data/20993.mol2', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMol2File('data/frag.vs.030.mol2', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMol2File('data/frag.vs.025.mol2', sanitize=False, removeHs=False)
     
-    MC = MCS(mola,molb,opt)
+    try:
+        MC = MCS(mola,molb,opt)
+    except Exception:
+        raise ValueError('NO MCS FOUND......')
+        
 
+    sys.exit(-1)
     #print MC.getMap()
 
     MC.draw_mcs()
@@ -559,7 +593,3 @@ if ("__main__" == __name__) :
     print 'Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose)  
 
     
-
-
-
-

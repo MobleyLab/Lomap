@@ -165,10 +165,12 @@ class DBMolecules(object):
             # The total score will be the product of all the single rules
                
             tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
-
+            
+            
             strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
             loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
-                
+        
+            
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
     
@@ -243,7 +245,7 @@ class DBMolecules(object):
         
         #ths = 0.05
         #max_dist = 100
-        Gr = graphgen.GraphGen(self,0.05,6)
+        Gr = graphgen.GraphGen(self,0.4,6)
 
         #Networkx graph
         self.Graph = Gr.getGraph()

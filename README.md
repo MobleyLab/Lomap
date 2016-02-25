@@ -16,6 +16,13 @@ free tool to plan in advance binding free energy calculations
 ## Prerequisites
 * RDkit Release 2015.09.2
 
+
+Authors
+-------
+* Gaetano Calabro' <gcalabro@uci.edu>
+* David Mobley <dmobley@uci.edu>
+
+
 ## Issues
 * The software is into the debugging stage and it is currently not working
 

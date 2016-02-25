@@ -56,7 +56,7 @@ class GraphGen(object):
         #Draw Parameters
         
         # Max number of displayed chemical compound images as graph nodes
-        self.max_images = 15
+        self.max_images = 25
         
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
