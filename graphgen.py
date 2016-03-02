@@ -31,6 +31,8 @@ from operator import itemgetter
 from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 import os.path
+import logging
+
 
 class GraphGen(object):
     """
@@ -466,16 +468,41 @@ class GraphGen(object):
         return self.resultGraph
 
 
+    def writeGraph(self):
+        
+        A = nx.to_agraph(self.resultGraph)
+        
+        try:
+            nx.write_dot(self.resultGraph, self.dbase.options.output+'.dot')
+        except Exception:
+            raise IOError('It was no possible to generate the %s.dot file' % self.dbase.options.output ) 
+
+        cmd = 'dot -Tps ' + self.dbase.options.output + '.dot -o ' + self.dbase.options.output + '.ps' 
+        
+        try:
+            os.system(cmd)
+        except Exception:
+            raise IOError('It was not possible to generate the %.ps file' % self.dbase.options.output)
+        
+
+        try:
+            self.dbase.write_dic()
+        except Exception:
+             raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.output)
+            
+
+        print 30*'-'    
+        print('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.output, self.dbase.options.output,  self.dbase.options.output ))    
+        print 30*'-'
+
+        return
+
 
     def draw(self):
-
-        A = nx.to_agraph(self.resultGraph)
-        nx.write_dot(self.resultGraph,'graph.dot')
-        cmd = 'dot -Tps  graph.dot -o graph.ps'
-        os.system(cmd)
-
+        print('\nDrawing....')
+        
         if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
-            print 'Graph .odt file has been generated...'
+            logging.info('The number of generated graph nodes %d excede the max number of drawable nodes %s' % (nx.number_of_nodes(self.resultGraph), self.max_nodes))
             return
 
 

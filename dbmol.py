@@ -26,8 +26,7 @@ import sys
 import math
 import multiprocessing
 import networkx as nx
-
-
+import logging
 
 class DBMolecules(object):
     """
@@ -43,7 +42,7 @@ class DBMolecules(object):
        
         """
         
-        #Check the passed molecules objects
+        # Check the passed molecules objects
         if not isinstance(molecules, list):
             raise ValueError('The passed parents must be a list')
 
@@ -51,28 +50,34 @@ class DBMolecules(object):
              if not isinstance(mol , Molecule) :
                  raise ValueError('The passed molecule list does not contain all Molecule objects')
         
-        # list container used to store the loaded molecules
+        # List container used to store the loaded molecules
         self.__list = molecules
 
-        # index used to perform index selection by using __iter__ function
+        # Dictionary holding the mapping between molecule IDs and molecule file names
+        self.dic_mapping = {}
+        
+        for mol in self.__list:
+            self.dic_mapping[mol.getID()]=mol.getName()
+
+        # Index used to perform index selection by using __iter__ function
         self.__ci = 0
 
-        # symmetric matrices used to store the mcs scoring 
+        # Symmetric matrices used to store the mcs scoring 
         self.strict_mtx = SMatrix(shape=(0,))
         self.loose_mtx = SMatrix(shape=(0,))
 
-        # options to buid the MCS and other parameters
+        # Options to buid the MCS and other parameters
         self.options = options
-        
 
         self.Graph = nx.Graph() 
 
 
-    # index generator
+
+    # Index generator
     def __iter__(self):
         return self
 
-    # select the molecule during an iteration
+    # Select the molecule during an iteration
     def next(self):
         if self.__ci > len(self.__list) - 1:
             self.__ci = 0
@@ -81,7 +86,7 @@ class DBMolecules(object):
             self.__ci = self.__ci + 1
             return self.__list[self.__ci - 1] 
             
-    # slicing and index selection function
+    # Slicing and index selection function
     def __getitem__(self,index):
          return self.__list[index]
 
@@ -152,25 +157,29 @@ class DBMolecules(object):
             ecr_score = ecr(moli, molj)
 
             if ecr_score == 1.0:
-                try:
-                    print '-------------------------\nProcessing MCS molecules %s  -  %s' % (self[i].getName(),self[j].getName())
+                try: 
+                    if self.options.verbose:
+                        print(50*'-')
+                        logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName())) 
+                        
                     MC = mcs.MCS(moli, molj, self.options)
-                except Exception:
-                    print 'Skipping MCS'
+
+                except Exception as e:
+                    logging.warning('Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                    print(50*'-')
                     continue
             else:
                 continue
+
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
                
             tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
             
-            
             strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
             loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
         
-            
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
     
@@ -180,7 +189,7 @@ class DBMolecules(object):
     # This function build the matrix score by using the implemented class MCS (Maximum Common Subgraph)
     def build_matrices(self):
         
-        print('Matrix scoring in progress....')   
+        print('\nMatrix scoring in progress....\n')   
         
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
@@ -193,7 +202,7 @@ class DBMolecules(object):
             self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx)
         else:#Parallel execution
             
-            print('Parallel is on')
+            logging.info('Parallel mode is on')
             
             #number of processors
             np = self.options.parallel
@@ -241,20 +250,36 @@ class DBMolecules(object):
 
     def build_graph(self):
         
-        print('Generating graph in progress ...')
+        print('\nGenerating graph in progress....')
         
-        #ths = 0.05
-        #max_dist = 100
-        Gr = graphgen.GraphGen(self,0.4,6)
+        Gr = graphgen.GraphGen(self, self.options.cutoff, self.options.max)
+
+        try:
+            Gr.writeGraph()
+        except Exception as e:
+            logging.Error(str(e))
 
         #Networkx graph
         self.Graph = Gr.getGraph()
 
         #print self.Graph.nodes(data=True)
+        
+        if self.options.graph:
+            Gr.draw()
 
-        Gr.draw()
 
+    def write_dic(self):
+        
+        try:
+            file_txt = open(self.options.output+'.txt', 'w')
+        except Exception:
+            raise IOError('It was not possible to write out the mapping file:')
 
+        file_txt.write('#ID\tFileName\n')
+        for key in self.dic_mapping:
+            file_txt.write('%d\t%s\n' % (key, self.dic_mapping[key]))
+
+        file_txt.close() 
 
 
 class SMatrix(np.ndarray):
@@ -377,7 +402,7 @@ class Molecule(object):
         # The variable __molecule saves the current RDkit molecule object
         # The variable is defined as private
         self.__molecule = molecule    
-
+        
             
         # The variable __ID saves the molecule identification number 
         # The variable is defined as private

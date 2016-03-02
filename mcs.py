@@ -23,11 +23,11 @@ from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
-from optparse import OptionParser
+import argparse
 import sys
 import math
 from rdkit import RDLogger
-
+import logging
 
 class MCS(object):
     """
@@ -64,7 +64,7 @@ class MCS(object):
             if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
                 moli_sub = self.__moli_noh.GetSubstructMatch(self.mcs_mol) 
             else:
-                raise ValueError('MCS Subgraph moli failed')
+                raise ValueError('RDkit MCS Subgraph first molecule search failed')
                 
             mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             
@@ -82,14 +82,14 @@ class MCS(object):
             if self.__molj_noh.HasSubstructMatch(self.mcs_mol):
                 molj_sub = self.__molj_noh.GetSubstructMatch(self.mcs_mol)
             else:
-                raise ValueError('MCS Subgraph molj failed')
+                raise ValueError('RDkit MCS Subgraph second molecule search failed')
              
 
 
             if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
                 mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             else:
-                raise ValueError('MCS Subgraph failed')
+                raise ValueError('RDkit MCS Subgraph search failed')
         
    
             # mcs to molj
@@ -98,7 +98,7 @@ class MCS(object):
             #print map_mcs_mol_to_molj_sub
             
             #Map between the two molecules
-            self.__map_moli_molj = zip( moli_sub, molj_sub)
+            self.__map_moli_molj = zip(moli_sub, molj_sub)
 
             # An RDkit atomic property is defined to store the mapping to molj
             for idx in map_mcs_mol_to_molj_sub:
@@ -118,8 +118,8 @@ class MCS(object):
                 at.SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
 
 
-            if chiral_at_mcs:
-                print('Chiral atoms detected')
+            if chiral_at_mcs and options.verbose:
+                logging.info('Chiral atom detected')
 
             #For each mcs atom we save its original index in a specified 
             #property. This could be very usefull in the code development
@@ -156,9 +156,9 @@ class MCS(object):
         self.moli = moli
         self.molj = molj
         
-        
-        lg = RDLogger.logger()
-        lg.setLevel(RDLogger.CRITICAL)
+        if not options.verbose:
+            lg = RDLogger.logger()
+            lg.setLevel(RDLogger.CRITICAL)
         
         # Local pointers to the passed molecules without hydrogens
         # These variables are defined as private
@@ -185,13 +185,11 @@ class MCS(object):
                                           matchChiralTag=False)
         
         # Checking
-        if self.__mcs.canceled:
-            print 'Timeout reached to find the MCS between molecules: %d and %d' \
-            % (self.moli.getID(),self.molj.getID())          
+        if self.__mcs.canceled and options.verbose:
+            logging.warning('Timeout reached to find the MCS between the molecules')
+  
         if self.__mcs.numAtoms == 0:
-            print 'No MCS was found between molecules: %d and %d' \
-            % (self.moli.getName(),self.molj.getName())
-            raise ValueError()
+            raise ValueError('No MCS was found between the molecules')
         
 
             
@@ -204,15 +202,14 @@ class MCS(object):
         except Exception:    
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
             if sanitFail:
-                print 'Sanitization Failed...'
-                raise ValueError(sanitFail)
+                raise ValueError('Sanitization Failed...')
 
     
         # Mapping between the found MCS molecule and moli,  molj
         try:
             map_mcs_mol()
-        except Exception:
-            raise ValueError('MCS Subgraph failed')
+        except Exception as e:
+            raise ValueError(str(e))
 
         #Set the ring counters for each molecule
         set_ring_counter(self.__moli_noh)
@@ -223,7 +220,8 @@ class MCS(object):
         # for at in self.mcs_mol.GetAtoms():
         #     print 'at = %d rc = %d' % (at.GetIdx(), int(at.GetProp('rc')))
 
-        lg.setLevel(RDLogger.WARNING)
+        if not options.verbose:
+            lg.setLevel(RDLogger.WARNING)
         
         return
 
@@ -555,24 +553,25 @@ class MCS(object):
         
 
 if ("__main__" == __name__) :
-   
-    parser = OptionParser( usage = "Usage: %prog [options] <structure-file-dir>", version = "%prog v0.0" )
-    parser.add_option("-t", "--time", default = 300 , help = " Set the maximum time to perform the mcs search between pair of molecules")
     
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--time', default = 20 , type=int , help='Set the maximum time in seconds to perform the mcs search between pair of molecules.')
+
+    
+        
     #A tuple of options and arguments passed by the user
-    (opt, args) = parser.parse_args()
+    ops = parser.parse_args()
+
+    mola = Chem.MolFromMol2File('data/mol2/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMol2File('data/mol2/2-naftanol.mol2', sanitize=False, removeHs=False)
 
 
-    mola = Chem.MolFromMol2File('data/frag.vs.030.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('data/frag.vs.025.mol2', sanitize=False, removeHs=False)
-    
     try:
-        MC = MCS(mola,molb,opt)
+        MC = MCS(mola,molb, ops)
     except Exception:
         raise ValueError('NO MCS FOUND......')
         
-
-    sys.exit(-1)
+    
     #print MC.getMap()
 
     MC.draw_mcs()
