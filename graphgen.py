@@ -563,11 +563,12 @@ class GraphGen(object):
             nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_strict, font_color='g')
             #edge loose
             nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_loose, font_color='r')
-        else:
-            #edges strict
-            nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
-            #edges loose
-            nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
+        
+        
+        #edges strict
+        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
+        #edges loose
+        nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
   
 
         if nx.number_of_nodes(self.resultGraph) <= self.max_images:

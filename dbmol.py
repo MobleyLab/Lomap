@@ -90,7 +90,7 @@ class DBMolecules(object):
         # Index used to perform index selection by using __iter__ function
         self.__ci = 0
 
-        # Symmetric matrices used to store the mcs scoring. The matrices are custom numpy objects 
+        # Symmetric matrices used to store the mcs scoring. The matrices are subclasses of numpy 
         self.strict_mtx = SMatrix(shape=(0,))
         self.loose_mtx = SMatrix(shape=(0,))
 
@@ -135,9 +135,10 @@ class DBMolecules(object):
         Parameters
         ----------
         index : int 
-           the index of the molecule
+           the molecule index
         molecule : Molecule obj
-           the molecule to assign to the index in the molecule database: DB[index] = molecule
+           the molecule to assign to the molecule database by selecting the index: 
+           DB[index] = molecule
         
         """
         
@@ -297,7 +298,7 @@ class DBMolecules(object):
             -------
             scr_ecr: float
                 the calculated similarity score (1 if mol_i and mol_j have the
-                 total charges, 0  otherwire)
+                same total charges, 0  otherwire)
 
             """
             
@@ -321,7 +322,7 @@ class DBMolecules(object):
         # Total number of loaded molecules
         n = self.nums()
         
-        # Looping over all the element of the selected matrix chunk
+        # Looping over all the elements of the selected matrix chunk
         for k in range(a, b+1):
 
             # The linear index k is converted into the row and column indexes of
@@ -456,7 +457,7 @@ class DBMolecules(object):
         try:
             Gr.writeGraph()
         except Exception as e:
-            logging.Error(str(e))
+            logging.error(str(e))
 
         # Handle to the the NetworkX generated graph
         self.Graph = Gr.getGraph()
@@ -666,6 +667,13 @@ class Molecule(object):
     def getID(self):
         """
         Get the molecule ID number
+ 
+ 
+        Returns
+        -------
+           : int
+           the molecule ID number
+
         """
         return self.__ID
 
@@ -699,11 +707,11 @@ class Molecule(object):
         return self.__name
 
 
-    # 
+    
     @staticmethod
     def get_mol_num():
         """
-        This class function returns the current total number of instantiated molecules. 
+        This class function returns the current total number of allocated molecules. 
  
 
         Returns
