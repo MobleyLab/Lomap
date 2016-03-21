@@ -69,7 +69,7 @@ class DBMolecules(object):
     
         Parameters
         ----------
-        options : arparse python object 
+        options : argparse python object 
            the list of user options 
        
         """
@@ -265,13 +265,13 @@ class DBMolecules(object):
            the final index of the chunk
         
         strict_mtx: python multiprocessing array
-           srtict simimarity score matrix. This array is used as shared memory 
+           srict simimarity score matrix. This array is used as shared memory 
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 
 
         loose_mtx: python multiprocessing array
-           loose simimarity score matrix. This array is used as shared memory 
+           loose similarity score matrix. This array is used as shared memory 
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 

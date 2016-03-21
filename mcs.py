@@ -1,4 +1,22 @@
-#############################################################################
+#******************
+# MODULE DOCSTRING
+#******************
+
+"""
+
+LOMAP: Maximum Common Subgraph and scoring calculations
+=====
+
+Alchemical free energy calculations hold increasing promise as an aid to drug 
+discovery efforts. However, applications of these techniques in discovery 
+projects have been relatively few, partly because of the difficulty of planning 
+and setting up calculations. The Lead Optimization Mapper (LOMAP) is an 
+automated algorithm to plan efficient relative free energy calculations between 
+potential ligands within a substantial of compounds.
+
+"""
+
+#*****************************************************************************
 # Lomap2: A toolkit to plan alchemical relative binding affinity calculations
 # Copyright 2015 - 2016  UC Irvine and the Authors
 #
@@ -16,7 +34,13 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, see http://www.gnu.org/licenses/
-#############################################################################
+#*****************************************************************************
+
+
+#****************
+# MODULE IMPORTS
+#****************
+
 
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
@@ -31,32 +55,34 @@ import logging
 
 class MCS(object):
     """
+
     This class is used to compute the Maximum Common Subgraph (MCS) between two
-    RDkit molecule objects.  
+    RDkit molecule objects and to score their similarity by using defined rules 
     
     """
-
 
     def __init__(self, moli, molj, options):
         """
         Inizialization function
     
-        moli: Rdkit molecule object related to the first molecule used to 
-        perform the MCS calculation
-        molj: Rdkit molecule object related to the second molecule used to 
-        perform the MCS calculation
-        options: MCS options
+        Parameters
+        ----------
 
+        moli : RDKit molecule object 
+            the first molecule used to perform the MCS calculation
+        molj : RDKit molecule object 
+            the second molecule used to perform the MCS calculation
+        options : argparse python object 
+            the list of user options 
+       
         """
 
         def map_mcs_mol():
             """
+
             This function is used to define a map between the generated mcs, the
-            starting molecules and vice versa
-    
-            mcs_mol: the mcs molecule generated from the mcs calulation between 
-            the two passed molecules
- 
+            molecules and vice versa
+           
             """
    
             # mcs indexes mapped back to the first molecule moli
@@ -85,7 +111,6 @@ class MCS(object):
                 raise ValueError('RDkit MCS Subgraph second molecule search failed')
              
 
-
             if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
                 mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             else:
@@ -97,7 +122,7 @@ class MCS(object):
              
             #print map_mcs_mol_to_molj_sub
             
-            #Map between the two molecules
+            # Map between the two molecules
             self.__map_moli_molj = zip(moli_sub, molj_sub)
 
             # An RDkit atomic property is defined to store the mapping to molj
@@ -105,12 +130,16 @@ class MCS(object):
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_molj', str(idx[1]))
 
             # Chirality
+
+            # moli chiral atoms
             chiral_at_moli_noh = [seq[0] for seq in Chem.FindMolChiralCenters(self.__moli_noh)]
+            # molj chiral atoms
             chiral_at_molj_noh = [seq[0] for seq in Chem.FindMolChiralCenters(self.__molj_noh)]
 
             chiral_at_mcs_moli_noh = set([seq[0] for seq in map_mcs_mol_to_moli_sub if seq[1] in chiral_at_moli_noh])
             chiral_at_mcs_molj_noh = set([seq[0] for seq in map_mcs_mol_to_molj_sub if seq[1] in chiral_at_molj_noh])
-
+            
+            # mcs chiral atoms
             chiral_at_mcs = chiral_at_mcs_moli_noh | chiral_at_mcs_molj_noh
             
             for i in chiral_at_mcs:
@@ -121,17 +150,32 @@ class MCS(object):
             if chiral_at_mcs and options.verbose:
                 logging.info('Chiral atom detected')
 
-            #For each mcs atom we save its original index in a specified 
-            #property. This could be very usefull in the code development
+            # For each mcs atom we save its original index in a specified 
+            # property. This could be very usefull in the code development
+            # when deletition or atom insertions are performed
             for at in self.mcs_mol.GetAtoms():
                 at.SetProp('org_idx',str(at.GetIdx()))
-
 
             return
 
 
         def set_ring_counter(mol):
             
+            """
+
+            This function is used to attach to each molecule atom a ring counter
+            rc. This parameter is used to asses if a ring has been broken or not
+            during the MCS mapping
+         
+            Parameters
+            ----------
+            mol : RDKit Molecule obj
+                the molecule used to define the atom ring counters
+       
+
+            """
+            
+            # set to zero the atom ring counters
             for at in mol.GetAtoms():
                 at.SetProp('rc','0')
 
@@ -173,8 +217,8 @@ class MCS(object):
             Chem.SanitizeMol(self.__molj_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
             
 
-
-        # MCS pattern calculation
+        # MCS calculaton. In RDKit the MCS is a smart string. Ring atoms are 
+        # always mapped in ring atoms. 
         self.__mcs = rdFMCS.FindMCS([self.__moli_noh, self.__molj_noh],
                                           timeout=options.time, 
                                           atomCompare=rdFMCS.AtomCompare.CompareAny, 
@@ -192,19 +236,18 @@ class MCS(object):
             raise ValueError('No MCS was found between the molecules')
         
 
-            
-        # The found MCS pattern (smart strings) is converted to a RDkit molecule
+        # The found MCS pattern (smart strings) is converted to a RDKit molecule
         self.mcs_mol = Chem.MolFromSmarts(self.__mcs.smartsString)
 
                 
-        try:#Sanitize the MCS molecule
+        try: # Try to sanitize the MCS molecule
             Chem.SanitizeMol(self.mcs_mol)
-        except Exception:    
+        except Exception: # if not try to recover the atom aromaticity wich is 
+            # important for the ring counter
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
-            if sanitFail:
+            if sanitFail: # if not the MCS is skipped
                 raise ValueError('Sanitization Failed...')
 
-    
         # Mapping between the found MCS molecule and moli,  molj
         try:
             map_mcs_mol()
@@ -216,7 +259,6 @@ class MCS(object):
         set_ring_counter(self.__molj_noh)
         set_ring_counter(self.mcs_mol)
 
-        
         # for at in self.mcs_mol.GetAtoms():
         #     print 'at = %d rc = %d' % (at.GetIdx(), int(at.GetProp('rc')))
 
@@ -227,18 +269,39 @@ class MCS(object):
 
     def getMap(self):
         """
-        This function is used to return a list of pair of the atom indexes generated
-        by the mapping between the teo molecules used to calculate the MCS.
+
+        This function is used to return a list of pairs of atom indexes generated
+        by the mapping between the two molecules used to calculate the MCS.
+
+        Returns
+        -------
+        pair of indexes related to the atom mapping 
+
         """
+        
         return self.__map_moli_molj
 
 
-    def draw_molecule(self,mol,fname='mol.png'):
+    def draw_molecule(self, mol, fname='mol.png'):
+      
+        """
+
+        This function is used to draw a molecule. The main purpose is for debugging
         
+        Parameters
+        ----------
+        mol : RDkit molecule obj 
+            the molecule to draw
+        fname : string
+            the filename used for the .png file
+        
+        """
+  
         DrawingOptions.includeAtomNumbers=True
         AllChem.Compute2DCoords(mol)
         Chem.Draw.MolToFile(mol,fname)
         
+        # Useful info for debugging
         # for at in mol.GetAtoms():
         #     print 'atn = %d rc = %d org = %d to_molij = (%d,%d)' \
         #         % (at.GetIdx(), int(at.GetProp('rc')),  
@@ -247,11 +310,17 @@ class MCS(object):
         return
         
 
-    def draw_mcs(self, fname = 'mcs.png'):
+    def draw_mcs(self, fname='mcs.png'):
         """
-        This function is used to draw the passed molecules and their mcs molecule
-        At this stage it is used as debugging tools
-                    
+        
+        This function is used to draw the passed molecules and their mcs
+        The main use is for debugging
+       
+        Parameters
+        ----------
+        fname : string
+            the filename used for the .png file
+             
         """
 
         #Copy of the molecules
@@ -293,43 +362,41 @@ class MCS(object):
         img = Draw.MolsToGridImage([moli_noh, molj_noh, mcs_mol], 
                                    molsPerRow=3, subImgSize=(400,400),
                                    legends=[moli_fname,molj_fname,mcs_fname], 
-                                   highlightAtomLists=[moli_sub, molj_sub, mcs_sub] )
+                                   highlightAtomLists=[moli_sub, molj_sub, mcs_sub])
 
         img.save(fname)
 
         return
 
-    ############ RULES ############
-
-    # #ECR Rule (Electrostatic rule)
-    # def ecr(self):
-         
-    #     total_charge_moli = 0.0
-            
-    #     for atom in self.moli.GetAtoms():
-    #         total_charge_moli += float(atom.GetProp('_TriposPartialCharge'))
-
-    #     total_charge_molj = 0.0
-    #     for atom in self.molj.GetAtoms():
-    #         total_charge_molj += float(atom.GetProp('_TriposPartialCharge'))
-
-    #     if abs(total_charge_molj - total_charge_moli) < 1e-3:
-    #         scr_ecr = 1.0
-    #     else:
-    #         scr_ecr = 0.0
-
-            
-    #     return scr_ecr
-
+    ############ MCS BASED RULES ############
 
     # MCSR Rule
     def mcsr(self, beta=0.1):
         
-        # number heavy atoms
+        """
+        This rule computes the similarity between the two passed molecules 
+        used to compute the MCS
+        
+        Parameters
+        ----------
+        beta : float
+            a parameter used to refine the exponential function used in the
+            scoring
+
+        Returns
+        -------
+        scr_mcsr : float
+            the rule score
+
+             
+        """
+
+        # The number of heavy atoms in each molecule
         nha_moli = self.moli.GetNumHeavyAtoms()
         nha_molj = self.molj.GetNumHeavyAtoms()
         nha_mcs_mol = self.mcs_mol.GetNumHeavyAtoms()
-        
+
+        # score
         scr_mcsr = math.exp(-beta*(nha_moli + nha_molj - 2*nha_mcs_mol))
 
         return scr_mcsr
@@ -337,9 +404,25 @@ class MCS(object):
 
     # MNACR rule
     def mncar(self, ths=4):
+ 
+        """
+        This rule cut the similarity score between two molecules if they do
+        not share the selected number of atoms 
+
         
-        #This rule has been modified from the rule desribed in the Lomap paper
-        #to match the implemented version
+        Parameters
+        ----------
+        ths : float
+            the minumum number of atoms to share
+        
+        Returns
+        -------
+        scr_mncar : float
+            the rule score     
+        """
+       
+        # This rule has been modified from the rule desribed in the Lomap paper
+        # to match the LOMAP first implementation provided by schrodinger
  
         nha_mcs_mol = self.mcs_mol.GetNumHeavyAtoms()
         nha_moli = self.moli.GetNumHeavyAtoms()
@@ -352,49 +435,91 @@ class MCS(object):
 
     # TMCRS rule (Trim rule) 
     def tmcsr(self, beta=0.1, strict_flag=True):
+       
+        """
+        This rule check if rings have been broken during the MCS mapping 
+        and if chiral atoms are presents. If rings are broken all the 
+        remaining ring atoms are deleted. Atoms connected to chiral centers
+        are deleted as well
         
+ 
+        Parameters
+        ----------
+        beta : float
+            a parameter used to refine the exponential function used 
+            in the scoring
+            
+        stric_flag : bool
+            a flag used to select the scrict or loose mode
+             
+        """
+       
         def delete_broken_ring():
 
-            #Strict: we cancel all the atoms in conflict in the mcs and 
-            #delete all eventually non ring atoms that are left 
+            # Strict: we cancel all the atoms in conflict in the mcs and 
+            # delete all eventually non ring atoms that are left 
             def extend_conflict(mol, conflict):
+                """
+            
+                This function check if rings have been broken during the MCS mapping
+                deleting all the remaining atom rings. In strict mode all the 
+                conflicting ring atoms are deleted. In loose mode only non planar
+                atom rings are deleted
+ 
+
+                Parameters
+                ----------
+                mol : RDKit molecule obj
+                    the mcs molecule
+                conflict : set
+                    the set of atoms in Moli and Molj that are in conflict with 
+                    the MCS molecule. A conflict is generated if the ring counter
+                    between the MCS and Moli/Molj changes
+
                 
+                Returns
+                -------
+                mcs_mol : RDKit molecule obj
+                    a copy of the edited mcs molecule
+                       
+                """
+     
                 mcs_conflict = list(conflict)
                 mcs_conflict.sort(reverse=True)
 
 
-                #Editing the mcs molecule deleting all the selected conficting atoms
+                # Editing the mcs molecule deleting all the selected conficting atoms
                 edit_mcs_mol = Chem.EditableMol(mol)
 
-                #WARNING: atom indexes are changed
+                # WARNING: atom indexes are changed
                 for i in mcs_conflict:
                     edit_mcs_mol.RemoveAtom(i) 
                 
                 mcs_mol = edit_mcs_mol.GetMol()
               
-                #The mcs molecule could be empty at this point
+                # The mcs molecule could be empty at this point
                 if not mcs_mol.GetNumAtoms():
                     return mcs_mol
                 
-                #Deleting broken ring atoms if the atom rc > 0 and the atom is not 
-                #in a ring anymore
+                # Deleting broken ring atoms if the atom rc > 0 and the atom is not 
+                # in a ring anymore
                 mcs_conflict = [ at.GetIdx()  for at in mcs_mol.GetAtoms() if int(at.GetProp('rc')) > 0 and not at.IsInRing()]
                 
                 mcs_conflict.sort(reverse=True)
 
                 edit_mcs_mol = Chem.EditableMol(mcs_mol)
                 
-                #WARNING: atom indexes are changed
+                # WARNING: atom indexes are changed
                 for i in mcs_conflict:
                     edit_mcs_mol.RemoveAtom(i) 
                     
                 mcs_mol = edit_mcs_mol.GetMol()
 
-                #The mcs molecule could be empty at this point
+                # The mcs molecule could be empty at this point
                 if not mcs_mol.GetNumAtoms():
                     return mcs_mol
 
-                #Deleting eventually disconnected parts and keep the max fragment left
+                # Deleting eventually disconnected parts and keep the max fragment left
                 fragments = Chem.rdmolops.GetMolFrags(mcs_mol)
 
                 max_idx = 0
@@ -415,7 +540,7 @@ class MCS(object):
 
                 edit_mcs_mol = Chem.EditableMol(mcs_mol)
 
-                #WARNING: atom indexes have changed
+                # WARNING: atom indexes have changed
                 for i in mcs_conflict:
                     edit_mcs_mol.RemoveAtom(i) 
                     
@@ -436,28 +561,27 @@ class MCS(object):
                 moli_idx_rc =  int(self.__moli_noh.GetAtomWithIdx(moli_idx).GetProp('rc'))
                 molj_idx_rc =  int(self.__molj_noh.GetAtomWithIdx(molj_idx).GetProp('rc'))
                 
-                #Moli atom is a ring atom (rc>0) and its rc is different from 
-                #the corresponding mcs rc atom  
+                # Moli atom is a ring atom (rc>0) and its rc is different from 
+                # the corresponding mcs rc atom  
                 if moli_idx_rc > 0 and (moli_idx_rc != int(at.GetProp('rc'))):
-                    if strict_flag:#In strict mode we add the atom
+                    if strict_flag: # In strict mode we add the atom
                         mcs_conflict.add(at.GetIdx())
-                    else:#In loose mode we add the atom if it is a not aromatic atom only
+                    else: # In loose mode we add the atom if it is not an aromatic atom
                         if not at.GetIsAromatic():
                             mcs_conflict.add(at.GetIdx())
                         
 
-                #Molj atom is a ring atom (rc>0) and its rc is different 
-                #from the corresponding mcs rc atom 
+                # Molj atom is a ring atom (rc>0) and its rc is different 
+                # from the corresponding mcs rc atom 
                 if molj_idx_rc > 0 and (molj_idx_rc  != int(at.GetProp('rc'))):
-                    if strict_flag:#In strict mode we add the atom
+                    if strict_flag: # In strict mode we add the atom
                         mcs_conflict.add(at.GetIdx())
-                    else:#In loose mode we add the atom if it is a not aromatic atom only
+                    else: # In loose mode we add the atom if it is not an aromatic atom
                         if not at.GetIsAromatic():
                             mcs_conflict.add(at.GetIdx())
 
             mcs_mol = extend_conflict(self.mcs_mol, mcs_conflict)
             
-                        
             return mcs_mol
 
 
@@ -466,15 +590,16 @@ class MCS(object):
         orig_nha_mcs_mol = mcs_mol_copy.GetNumHeavyAtoms() 
 
 
-        #At this point the mcs_mol_copy has changed 
+        # At this point the mcs_mol_copy has changed 
         mcs_mol_copy = delete_broken_ring()
 
-        #The mcs molecule could be empty at this point
+        # The mcs molecule could be empty at this point
         if not mcs_mol_copy.GetNumAtoms():
             return math.exp(-2*beta*(orig_nha_mcs_mol))
 
+        ### Chiral Atoms ###
 
-        #Deleting Chiral Atoms
+        # Deleting Chiral Atoms
         mcs_ring_set = set()
         mcs_chiral_set = set()
 
@@ -485,7 +610,7 @@ class MCS(object):
                     mcs_chiral_set.add(atom.GetIdx())
         
         
-        #Loop over the mcs chirial atoms to check if they are also ring atoms
+        # Loop over the mcs chirial atoms to check if they are also ring atoms
         delete_atoms = set()
         
         for atom_idx in mcs_chiral_set:
@@ -503,7 +628,7 @@ class MCS(object):
                 delete_atoms |= (neighs_set - mcs_ring_set)
 
             else:
-                #If the chiral atom is not a ring atom, we delete it
+                # If the chiral atom is not a ring atom, we delete it
                 delete_atoms.add(atom_idx)
 
 
@@ -513,14 +638,14 @@ class MCS(object):
     
         edit_mcs_mol = Chem.EditableMol(mcs_mol_copy)
 
-        #WARNING atom indexes have changed
+        # WARNING atom indexes have changed
         for idx in delete_atoms:
             edit_mcs_mol.RemoveAtom(idx)
 
         mcs_mol_copy = edit_mcs_mol.GetMol()
 
         
-        #The mcs molecule could be empty at this point
+        # The mcs molecule could be empty at this point
         if not mcs_mol_copy.GetNumAtoms():
             return math.exp(-2*beta*(orig_nha_mcs_mol))
 
@@ -541,7 +666,7 @@ class MCS(object):
             
         max_frag = fragments[max_idx]
         
-        #The number of heavy atoms in the max fragment
+        # The number of heavy atoms in the max fragment
         max_frag_num_heavy_atoms = 0
         for idx in max_frag:
             at = mcs_mol_copy.GetAtomWithIdx(idx)
@@ -555,16 +680,14 @@ class MCS(object):
 if ("__main__" == __name__) :
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--time', default = 20 , type=int , help='Set the maximum time in seconds to perform the mcs search between pair of molecules.')
+    parser.add_argument('-t', '--time', default=20 , type=int , help='Set the maximum time in seconds to perform the mcs search between pair of molecules.')
 
-    
-        
+            
     #A tuple of options and arguments passed by the user
     ops = parser.parse_args()
 
     mola = Chem.MolFromMol2File('data/mol2/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
     molb = Chem.MolFromMol2File('data/mol2/2-naftanol.mol2', sanitize=False, removeHs=False)
-
 
     try:
         MC = MCS(mola,molb, ops)
@@ -572,23 +695,20 @@ if ("__main__" == __name__) :
         raise ValueError('NO MCS FOUND......')
         
     
-    #print MC.getMap()
+    print MC.getMap()
 
-    MC.draw_mcs()
+    #MC.draw_mcs()
     
     mcsr = MC.mcsr()
     mncar =  MC.mncar()
-    #ecr =  MC.ecr()
+    
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
 
     print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose)
     print 'MCSR = ', mcsr
     print 'MNCAR = ', mncar
-    # print 'ECR = ', ecr
     
     tmp = mcsr * mncar 
     
     print 'Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose)  
-
-    
