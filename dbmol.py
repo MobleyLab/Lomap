@@ -444,7 +444,7 @@ class DBMolecules(object):
             self.strict_mtx[:] = strict_mtx[:]
             self.loose_mtx[:] = loose_mtx[:]
             
-            return
+        return (self.strict_mtx, self.loose_mtx)
 
     def build_graph(self):
         """
@@ -472,6 +472,8 @@ class DBMolecules(object):
         # Display the graph by using Matplotlib
         if self.options.display:
             Gr.draw()
+
+        return self.Graph
 
 
     def write_dic(self):
@@ -621,6 +623,24 @@ class SMatrix(np.ndarray):
         super(SMatrix, self).__setitem__(k,value)
 
 
+    def to_numpy_2D_array(self) :
+        # Length of the linear array 
+        l = self.size
+        
+        # Total number of elements in the corresponding bi-dimensional symmetric matrix
+        n = int((1+math.sqrt(1+8*l))/2)
+
+        np_mat = np.zeros((n,n))
+
+        for i in range (0,n):
+            for j in range(0,n):
+                np_mat[i,j] = self[i,j]
+
+        return np_mat
+        
+
+
+
 #*************************
 # Molecule Class
 #*************************
@@ -751,14 +771,14 @@ if ("__main__" == __name__) :
     db_mol = DBMolecules(options)
     
     # Similarity score matrix generation
-    db_mol.build_matrices()
+    strict, loose =  db_mol.build_matrices()
     
-    # Get the linear Matrices
-    stict = db_mol.strict_mtx
-    loose = db_mol.loose_mtx
+    # Get the 2D numpy matrices
+    strict.to_numpy_2D_array()
+    loose.to_numpy_2D_array()
 
     # Graph generation based on the similarity score matrix
-    db_mol.build_graph()   
+    nx_graph = db_mol.build_graph()   
 
-    # NetworkX graph
-    nx_gr = db_mol.Graph
+    #print nx_graph.nodes(data=True)
+    #print nx_graph.edges(data=True)
