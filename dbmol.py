@@ -51,6 +51,10 @@ import networkx as nx
 import logging
 import glob
 
+
+__all__ = ['DBMolecules', 'SMatrix', 'Molecule']
+
+
 #*************************
 # Molecule Database Class
 #*************************
@@ -454,10 +458,11 @@ class DBMolecules(object):
         Gr = graphgen.GraphGen(self, self.options.cutoff, self.options.max)
 
         # Writing the results is files
-        try:
-            Gr.writeGraph()
-        except Exception as e:
-            logging.error(str(e))
+        if self.options.output:
+            try:
+                Gr.writeGraph()
+            except Exception as e:
+                logging.error(str(e))
 
         # Handle to the the NetworkX generated graph
         self.Graph = Gr.getGraph()
@@ -477,7 +482,7 @@ class DBMolecules(object):
         """
 
         try:
-            file_txt = open(self.options.output+'.txt', 'w')
+            file_txt = open(self.options.name+'.txt', 'w')
         except Exception:
             raise IOError('It was not possible to write out the mapping file:')
 
@@ -487,6 +492,9 @@ class DBMolecules(object):
 
         file_txt.close() 
 
+#*************************
+# Symmetric  Class
+#*************************
 
 class SMatrix(np.ndarray):
     """
@@ -613,6 +621,10 @@ class SMatrix(np.ndarray):
         super(SMatrix, self).__setitem__(k,value)
 
 
+#*************************
+# Molecule Class
+#*************************
+
 class Molecule(object):
     """
     This Class stores the Rdkit molecule objects, their identification number 
@@ -723,3 +735,30 @@ class Molecule(object):
         return Molecule.__total_molecules
 
 
+
+# Main function         
+if ("__main__" == __name__) :
+    
+    import argparse
+    
+    # Set the Logging 
+    logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
+    
+    # Options 
+    options = argparse.Namespace(cutoff=0.4, directory='test/basic/', display=False, max=6, name='out', output=False, parallel=1, time=20, verbose=False)
+    
+    # Molecule DataBase initialized with the passed user options
+    db_mol = DBMolecules(options)
+    
+    # Similarity score matrix generation
+    db_mol.build_matrices()
+    
+    # Get the linear Matrices
+    stict = db_mol.strict_mtx
+    loose = db_mol.loose_mtx
+
+    # Graph generation based on the similarity score matrix
+    db_mol.build_graph()   
+
+    # NetworkX graph
+    nx_gr = db_mol.Graph

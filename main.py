@@ -60,12 +60,15 @@ def startup() :
     parser.add_argument('-t', '--time', default=20, action=check_int, type=int, help='Set the maximum time in seconds to perform the mcs search between pair of molecules.')
     parser.add_argument('-p', '--parallel', default=1, action=check_int, type=int, help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices.')
     parser.add_argument('-v', '--verbose', default=False, action='store_true', help='Turn on the verbose mode.' )
-    parser.add_argument('-o', '--output', default='out', help='Output file base name')
+    
+    parser.add_argument('-o', '--output', default=False, action='store_true', help='Generates output files')
+    parser.add_argument('-n', '--name', default='out', help='File name prefix used to generate the output files')
+
     parser.add_argument('-d', '--display', default=False, action='store_true', help='Display the generated graph by using Matplotlib')
     parser.add_argument('-m', '--max', default=6, action=check_int ,type=int, help='The maximum distance used to cluster the graph nodes')
     parser.add_argument('-c', '--cutoff', default=0.4 ,type=float, help='The Minimum Similariry Score (MSS) used to build the graph')
     
-    #Options and arguments passed by the user
+    # Options and arguments passed by the user
     options=parser.parse_args()
     
     # Set the Logging 

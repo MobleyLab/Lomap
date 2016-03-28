@@ -47,11 +47,19 @@ from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
-import argparse
 import sys
 import math
 from rdkit import RDLogger
 import logging
+
+
+
+#*******************************
+# Maximum Common Subgraph Class
+#*******************************
+
+
+__all__ = ['MCS']
 
 class MCS(object):
     """
@@ -327,12 +335,19 @@ class MCS(object):
         moli_noh = Chem.Mol(self.__moli_noh)
         molj_noh = Chem.Mol(self.__molj_noh)
         mcs_mol = Chem.Mol(self.mcs_mol) 
-
+        
+        if not options.verbose:
+            lg = RDLogger.logger()
+            lg.setLevel(RDLogger.CRITICAL)
+        
         try:
             Chem.SanitizeMol(self.mcs_mol)
-        except ValueError:
-            print('Sanitization failed....')
-        
+        except Exception: # if not try to recover the atom aromaticity wich is 
+            # important for the ring counter
+            sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
+            if sanitFail: # if not the MCS is skipped
+                raise ValueError('Sanitization Failed...')
+
         if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
             moli_sub = moli_noh.GetSubstructMatch(mcs_mol)
         else:
@@ -678,27 +693,33 @@ class MCS(object):
         
 
 if ("__main__" == __name__) :
+
+    import argparse
     
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--time', default=20 , type=int , help='Set the maximum time in seconds to perform the mcs search between pair of molecules.')
+    # Set the Logging 
+    logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
+    
+    options = argparse.Namespace(directory='test/basic/', time=20, verbose=False)
 
-            
-    #A tuple of options and arguments passed by the user
-    ops = parser.parse_args()
+    mola = Chem.MolFromMol2File(options.directory+'/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
+    molb = Chem.MolFromMol2File(options.directory+'/2-naftanol.mol2', sanitize=False, removeHs=False)
 
-    mola = Chem.MolFromMol2File('data/mol2/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('data/mol2/2-naftanol.mol2', sanitize=False, removeHs=False)
 
+    # MCS calculation
     try:
-        MC = MCS(mola,molb, ops)
+        MC = MCS(mola,molb, options)
     except Exception:
         raise ValueError('NO MCS FOUND......')
-        
+       
+    # Mapping between the passed molecules    
+    mcs_map = MC.getMap()
     
-    print MC.getMap()
+    print mcs_map
 
-    #MC.draw_mcs()
+    # Draw the molecules andd their MCS
+    MC.draw_mcs()
     
+    # Rules calculations
     mcsr = MC.mcsr()
     mncar =  MC.mncar()
     

@@ -57,6 +57,14 @@ import os.path
 import logging
 
 
+__all__ = ['GraphGen']
+
+
+#*************************
+# Graph Class
+#*************************
+
+
 class GraphGen(object):
     """
     This class is used to set and generate the graph used to plan
@@ -669,11 +677,11 @@ class GraphGen(object):
         """
         
         try:
-            nx.write_dot(self.resultGraph, self.dbase.options.output+'.dot')
+            nx.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
         except Exception:
             raise IOError('It was no possible to generate the %s.dot file' % self.dbase.options.output ) 
 
-        cmd = 'dot -Tps ' + self.dbase.options.output + '.dot -o ' + self.dbase.options.output + '.ps' 
+        cmd = 'dot -Tps ' + self.dbase.options.name + '.dot -o ' + self.dbase.options.name + '.ps' 
         
         try:
             os.system(cmd)
@@ -684,11 +692,11 @@ class GraphGen(object):
         try:
             self.dbase.write_dic()
         except Exception:
-             raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.output)
+                raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.name)
             
 
         print 30*'-'    
-        print('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.output, self.dbase.options.output,  self.dbase.options.output ))    
+        print('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))    
         print 30*'-'
 
         return
