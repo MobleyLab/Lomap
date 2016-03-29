@@ -51,7 +51,7 @@ import sys
 import math
 from rdkit import RDLogger
 import logging
-
+import argparse
 
 
 #*******************************
@@ -69,7 +69,7 @@ class MCS(object):
     
     """
 
-    def __init__(self, moli, molj, options):
+    def __init__(self, moli, molj, options=argparse.Namespace(time=20, verbose='info')):
         """
         Inizialization function
     
@@ -202,8 +202,10 @@ class MCS(object):
                         val = val + 1
                         mol.GetAtomWithIdx(idx).SetProp('rc',str(val))
             return
-            
 
+        # Set logging level and format
+        logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
+    
         # Local pointers to the passed molecules
         self.moli = moli
         self.molj = molj
@@ -318,7 +320,7 @@ class MCS(object):
         return
         
 
-    def draw_mcs(self, fname='mcs.png'):
+    def draw_mcs(self, fname='mcs.png', verbose='off'):
         """
         
         This function is used to draw the passed molecules and their mcs
@@ -336,7 +338,7 @@ class MCS(object):
         molj_noh = Chem.Mol(self.__molj_noh)
         mcs_mol = Chem.Mol(self.mcs_mol) 
         
-        if options.verbose == 'pedantic':
+        if not verbose == 'pedantic':
             lg = RDLogger.logger()
             lg.setLevel(RDLogger.CRITICAL)
         
@@ -694,20 +696,12 @@ class MCS(object):
 
 if ("__main__" == __name__) :
 
-    import argparse
-    
-    # Set the Logging 
-    logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
-    
-    options = argparse.Namespace(directory='test/basic/', time=20, verbose=False)
-
-    mola = Chem.MolFromMol2File(options.directory+'/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
-    molb = Chem.MolFromMol2File(options.directory+'/2-naftanol.mol2', sanitize=False, removeHs=False)
-
+    mola = Chem.MolFromMol2File('test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
+    molb = Chem.MolFromMol2File('test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
 
     # MCS calculation
     try:
-        MC = MCS(mola,molb, options)
+        MC = MCS(mola,molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
        

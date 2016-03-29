@@ -53,6 +53,7 @@ import copy
 from operator import itemgetter
 from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
+from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 import os.path
 import logging
 
@@ -691,9 +692,9 @@ class GraphGen(object):
                 raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.name)
             
 
-        print 30*'-'    
-        print('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))    
-        print 30*'-'
+        logging.info(30*'-')    
+        logging.info('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))
+        logging.info(30*'-')
 
         return
 
@@ -810,7 +811,7 @@ class GraphGen(object):
                 #     continue
 
                 AllChem.Compute2DCoords(mol)
-            
+                DrawingOptions.includeAtomNumbers=False
                 img_mol = Draw.MolToImage(mol,mol_size)
 
             

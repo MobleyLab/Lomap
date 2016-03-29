@@ -390,7 +390,7 @@ class DBMolecules(object):
                         logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName())) 
                     
                     # Maximum Common Subgraph (MCS) calculation    
-                    MC = mcs.MCS(moli, molj, self.options)
+                    MC = mcs.MCS(moli, molj, options=self.options)
 
                 except Exception as e:
                     if self.options.verbose == 'pedantic':
