@@ -155,7 +155,7 @@ class MCS(object):
                 at.SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
 
 
-            if chiral_at_mcs and options.verbose:
+            if chiral_at_mcs:
                 logging.info('Chiral atom detected')
 
             # For each mcs atom we save its original index in a specified 
@@ -208,7 +208,7 @@ class MCS(object):
         self.moli = moli
         self.molj = molj
         
-        if not options.verbose:
+        if not options.verbose == 'pedantic':
             lg = RDLogger.logger()
             lg.setLevel(RDLogger.CRITICAL)
         
@@ -237,7 +237,7 @@ class MCS(object):
                                           matchChiralTag=False)
         
         # Checking
-        if self.__mcs.canceled and options.verbose:
+        if self.__mcs.canceled:
             logging.warning('Timeout reached to find the MCS between the molecules')
   
         if self.__mcs.numAtoms == 0:
@@ -270,7 +270,7 @@ class MCS(object):
         # for at in self.mcs_mol.GetAtoms():
         #     print 'at = %d rc = %d' % (at.GetIdx(), int(at.GetProp('rc')))
 
-        if not options.verbose:
+        if not options.verbose == 'pedantic':
             lg.setLevel(RDLogger.WARNING)
         
         return
@@ -336,7 +336,7 @@ class MCS(object):
         molj_noh = Chem.Mol(self.__molj_noh)
         mcs_mol = Chem.Mol(self.mcs_mol) 
         
-        if not options.verbose:
+        if options.verbose == 'pedantic':
             lg = RDLogger.logger()
             lg.setLevel(RDLogger.CRITICAL)
         

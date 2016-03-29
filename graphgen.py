@@ -71,7 +71,7 @@ class GraphGen(object):
     binding free energy calculation
     """
 
-    def __init__(self, dbase, similarity_ths, max_path_length):
+    def __init__(self, dbase):
 
         """
         Inizialization function
@@ -81,18 +81,14 @@ class GraphGen(object):
 
         dbase : dbase object
             the molecule container
-        similatiry_ths : float
-            the similarity threshould used to build the graph
-        max_path_length : int
-            the maximum distance between two nodes in the graph 
        
         """
 
         self.dbase = dbase
 
-        self.maxPathLength = max_path_length
+        self.maxPathLength = dbase.options.max
 
-        self.similarityScoresLimit = similarity_ths
+        self.similarityScoresLimit = dbase.options.cutoff
        
         # A set of nodes that will be used to save nodes that are not a cycle cover for a given subgraph
         self.nonCycleNodesSet = set()
@@ -710,7 +706,7 @@ class GraphGen(object):
         
         """
 
-        print('\nDrawing....')
+        logging.info('\nDrawing....')
         
         if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
             logging.info('The number of generated graph nodes %d exceede the max number of drawable nodes %s' % (nx.number_of_nodes(self.resultGraph), self.max_nodes))

@@ -50,6 +50,7 @@ import multiprocessing
 import networkx as nx
 import logging
 import glob
+import argparse
 
 
 __all__ = ['DBMolecules', 'SMatrix', 'Molecule']
@@ -67,20 +68,58 @@ class DBMolecules(object):
     """
 
     # Initialization function
-    def __init__(self, options):
+    def __init__(self, dir_name, time_mcs=20, parallel_mode=1, verbose_mode='off', 
+                 output_mode=False, out_name='out', display_mode=False, 
+                 max_graph=6, cutoff_graph=0.4): 
+
         """
         Initialization of  the Molecule Database Class
     
         Parameters
         ----------
-        options : argparse python object 
-           the list of user options 
-       
+        dir_name : str 
+           the mol2 directory file name
+        time_mcs : int
+           the maximum time in seconds used to perform the MCS search
+        parallel_mode : int
+           the number of cores used to generate the similarity score matrices
+        verbose_mode : bool
+           verbose mode
+        output_mode : bool
+           a flag used to generate or not the output files
+        out_name : str
+           the file name prefix used to produce the output files
+        display_mode : bool
+           a flag used to display or not a network made by using matplotlib
+        max_graph : int
+           the maximum distance used to cluster the graph nodes
+        cutoff_graph : float
+           the Minimum Similarity Score (MSS) used to build the graph
+
         """
 
-        # Options to buid the MCS and other parameters
-        self.options = options
+        #########################TO DO =>CHECK INPUTS###########################
+
+
+        # Set the Logging 
+        if verbose_mode == 'off':
+            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.CRITICAL)
+   
+        if verbose_mode == 'info':
+            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
         
+        if verbose_mode == 'pedantic':
+            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
+                    
+
+        # Options to buid the MCS and other parameters
+        self.options = argparse.Namespace(directory=dir_name, time=time_mcs, 
+                                          parallel=parallel_mode, 
+                                          verbose=verbose_mode, output=output_mode,
+                                          name=out_name, display=display_mode, 
+                                          max=max_graph, cutoff=cutoff_graph)
+        
+
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_mol2_files()
     
@@ -111,7 +150,7 @@ class DBMolecules(object):
         return self
 
     
-    def next(self):
+    def __next__(self):
         """
         Select the molecule during an iteration
         """
@@ -152,7 +191,7 @@ class DBMolecules(object):
         self.__list[index] = molecule
 
         
-    def add(self, molecule):        
+    def __add__(self, molecule):        
         """
         Add a new molecule to the molecule database    
         
@@ -195,7 +234,7 @@ class DBMolecules(object):
         # List of molecule that failed to load in
         mol_error_list_fn = []
     
-        print(30*'-')
+        logging.info(30*'-')
 
         # The .mol2 file format is the only supported so far
         mol_fnames = glob.glob(self.options.directory + "/*.mol2" )
@@ -222,13 +261,12 @@ class DBMolecules(object):
         
 
             # Cosmetic printing and status
-            if self.options.verbose:
-                logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
+            logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
         
-            else:
-                if print_cnt == 15:
-                    logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
-                    print(3*'\t.\t.\n')
+            
+            if print_cnt == 15:
+                logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
+                logging.info(3*'\t.\t.\n')
             
             if print_cnt < 15 or print_cnt == (len(mol_fnames) - 1):
                 logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
@@ -238,13 +276,13 @@ class DBMolecules(object):
         
             molid_list.append(mol)
 
-        print(30*'-')
+        logging.info(30*'-')
 
-        print('Finish reading input files. %d structures in total....skipped %d\n' % (len(molid_list), len(mol_error_list_fn)))
+        logging.info('Finish reading input files. %d structures in total....skipped %d\n' % (len(molid_list), len(mol_error_list_fn)))
     
         if mol_error_list_fn:
-            print('Skipped molecules:')
-            print(30*'-')
+            logging.warning('Skipped molecules:')
+            loggign.warning(30*'-')
             for fn in  mol_error_list_fn:
                 logging.warning('%s'% fn)    
             print(30*'-')
@@ -347,16 +385,17 @@ class DBMolecules(object):
             # The MCS is computed just if the passed molecules have the same charges 
             if ecr_score == 1.0:
                 try: 
-                    if self.options.verbose:
-                        print(50*'-')
+                    if self.options.verbose == 'pedantic':
+                        logging.info(50*'-')
                         logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName())) 
                     
                     # Maximum Common Subgraph (MCS) calculation    
                     MC = mcs.MCS(moli, molj, self.options)
 
                 except Exception as e:
-                    logging.warning('Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
-                    print(50*'-')
+                    if self.options.verbose == 'pedantic':
+                        logging.warning('Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                        logging.info(50*'-')
                     continue
             else:
                 continue
@@ -383,7 +422,7 @@ class DBMolecules(object):
 
         """
         
-        print('\nMatrix scoring in progress....\n')   
+        logging.info('\nMatrix scoring in progress....\n')   
         
         # The similarity score matrices are defined instances of the class SMatrix
         # which implemets a basic class for symmetric matrices
@@ -451,11 +490,11 @@ class DBMolecules(object):
         This function coordinates the Graph generation
 
         """
-        print('\nGenerating graph in progress....')
+        logging.info('\nGenerating graph in progress....')
 
         # The Graph is build from an instance of the Class GraphGen by passing
         # the selected user options
-        Gr = graphgen.GraphGen(self, self.options.cutoff, self.options.max)
+        Gr = graphgen.GraphGen(self)
 
         # Writing the results is files
         if self.options.output:
@@ -624,6 +663,18 @@ class SMatrix(np.ndarray):
 
 
     def to_numpy_2D_array(self) :
+        """
+        This function returns the symmetric similarity score numpy matrix 
+        generated from the linear array
+        
+        Returns
+        -------
+        np_mat : numpy matrix
+           the symmetric similarity score numpy matrix built by using the linear
+           array 
+        
+        """
+
         # Length of the linear array 
         l = self.size
         
@@ -637,6 +688,25 @@ class SMatrix(np.ndarray):
                 np_mat[i,j] = self[i,j]
 
         return np_mat
+        
+    def mat_size(self) :
+        """
+        This function returns the size of the square similarity score matrix 
+        
+        Returns
+        -------
+        n : int
+           the size of the similarity score matrix
+        
+        """ 
+
+        # Length of the linear array 
+        l =  self.size
+        
+        # Total number of elements in the corresponding bi-dimensional symmetric matrix
+        n = int((1+math.sqrt(1+8*l))/2)
+
+        return n 
         
 
 
@@ -756,29 +826,72 @@ class Molecule(object):
 
 
 
+# Classes used to check some of the passed user options in the main function
+
+# Class used to check the input directory 
+class check_dir(argparse.Action):
+    def __call__(self, parser, namespace, directory, option_string=None):
+        if not os.path.isdir(directory):
+            raise argparse.ArgumentTypeError('The directory name is not a valid path: %s' % directory)
+        if os.access(directory, os.R_OK):
+            setattr(namespace,self.dest, directory)
+        else:
+            raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
+    
+# Class used to check the parallel and time user options
+class check_int(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if value < 1:
+            raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
+        setattr(namespace, self.dest, value)
+
+
 # Main function         
 if ("__main__" == __name__) :
     
-    import argparse
+    # Command line user interface
+    parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A program to plan alchemical relative binding affinity calculations', prog='LOMAPv1.0')
+    parser.add_argument('directory', action=check_dir,\
+                        help='The mol2 file directory')
+    parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
+                        help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
+    parser.add_argument('-p', '--parallel', default=1, action=check_int,type=int,\
+                        help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices')
+    parser.add_argument('-v', '--verbose', default='off', type=str,\
+                        choices=['off', 'info', 'pedantic'], help='verbose mode selection')
     
-    # Set the Logging 
-    logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
+    parser.add_argument('-o', '--output', default=False, action='store_true',\
+                        help='Generates output files')
+    parser.add_argument('-n', '--name', default='out',\
+                        help='File name prefix used to generate the output files')
+
+    parser.add_argument('-d', '--display', default=False, action='store_true',\
+                        help='Display the generated graph by using Matplotlib')
+    parser.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
+                        help='The maximum distance used to cluster the graph nodes')
+    parser.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
+                        help='The Minimum Similariry Score (MSS) used to build the graph')
     
-    # Options 
-    options = argparse.Namespace(cutoff=0.4, directory='test/basic/', display=False, max=6, name='out', output=False, parallel=1, time=20, verbose=False)
+    # Options and arguments passed by the user
+    ops= parser.parse_args()
+    
     
     # Molecule DataBase initialized with the passed user options
-    db_mol = DBMolecules(options)
-    
-    # Similarity score matrix generation
+    db_mol = DBMolecules(ops.directory, ops.time, ops.parallel, ops.verbose, 
+                        ops.output, ops.name, ops.display, ops.max, ops.cutoff) 
+
+   
+    # Similarity score linear array generation
     strict, loose =  db_mol.build_matrices()
     
     # Get the 2D numpy matrices
-    strict.to_numpy_2D_array()
-    loose.to_numpy_2D_array()
-
+    # strict.to_numpy_2D_array()
+    # loose.to_numpy_2D_array()
+   
     # Graph generation based on the similarity score matrix
     nx_graph = db_mol.build_graph()   
 
-    #print nx_graph.nodes(data=True)
-    #print nx_graph.edges(data=True)
+    # print nx_graph.nodes(data=True)
+    # print nx_graph.edges(data=True)
+
+
