@@ -846,10 +846,9 @@ class check_int(argparse.Action):
         setattr(namespace, self.dest, value)
 
 
-# Main function         
-if ("__main__" == __name__) :
+# Command line user interface
+def startup():
     
-    # Command line user interface
     parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A program to plan alchemical relative binding affinity calculations', prog='LOMAPv1.0')
     parser.add_argument('directory', action=check_dir,\
                         help='The mol2 file directory')
@@ -895,3 +894,8 @@ if ("__main__" == __name__) :
     # print nx_graph.edges(data=True)
 
 
+
+# Main function         
+if ("__main__" == __name__) :
+    startup()
+    

@@ -53,7 +53,6 @@ import copy
 from operator import itemgetter
 from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
-from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 import os.path
 import logging
 
@@ -811,7 +810,7 @@ class GraphGen(object):
                 #     continue
 
                 AllChem.Compute2DCoords(mol)
-                DrawingOptions.includeAtomNumbers=False
+                
                 img_mol = Draw.MolToImage(mol,mol_size)
 
             

@@ -383,6 +383,8 @@ class MCS(object):
 
         img.save(fname)
 
+        DrawingOptions.includeAtomNumbers=False
+
         return
 
     ############ MCS BASED RULES ############
