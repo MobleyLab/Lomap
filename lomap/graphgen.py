@@ -679,7 +679,7 @@ class GraphGen(object):
 
         
         try:
-            nx.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
+            nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
         except Exception:
             raise IOError('It was no possible to generate the %s.dot file' % self.dbase.options.output ) 
 
@@ -743,7 +743,7 @@ class GraphGen(object):
         ax = plt.subplot(111)
         plt.axis('off')
         
-        pos=nx.graphviz_layout( self.resultGraph, prog="neato")
+        pos=nx.nx_agraph.graphviz_layout( self.resultGraph, prog="neato")
 
         
         strict_edges = [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == True]
