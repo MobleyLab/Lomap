@@ -671,6 +671,12 @@ class GraphGen(object):
 
 
         """
+
+        try:
+            self.dbase.write_dic()
+        except Exception:
+                raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.name)
+
         
         try:
             nx.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
@@ -685,10 +691,6 @@ class GraphGen(object):
             raise IOError('It was not possible to generate the %.ps file' % self.dbase.options.output)
         
 
-        try:
-            self.dbase.write_dic()
-        except Exception:
-                raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.name)
             
 
         logging.info(30*'-')    
