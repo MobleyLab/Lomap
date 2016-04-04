@@ -14,17 +14,32 @@ free tool to plan in advance binding free energy calculations
 
 
 ## Prerequisites
-* RDkit Release 2015.09.2
-
+* RDKit Release 2015.09.2
+* Graphviz 2.38
+* pygraphviz 1.12
+* NetworkX 1.11
+* Matplotlib 1.5.1
 
 Authors
 -------
 * Gaetano Calabro' <gcalabro@uci.edu>
 * David Mobley <dmobley@uci.edu>
 
+## Installation
+
+Add to the conda channels:
+
+conda config --add channels nividic
+
+and then:
+
+conda install lomap
+
+
 
 ## Issues
-* The software is into the debugging stage and it is currently not working
+* Lomap is in debugging stage and it has been tested on Ubuntu 14.04 and OSX Yosemite
+
 
 ## Disclaimers
 * This code is currently in alpha release status. Use at your own risk. We will almost certainly be making changes to the API in the near future.
