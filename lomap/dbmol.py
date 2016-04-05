@@ -68,7 +68,7 @@ class DBMolecules(object):
     """
 
     # Initialization function
-    def __init__(self, dir_name, time_mcs=20, parallel_mode=1, verbose_mode='off', 
+    def __init__(self, dir_name, time_mcs=20, parallel_mode=1, verbose_mode='off',
                  output_mode=False, out_name='out', display_mode=False, 
                  max_graph=6, cutoff_graph=0.4): 
 
@@ -525,8 +525,8 @@ class DBMolecules(object):
         try:
             file_txt = open(self.options.name+'.txt', 'w')
         except Exception:
-            raise IOError('It was not possible to write out the mapping file:')
-
+            raise IOError('It was not possible to write out the mapping file')
+            
         file_txt.write('#ID\tFileName\n')
         for key in self.dic_mapping:
             file_txt.write('%d\t%s\n' % (key, self.dic_mapping[key]))
@@ -856,10 +856,10 @@ def startup():
                         help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
     parser.add_argument('-p', '--parallel', default=1, action=check_int,type=int,\
                         help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices')
-    parser.add_argument('-v', '--verbose', default='off', type=str,\
+    parser.add_argument('-v', '--verbose', default='info', type=str,\
                         choices=['off', 'info', 'pedantic'], help='verbose mode selection')
     
-    parser.add_argument('-o', '--output', default=False, action='store_true',\
+    parser.add_argument('-o', '--output', default=True, action='store_true',\
                         help='Generates output files')
     parser.add_argument('-n', '--name', default='out',\
                         help='File name prefix used to generate the output files')

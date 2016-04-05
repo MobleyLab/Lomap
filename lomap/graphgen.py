@@ -674,24 +674,24 @@ class GraphGen(object):
 
         try:
             self.dbase.write_dic()
-        except Exception:
-                raise IOError('It was not possible to generate the %.txt file' % self.dbase.options.name)
-
-        
+        except Exception as e:
+            raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
+ 
+    
         try:
             nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
         except Exception:
-            raise IOError('It was no possible to generate the %s.dot file' % self.dbase.options.output ) 
+            raise IOError('It was no possible to generate the dot file: %s.dot' % self.dbase.options.name) 
+
 
         cmd = 'dot -Tps ' + self.dbase.options.name + '.dot -o ' + self.dbase.options.name + '.ps' 
+        
         
         try:
             os.system(cmd)
         except Exception:
-            raise IOError('It was not possible to generate the %.ps file' % self.dbase.options.output)
+            raise IOError('It was not possible to generate the %.ps file' % self.dbase.options.name)
         
-
-            
 
         logging.info(30*'-')    
         logging.info('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))
