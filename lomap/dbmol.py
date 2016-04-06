@@ -103,14 +103,14 @@ class DBMolecules(object):
 
         # Set the Logging 
         if verbose_mode == 'off':
-            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.CRITICAL)
+            logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
    
         if verbose_mode == 'info':
-            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
+            logging.basicConfig(format='%(message)s', level=logging.INFO)
         
         if verbose_mode == 'pedantic':
-            logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
-                    
+            logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+            #logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
 
         # Options to buid the MCS and other parameters
         self.options = argparse.Namespace(directory=dir_name, time=time_mcs, 
@@ -261,15 +261,14 @@ class DBMolecules(object):
         
 
             # Cosmetic printing and status
-            logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
-        
+            if print_cnt < 15 or print_cnt == (len(mol_fnames) - 1):
+                logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
             
+
             if print_cnt == 15:
                 logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
                 logging.info(3*'\t.\t.\n')
             
-            if print_cnt < 15 or print_cnt == (len(mol_fnames) - 1):
-                logging.info('ID %s\t%s' % (mol.getID(), os.path.basename(fname)))
                 
                 
             print_cnt+= 1
@@ -495,7 +494,7 @@ class DBMolecules(object):
         # The Graph is build from an instance of the Class GraphGen by passing
         # the selected user options
         Gr = graphgen.GraphGen(self)
-
+        
         # Writing the results is files
         if self.options.output:
             try:
@@ -859,21 +858,26 @@ def startup():
     parser.add_argument('-v', '--verbose', default='info', type=str,\
                         choices=['off', 'info', 'pedantic'], help='verbose mode selection')
     
-    parser.add_argument('-o', '--output', default=True, action='store_true',\
+
+    out_group = parser.add_argument_group('Output setting')
+    out_group.add_argument('-o', '--output', default=True, action='store_true',\
                         help='Generates output files')
-    parser.add_argument('-n', '--name', default='out',\
+    out_group.add_argument('-n', '--name', default='out',\
                         help='File name prefix used to generate the output files')
 
     parser.add_argument('-d', '--display', default=False, action='store_true',\
                         help='Display the generated graph by using Matplotlib')
-    parser.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
+    
+    graph_group = parser.add_argument_group('Graph setting')
+    graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
                         help='The maximum distance used to cluster the graph nodes')
-    parser.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
+    graph_group.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
                         help='The Minimum Similariry Score (MSS) used to build the graph')
     
     # Options and arguments passed by the user
     ops= parser.parse_args()
     
+    print  parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.time, ops.parallel, ops.verbose, 

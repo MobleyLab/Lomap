@@ -155,7 +155,7 @@ class MCS(object):
                 at.SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
 
 
-            if chiral_at_mcs:
+            if chiral_at_mcs and options.verbose == 'pedantic':
                 logging.info('Chiral atom detected')
 
             # For each mcs atom we save its original index in a specified 

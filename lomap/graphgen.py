@@ -169,6 +169,12 @@ class GraphGen(object):
         """
         compound_graph = nx.Graph()  
         
+        
+        if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
+            raise ValueError("There are errors in the similarity score matrices")
+
+
+
         for i in range(0, self.dbase.nums()):
             if i==0:
                 compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
