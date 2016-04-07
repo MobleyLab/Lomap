@@ -68,45 +68,45 @@ class DBMolecules(object):
     """
 
     # Initialization function
-    def __init__(self, dir_name, time_mcs=20, parallel_mode=1, verbose_mode='off',
-                 output_mode=False, out_name='out', display_mode=False, 
-                 max_graph=6, cutoff_graph=0.4): 
+    def __init__(self, directory, time=20, parallel=1, verbose='off',
+                 output=False, name='out', display=False, 
+                 max=6, cutoff=0.4): 
 
         """
         Initialization of  the Molecule Database Class
     
         Parameters
         ----------
-        dir_name : str 
+        directory : str 
            the mol2 directory file name
-        time_mcs : int
+        time : int
            the maximum time in seconds used to perform the MCS search
-        parallel_mode : int
+        parallel : int
            the number of cores used to generate the similarity score matrices
-        verbose_mode : bool
+        verbose : bool
            verbose mode
-        output_mode : bool
+        output : bool
            a flag used to generate or not the output files
-        out_name : str
+        name : str
            the file name prefix used to produce the output files
-        display_mode : bool
+        display : bool
            a flag used to display or not a network made by using matplotlib
-        max_graph : int
+        max : int
            the maximum distance used to cluster the graph nodes
-        cutoff_graph : float
+        cutoff : float
            the Minimum Similarity Score (MSS) used to build the graph
 
         """
 
 
         # Set the Logging 
-        if verbose_mode == 'off':
+        if verbose == 'off':
             logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
    
-        if verbose_mode == 'info':
+        if verbose == 'info':
             logging.basicConfig(format='%(message)s', level=logging.INFO)
         
-        if verbose_mode == 'pedantic':
+        if verbose == 'pedantic':
             logging.basicConfig(format='%(message)s', level=logging.DEBUG)
             #logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
 
@@ -116,27 +116,27 @@ class DBMolecules(object):
             
         else:
             
-            if not isinstance(output_mode, bool):
-                raise TypeError('The output_mode flag is not a bool type')
+            if not isinstance(output, bool):
+                raise TypeError('The output flag is not a bool type')
 
-            if not isinstance(display_mode, bool):
-                raise TypeError('The display_mode flag is not a bool type')
+            if not isinstance(display,  bool):
+                raise TypeError('The display flag is not a bool type')
 
             output_str=''
             display_str=''
 
-            parser.set_defaults(output=output_mode)
-            parser.set_defaults(display=display_mode)
+            parser.set_defaults(output=output)
+            parser.set_defaults(display=display)
             
-            if output_mode:
+            if output:
                 output_str='--output'
 
-            if display_mode:
+            if display:
                 display_str='--display'
 
 
             names_str = '%s --time %s --parallel %s --verbose %s --name %s --max %s --cutoff %s %s %s'\
-                         % (dir_name, time_mcs, parallel_mode, verbose_mode, out_name, max_graph, cutoff_graph, output_str, display_str)
+                         % (directory, time, parallel, verbose, name, max, cutoff, output_str, display_str)
 
 
             self.options = parser.parse_args(names_str.split())
