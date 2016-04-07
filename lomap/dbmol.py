@@ -98,8 +98,6 @@ class DBMolecules(object):
 
         """
 
-        #########################TO DO =>CHECK INPUTS###########################
-
 
         # Set the Logging 
         if verbose_mode == 'off':
@@ -112,14 +110,38 @@ class DBMolecules(object):
             logging.basicConfig(format='%(message)s', level=logging.DEBUG)
             #logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
 
-        # Options to buid the MCS and other parameters
-        self.options = argparse.Namespace(directory=dir_name, time=time_mcs, 
-                                          parallel=parallel_mode, 
-                                          verbose=verbose_mode, output=output_mode,
-                                          name=out_name, display=display_mode, 
-                                          max=max_graph, cutoff=cutoff_graph)
-        
 
+        if __name__ == '__main__':
+            self.options = parser.parse_args()
+            
+        else:
+            
+            if not isinstance(output_mode, bool):
+                raise TypeError('The output_mode flag is not a bool type')
+
+            if not isinstance(display_mode, bool):
+                raise TypeError('The display_mode flag is not a bool type')
+
+            output_str=''
+            display_str=''
+
+            parser.set_defaults(output=output_mode)
+            parser.set_defaults(display=display_mode)
+            
+            if output_mode:
+                output_str='--output'
+
+            if display_mode:
+                display_str='--display'
+
+
+            names_str = '%s --time %s --parallel %s --verbose %s --name %s --max %s --cutoff %s %s %s'\
+                         % (dir_name, time_mcs, parallel_mode, verbose_mode, out_name, max_graph, cutoff_graph, output_str, display_str)
+
+
+            self.options = parser.parse_args(names_str.split())
+
+        
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_mol2_files()
     
@@ -845,39 +867,10 @@ class check_int(argparse.Action):
         setattr(namespace, self.dest, value)
 
 
-# Command line user interface
+
 def startup():
-    
-    parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A program to plan alchemical relative binding affinity calculations', prog='LOMAPv1.0')
-    parser.add_argument('directory', action=check_dir,\
-                        help='The mol2 file directory')
-    parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
-                        help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
-    parser.add_argument('-p', '--parallel', default=1, action=check_int,type=int,\
-                        help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices')
-    parser.add_argument('-v', '--verbose', default='info', type=str,\
-                        choices=['off', 'info', 'pedantic'], help='verbose mode selection')
-    
-
-    out_group = parser.add_argument_group('Output setting')
-    out_group.add_argument('-o', '--output', default=True, action='store_true',\
-                        help='Generates output files')
-    out_group.add_argument('-n', '--name', default='out',\
-                        help='File name prefix used to generate the output files')
-
-    parser.add_argument('-d', '--display', default=False, action='store_true',\
-                        help='Display the generated graph by using Matplotlib')
-    
-    graph_group = parser.add_argument_group('Graph setting')
-    graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
-                        help='The maximum distance used to cluster the graph nodes')
-    graph_group.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
-                        help='The Minimum Similariry Score (MSS) used to build the graph')
-    
     # Options and arguments passed by the user
     ops= parser.parse_args()
-    
-    print  parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.time, ops.parallel, ops.verbose, 
@@ -897,6 +890,37 @@ def startup():
     # print nx_graph.nodes(data=True)
     # print nx_graph.edges(data=True)
 
+
+
+# Command line user interface
+#----------------------------------------------------------------
+parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A program to plan alchemical relative binding affinity calculations', prog='LOMAPv1.0')
+parser.add_argument('directory', action=check_dir,\
+                    help='The mol2 file directory')
+parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
+                    help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
+parser.add_argument('-p', '--parallel', default=1, action=check_int,type=int,\
+                    help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices')
+parser.add_argument('-v', '--verbose', default='info', type=str,\
+                    choices=['off', 'info', 'pedantic'], help='verbose mode selection')
+
+
+out_group = parser.add_argument_group('Output setting')
+out_group.add_argument('-o', '--output', default=True, action='store_true',\
+                       help='Generates output files')
+out_group.add_argument('-n', '--name', default='out',\
+                       help='File name prefix used to generate the output files')
+
+parser.add_argument('-d', '--display', default=False, action='store_true',\
+                    help='Display the generated graph by using Matplotlib')
+    
+graph_group = parser.add_argument_group('Graph setting')
+graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
+                         help='The maximum distance used to cluster the graph nodes')
+graph_group.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
+                         help='The Minimum Similariry Score (MSS) used to build the graph')
+
+#------------------------------------------------------------------
 
 
 # Main function         

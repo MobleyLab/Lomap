@@ -55,6 +55,7 @@ from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 import os.path
 import logging
+from PyQt4 import QtGui
 
 
 __all__ = ['GraphGen']
@@ -103,8 +104,6 @@ class GraphGen(object):
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
 
-        # Canvas resolution in pixel
-        self.max_canvas_size = (1400, 980)
 
         self.edge_labels = False
         
@@ -740,11 +739,21 @@ class GraphGen(object):
             return max_dist
 
 
+        # Determine the screen resolution by using PyQt4 
+        app = QtGui.QApplication([])
+        screen_resolution = app.desktop().screenGeometry()
+        
+        # Canvas scale factor 
+        scale_canvas = 0.75
+        
+        # Canvas resolution
+        max_canvas_size = (int(screen_resolution.width() * scale_canvas)  , int(screen_resolution.height() * scale_canvas))
+
         fig = plt.figure(1,facecolor='white')
         
         fig.set_dpi(100)
         
-        fig.set_size_inches(self.max_canvas_size[0]/fig.get_dpi(), self.max_canvas_size[1]/fig.get_dpi(), forward=True)
+        fig.set_size_inches(max_canvas_size[0]/fig.get_dpi(), max_canvas_size[1]/fig.get_dpi(), forward=True)
         
         ax = plt.subplot(111)
         plt.axis('off')
