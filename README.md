@@ -42,7 +42,7 @@ Usage
 
 import lomap
 
-db_mol = lomap.DBMolecules(<python string pointing to a directory with mol2 files>)
+db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files")
 
 strict, loose = db_mol.build_matrices()
 
