@@ -1,3 +1,5 @@
+[![Anaconda Badge](https://anaconda.org/nividic/lomap/badges/version.svg)](https://anaconda.org/nividic/lomap)
+
 # Lomap
 Alchemical free energy calculations hold increasing promise 
 as an aid to drug discovery efforts. However, applications of 
@@ -34,6 +36,17 @@ conda config --add channels nividic
 and then:
 
 conda install lomap
+
+Usage
+-----
+
+import lomap
+
+db_mol = lomap.DBMolecules(<python string pointing to a directory with mol2 files>)
+
+strict, loose = db_mol.build_matrices()
+
+nx_graph = db_mol.build_graph() 
 
 
 
