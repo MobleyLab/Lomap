@@ -172,7 +172,7 @@ class DBMolecules(object):
         return self
 
     
-    def __next__(self):
+    def next(self): # Python 3: def __next__(self)
         """
         Select the molecule during an iteration
         """
@@ -262,7 +262,7 @@ class DBMolecules(object):
         mol_fnames = glob.glob(self.options.directory + "/*.mol2" )
     
         if (len( mol_fnames ) < 2) :
-            raise ValueError('The directory %s must contain at least two mol2 files' % self.options.directory)
+            raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
         
         print_cnt = 0
 
@@ -446,7 +446,7 @@ class DBMolecules(object):
         logging.info('\nMatrix scoring in progress....\n')   
         
         # The similarity score matrices are defined instances of the class SMatrix
-        # which implemets a basic class for symmetric matrices
+        # which implements a basic class for symmetric matrices
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
 
@@ -859,11 +859,19 @@ class check_dir(argparse.Action):
         else:
             raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
     
-# Class used to check the parallel and time user options
+# Class used to check the parallel, time and max user options
 class check_int(argparse.Action):
     def __call__(self, parser, namespace, value, option_string=None):
         if value < 1:
             raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
+        setattr(namespace, self.dest, value)
+
+
+# Class used to check the cutoff user option
+class check_float(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if not isinstance(value, float) or value < 0:
+            raise argparse.ArgumentTypeError('%s is not a positive real number' % value)
         setattr(namespace, self.dest, value)
 
 
@@ -908,7 +916,7 @@ parser.add_argument('-v', '--verbose', default='info', type=str,\
 out_group = parser.add_argument_group('Output setting')
 out_group.add_argument('-o', '--output', default=True, action='store_true',\
                        help='Generates output files')
-out_group.add_argument('-n', '--name', default='out',\
+out_group.add_argument('-n', '--name', type=str, default='out',\
                        help='File name prefix used to generate the output files')
 
 parser.add_argument('-d', '--display', default=False, action='store_true',\
@@ -917,7 +925,7 @@ parser.add_argument('-d', '--display', default=False, action='store_true',\
 graph_group = parser.add_argument_group('Graph setting')
 graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
-graph_group.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
+graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_float, type=float,\
                          help='The Minimum Similariry Score (MSS) used to build the graph')
 
 #------------------------------------------------------------------

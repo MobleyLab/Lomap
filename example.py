@@ -5,7 +5,7 @@ import lomap
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('lomap/test/basic', display=True)
+db_mol = lomap.DBMolecules('test/basic', display=True)
     
 # Generate the strict and loose syimmetric similarity 
 # score matrices
