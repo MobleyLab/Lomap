@@ -1,0 +1,19 @@
+language: python
+
+sudo: required
+
+branches:
+  only:
+    - master
+
+install:
+  - source devtools/ci/install.sh
+  - export PYTHONUNBUFFERED=true
+
+env:
+  matrix:
+    - PYTHON_VERSION=2.7
+
+script:
+  - echo "Testing Stage...."
+  - nosetests 
