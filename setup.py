@@ -21,22 +21,11 @@ if sys.version_info[:2] < (2, 7):
     sys.exit(-1)
 
 
-
 descr = """
 The Lead Optimization Mapper (LOMAP) is an automated algorithm
 to plan efficient relative free energy calculations between  
 potential ligands within a substantial of compounds'
 """
-
-def find_package_data(data_root, package_root):
-    files = []
-    for root, dirnames, filenames in os.walk(data_root):
-        for fn in filenames:
-            files.append(relpath(join(root, fn), package_root))
-    return files
-
-
-data = {'':['test/test_lomap.py'], '':['test/basic/*.mol2'], '':['test/basic/molecules.gpickle']}
 
 setup(
     name                 = 'lomap2', 
@@ -48,14 +37,10 @@ setup(
     author_email         = 'gcalabro -at- uci.edu',
     license              = 'LGPL',
     platforms            = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
-    packages             = find_packages(),
-    package_data         = data,
+    packages             = find_packages()+['test'],
     include_package_data = True,
       
     entry_points         = {'console_scripts':['lomap=lomap.dbmol:startup']},
     zip_safe             = False
 )
 
-
-
-#print {'lomap' : find_package_data('test/basic','lomap')}

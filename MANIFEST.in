@@ -1,7 +1,6 @@
+recursive-include test  *
+
 include MANIFEST.in
 include README.md
 include LICENCE.txt
 include example.py
-
-include test/test_lomap.py
-include test/basic/*
