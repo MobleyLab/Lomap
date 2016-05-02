@@ -13,12 +13,11 @@ export PATH=$HOME/miniconda/bin:$PATH
 sudo apt-get update
 
 conda update --yes conda
-conda config --add channels http://conda.binstar.org/nividic
+conda config --add channels nividic
 
-conda install --yes rdkit matplotlib networkx graphviz pygraphviz pil pyqt
+conda install --yes rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
 
-conda create -y -n myenv rdkit matplotlib networkx graphviz pygraphviz pil pyqt
+conda create -y -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
 
 source activate myenv
-
 
