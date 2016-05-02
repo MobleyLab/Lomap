@@ -18,5 +18,6 @@ script:
   - echo "Testing Stage...."
   - conda list 
   - python example.py
-  
+  - ls
+  - nosetests . -v  
 
