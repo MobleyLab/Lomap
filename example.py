@@ -5,7 +5,7 @@ import lomap
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('test/basic', display=True)
+db_mol = lomap.DBMolecules('test/basic/')
     
 # Generate the strict and loose syimmetric similarity 
 # score matrices
@@ -25,8 +25,8 @@ nx_graph = db_mol.build_graph()
 # Calculate the Maximum Common Subgraph (MCS) between 
 # the first two molecules in the molecule database
     
-MC = lomap.MCS(db_mol[0].getMolecule(), db_mol[1].getMolecule())
+#MC = lomap.MCS(db_mol[0].getMolecule(), db_mol[1].getMolecule())
 
 # Output the MCS in a .png file
 
-MC.draw_mcs()
+#MC.draw_mcs()

@@ -17,7 +17,7 @@ conda config --add channels nividic
 
 conda install --yes rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
 
-conda create -y -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
+conda create --yes -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
 
 source activate myenv
 
