@@ -77,18 +77,18 @@ class TestLomap(unittest.TestCase):
         
         mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
 
-        # dic1_nodes = graph.nodes(data=True)
-        # dic1_edges = graph.edges(data=True)
+        dic1_nodes = graph.nodes(data=True)
+        dic1_edges = graph.edges(data=True)
 
-        # dic2_nodes = mol2_graph.nodes(data=True)
-        # dic2_edges = mol2_graph.edges(data=True)
+        dic2_nodes = mol2_graph.nodes(data=True)
+        dic2_edges = mol2_graph.edges(data=True)
 
 
-        # print dic1_nodes
-        # print dic2_nodes
+        print dic1_nodes
+        print dic2_nodes
 
-        # self.assertEqual(True, dic1_nodes == dic2_nodes)
-        # self.assertEqual(True, dic2_edges == dic2_edges)
+        self.assertEqual(True, dic1_nodes == dic2_nodes)
+        self.assertEqual(True, dic2_edges == dic2_edges)
         
         nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
         em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])

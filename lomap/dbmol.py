@@ -260,6 +260,9 @@ class DBMolecules(object):
 
         # The .mol2 file format is the only supported so far
         mol_fnames = glob.glob(self.options.directory + "/*.mol2" )
+
+        mol_fnames.sort()
+
     
         if (len( mol_fnames ) < 2) :
             raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
