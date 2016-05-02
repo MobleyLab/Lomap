@@ -15,9 +15,9 @@ sudo apt-get update
 conda update --yes conda
 conda config --add channels nividic
 
-conda install --yes rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
+conda install --yes rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
 
-conda create --yes -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil 
+conda create --yes -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
 
 source activate myenv
 
