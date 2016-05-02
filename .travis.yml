@@ -16,8 +16,10 @@ env:
 
 script:
   - echo "Testing Stage...."
+  - source activate myenv
   - conda list 
   - python example.py
   - ls
   - nosetests . -v  
-
+  - cd test
+  - ls 
