@@ -16,5 +16,6 @@ env:
 
 script:
   - echo "Testing Stage...."
+  - python example.py
   - nosetests 
 
