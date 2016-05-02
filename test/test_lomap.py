@@ -70,20 +70,32 @@ class TestLomap(unittest.TestCase):
     # Check Graph
     def test_graph(self):
 
-        db =  DBMolecules('test/basic')
+        db =  self.inst
         
         strict,loose = db.build_matrices()
         graph = db.build_graph()
         
-        mol2_graph = nx.read_gpickle("test/basic/molecules.gpikle")
+        mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
 
+        # dic1_nodes = graph.nodes(data=True)
+        # dic1_edges = graph.edges(data=True)
+
+        # dic2_nodes = mol2_graph.nodes(data=True)
+        # dic2_edges = mol2_graph.edges(data=True)
+
+
+        # print dic1_nodes
+        # print dic2_nodes
+
+        # self.assertEqual(True, dic1_nodes == dic2_nodes)
+        # self.assertEqual(True, dic2_edges == dic2_edges)
+        
         nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
         em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
         
         self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
         
     
-
 
 if __name__ =='__main__':
     unittest.main()

@@ -265,6 +265,7 @@ class DBMolecules(object):
             raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
         
         print_cnt = 0
+        mol_id_cnt = 0
 
         for fname in mol_fnames :
         
@@ -279,8 +280,8 @@ class DBMolecules(object):
                 continue
             
             # The Rdkit molecule is stored in a Molecule object
-            mol = Molecule(rdkit_mol, os.path.basename(fname))
-        
+            mol = Molecule(rdkit_mol, mol_id_cnt ,os.path.basename(fname))
+            mol_id_cnt +=1
 
             # Cosmetic printing and status
             if print_cnt < 15 or print_cnt == (len(mol_fnames) - 1):
@@ -748,7 +749,7 @@ class Molecule(object):
     __total_molecules = 0
 
     
-    def __init__(self, molecule, molname):
+    def __init__(self, molecule, mol_id, molname):
         """
         Initialization class function 
         
@@ -756,6 +757,10 @@ class Molecule(object):
         ----------
         molecule : Rdkit molecule object
            the molecule
+        
+        mol_id : int
+           the molecule identification number
+
         molname : str
            the molecule file name
         
@@ -777,14 +782,14 @@ class Molecule(object):
             
         # The variable __ID saves the molecule identification number 
         # The variable is defined as private
-        self.__ID = Molecule.__total_molecules
+        self.__ID = mol_id
 
         
         # The variable __name saves the molecule identification name 
         # The variable is defined as private
         self.__name = molname
     
-        Molecule.__total_molecules+=1
+        
 
     
     def getID(self):
@@ -828,22 +833,6 @@ class Molecule(object):
         """
         
         return self.__name
-
-
-    
-    @staticmethod
-    def get_mol_num():
-        """
-        This class function returns the current total number of allocated molecules. 
- 
-
-        Returns
-        -------
-           : int 
-           the total number of allocated molecules 
-
-        """
-        return Molecule.__total_molecules
 
 
 

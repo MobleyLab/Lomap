@@ -3,5 +3,5 @@ include README.md
 include LICENCE.txt
 include example.py
 
-include lomap/test/*
-include lomap/test/basic/*
+include test/test_lomap.py
+include test/basic/*
