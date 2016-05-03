@@ -13,11 +13,11 @@ export PATH=$HOME/miniconda/bin:$PATH
 sudo apt-get update
 
 conda update --yes conda
-conda config --add channels nividic
+conda config --add channels omnia
 
-conda install --yes rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
+conda install --yes boost=1.59 rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
 
-conda create --yes -n myenv rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
+conda create --yes -n myenv boost=1.59 rdkit matplotlib pyqt networkx graphviz pygraphviz pil nose
 
 source activate myenv
 
