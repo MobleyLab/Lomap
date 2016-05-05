@@ -42,8 +42,8 @@ potential ligands within a substantial of compounds.
 
 from rdkit import Chem
 import numpy as np
-import mcs
-import graphgen
+from lomap import mcs
+from lomap import graphgen
 import sys,os
 import math
 import multiprocessing
@@ -455,7 +455,7 @@ class DBMolecules(object):
         self.loose_mtx = SMatrix(shape=(self.nums(),))
 
         # The total number of the effective elements present in the symmetric matrix
-        l = self.nums()*(self.nums() - 1)/2
+        l = int(self.nums()*(self.nums() - 1)/2)
 
         
         if self.options.parallel == 1: # Serial execution
@@ -467,7 +467,7 @@ class DBMolecules(object):
             # Number of selected processes
             np = self.options.parallel
 
-            delta = l/np
+            delta = int(l/np)
             rem = l%np
 
             if delta < 1:
@@ -484,7 +484,7 @@ class DBMolecules(object):
             # Chopping the indexes ridistribuiting the remainder
             for k in range(0, kmax):
     
-                spc = delta + int(rem/(k+1) > 0)
+                spc = delta + int(int(rem/(k+1)) > 0)
     
                 if k == 0:
                     i = 0
@@ -495,6 +495,8 @@ class DBMolecules(object):
                     j = i + spc - 1
                 else:
                     j = l - 1
+
+                print(i,j)
 
                 # Python multiprocessing allocation
                 p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx))
@@ -574,14 +576,14 @@ class SMatrix(np.ndarray):
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0, strides=None, order=None):
         
         if len(shape) > 2:
-            raise ValueError('...0...')
+            raise ValueError('The matrix shape is greater than two')
 
         elif len(shape) == 2:
             if shape[0] != shape[1]:
-                raise ValueError('...1...')
+                raise ValueError('The matrix must be a squre matrix')
 
         n = shape[0]        
-        l = shape[0]*(shape[0] - 1)/2
+        l = int(shape[0]*(shape[0] - 1)/2)
 
         shape = (l,)
         
@@ -614,8 +616,12 @@ class SMatrix(np.ndarray):
             k = kargs[0]
             return super(SMatrix, self).__getitem__(k)
 
+        if isinstance( kargs[0], slice ):
+            k = kargs[0]
+            return super(SMatrix, self).__getitem__(k)
+
         elif len(kargs[0]) > 2:
-            raise ValueError('Tuple dimension must be two')
+            raise ValueError('Two indices can be addressed')
                 
         i = kargs[0][0]
         j = kargs[0][1]
@@ -636,9 +642,9 @@ class SMatrix(np.ndarray):
             raise ValueError('Second index out of bound')
       
         if i < j:
-            k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+            k = int((n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1)
         else:
-            k = (n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1 
+            k = int((n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1) 
         
         return super(SMatrix, self).__getitem__(k)
 
@@ -654,15 +660,21 @@ class SMatrix(np.ndarray):
         
             
         """
-             
+        
         if isinstance( kargs[0], int ):
             k = kargs[0]
             value = kargs[1]
             return super(SMatrix, self).__setitem__(k,value)
 
+        elif isinstance(kargs[0], slice):
+            start, stop, step = kargs[0].indices(len(self))
+            value = kargs[1]
+            return super(SMatrix, self).__setitem__(kargs[0],value)
+
         elif len(kargs[0]) > 2:
-            raise ValueError('Tuple dimension must be two')
-      
+            raise ValueError('Two indices can be addressed')
+            
+
         # Passed indexes and value to set
         i = kargs[0][0]
         j = kargs[0][1]
@@ -680,9 +692,9 @@ class SMatrix(np.ndarray):
             raise ValueError('Second index out of bound')
         
         if i < j:
-            k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+            k = int((n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1)
         else:
-            k = (n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1 
+            k = int((n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1) 
         
         super(SMatrix, self).__setitem__(k,value)
 

@@ -83,10 +83,6 @@ class TestLomap(unittest.TestCase):
         dic2_nodes = mol2_graph.nodes(data=True)
         dic2_edges = mol2_graph.edges(data=True)
 
-
-        print dic1_nodes
-        print dic2_nodes
-
         self.assertEqual(True, dic1_nodes == dic2_nodes)
         self.assertEqual(True, dic2_edges == dic2_edges)
         

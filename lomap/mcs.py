@@ -710,7 +710,7 @@ if ("__main__" == __name__) :
     # Mapping between the passed molecules    
     mcs_map = MC.getMap()
     
-    print mcs_map
+    print(mcs_map)
 
     # Draw the molecules andd their MCS
     MC.draw_mcs()
@@ -722,10 +722,10 @@ if ("__main__" == __name__) :
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
 
-    print 'TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose)
-    print 'MCSR = ', mcsr
-    print 'MNCAR = ', mncar
+    print('TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose))
+    print('MCSR = ', mcsr)
+    print('MNCAR = ', mncar)
     
     tmp = mcsr * mncar 
     
-    print 'Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose)  
+    print('Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose))  
