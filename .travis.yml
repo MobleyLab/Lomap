@@ -8,7 +8,7 @@ branches:
 
 
 before_install:
-  - source devtools/ci/install.sh 
+  - source devtools/travis-ci/install.sh 
   - export PYTHONUNBUFFERED=true
 
 
