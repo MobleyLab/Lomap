@@ -14,9 +14,14 @@ export PIP_ARGS="-U"
 export PATH=$MINICONDA_HOME/bin:$PATH
 
 conda update --yes conda
+
 conda config --add channels omnia
 
-conda install --yes conda-build jinja2 anaconda-client pip
+conda install --yes conda-build
+
+echo "HERE>>>>>>>>>>>>>>>>>>>>>>>>"
+
 conda build devtools/conda-recipe
 
-conda create -n myenv --use-local conda-recipe 
+conda create -n myenv --use-local conda-recipe
+source activate myenv

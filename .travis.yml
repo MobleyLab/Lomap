@@ -12,21 +12,16 @@ before_install:
   - export PYTHONUNBUFFERED=true
 
 
-install:
+install: true
 
 
 script: 
-  - source activate myenv 
   - nosetests -v  
 
 env:
   matrix:
     - python=2.7  CONDA_PY=27
     #- python=3.4  CONDA_PY=34
-
-global:
-  - ORGNAME="omnia"
-
 
 
 after_success:
