@@ -1,6 +1,6 @@
 language: python
 
-sudo: false
+sudo: required
 
 branches:
   only:
@@ -15,11 +15,8 @@ before_install:
 install:
 
 
-script:  
-  - conda config --add channels ${ORGNAME}
-  - conda build devtools/conda-recipe
-  - conda install --yes --quiet pip nose nose-timer
-  - source activate _test
+script: 
+  - source activate myenv 
   - nosetests -v  
 
 env:
@@ -28,8 +25,8 @@ env:
     #- python=3.4  CONDA_PY=34
 
 global:
-  - ORGNAME="omnia":
-  - PACKAGENAME="lomap"
+  - ORGNAME="omnia"
+
 
 
 after_success:

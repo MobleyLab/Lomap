@@ -1,8 +1,3 @@
-# Temporarily change directory to $HOME to install software
-pushd .
-
-cd $HOME
-
 # Install Miniconda
 MINICONDA=Miniconda2-latest-Linux-x86_64.sh
 MINICONDA_HOME=$HOME/miniconda
@@ -17,8 +12,11 @@ bash $MINICONDA -b -p $MINICONDA_HOME
 # Configure miniconda
 export PIP_ARGS="-U"
 export PATH=$MINICONDA_HOME/bin:$PATH
-conda update --yes conda
-conda install --yes conda-build jinja2 anaconda-client pip
 
-# Restore original directory
-popd
+conda update --yes conda
+conda config --add channels omnia
+
+conda install --yes conda-build jinja2 anaconda-client pip
+conda build devtools/conda-recipe
+
+conda create -n myenv --use-local conda-recipe 
