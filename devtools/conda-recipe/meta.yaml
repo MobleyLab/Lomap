@@ -39,9 +39,12 @@ test:
     - nose
   imports:
     - lomap
+  commands:
+   - which lomap
+   - lomap -h
 
 about:
   home: https://github.com/nividic/Lomap
   license: LGPL
   license_file: LICENCE.txt
-
+  summary: Alchemical free-energy calculations planner
