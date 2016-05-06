@@ -24,8 +24,8 @@ script:
 
 env:
   matrix:
-    - python=2.7  CONDA_PY=27
-    #- python=3.4  CONDA_PY=34
+    - CONDA_PY=27
+
 
   global:
     - ORGNAME="omnia"
