@@ -1,5 +1,5 @@
 package:
-  name: lomap-dev
+  name: lomap
   version: "0.0.0"
 
 source:
