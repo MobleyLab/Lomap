@@ -20,7 +20,7 @@ script:
   - conda build devtools/conda-recipe 
   - source activate _test
   - conda install --yes --quiet pip nose nose-timer
-  - nosetest -v
+  - nosetests -v
 
 env:
   matrix:
