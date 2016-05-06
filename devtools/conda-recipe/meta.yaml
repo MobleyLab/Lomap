@@ -8,6 +8,8 @@ source:
 build:
   preserve_egg_dir: True
   number: 0
+  skip:
+    - [py3k]
 
 requirements:
   build:
