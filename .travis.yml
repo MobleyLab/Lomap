@@ -20,9 +20,7 @@ script:
   - conda build devtools/conda-recipe 
   - source activate _test
   - conda install --yes --quiet pip nose nose-timer
-  - echo "HERE>>>>>>>>>>>>>>>>>>"
-  - pwd
-  - ls
+  - nosetest -v
 
 env:
   matrix:
@@ -35,8 +33,7 @@ env:
 
 
 after_success:
-  - echo "after_success"
-
+  - echo "...DONE..."
 
 notifications:
   email: false
