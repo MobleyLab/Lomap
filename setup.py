@@ -28,8 +28,8 @@ potential ligands within a substantial of compounds'
 """
 
 setup(
-    name                 = 'lomap2', 
-    version              = '1.0.0', 
+    name                 = 'lomap', 
+    version              = '0.0.0', 
     description          = 'Lead Optimization Mapper 2',
     long_description     = descr,
     url                  = 'https://github.com/nividic/Lomap',
