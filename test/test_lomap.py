@@ -4,6 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 import unittest
 from unittest import skipIf
 from lomap.dbmol import DBMolecules
+from lomap.graphgen import GraphGen
 import argparse
 import multiprocessing
 import networkx as nx
@@ -75,6 +76,8 @@ class TestLomap(unittest.TestCase):
         strict,loose = db.build_matrices()
         graph = db.build_graph()
         
+        self.assertRaises(IOError, nx.nx_agraph.write_dot, graph, '/check.dot') 
+
         mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
 
         dic1_nodes = graph.nodes(data=True)
