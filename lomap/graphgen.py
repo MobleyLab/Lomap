@@ -116,6 +116,7 @@ class GraphGen(object):
     
         # A list of elementes made of [edge, weights] for each subgraph
         self.subgraphScoresLists = self.generateSubgraphScoresLists(self.initialSubgraphList)
+    
 
         
         # Elimintates from each subgraph those edges whose weights are less than the hard limit
@@ -125,14 +126,23 @@ class GraphGen(object):
         # Make a new master list of subgraphs now that there may be more disconnected components
         self.workingSubgraphsList = self.generateWorkingSubgraphsList()
 
-       
+
+
         # Make a new sorted list of [edge, weights] for each subgraph now that there may be new subgraphs
-        self.workingSubgraphScoresLists = self.generateSubgraphScoresLists(self.workingSubgraphsList)
+        self.workingSubgraphScoresLists = self.generateSubgraphScoresLists(self.workingSubgraphsList)        
 
 
         # Remove edges, whose removal does not violate constraints, from the subgraphs,
         # starting with lowest similarity score first
+    
+
+        #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         self.minimizeEdges()
+        #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+        
+
 
         # Collect together disjoint subgraphs of like charge into subgraphs
         self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
@@ -156,7 +166,7 @@ class GraphGen(object):
     def generateInitialSubgraphList(self):
         
         """
-        This function generates a strating graph connecting with edges all the 
+        This function generates a starting graph connecting with edges all the 
         compounds with a positive strict similarity score  
         
         Returns
@@ -220,7 +230,7 @@ class GraphGen(object):
 
             weightsDictionary = nx.get_edge_attributes(subgraph, 'similarity')
 
-            subgraphWeightsList = [(edge[0], edge[1], weightsDictionary[edge]) for edge in weightsDictionary.iterkeys()]
+            subgraphWeightsList = [(edge[0], edge[1], weightsDictionary[edge]) for edge in weightsDictionary.keys()]
 
             subgraphWeightsList.sort(key = lambda entry: entry[2])
 
@@ -298,12 +308,19 @@ class GraphGen(object):
         Minimize edges in each subgraph while ensuring constraints are met
         """
 
+
         for subgraph in self.workingSubgraphsList:
 
             weightsList = self.workingSubgraphScoresLists[self.workingSubgraphsList.index(subgraph)]
 
-            # This part has been copied form the original code
-            # IT IS A VERY BAD DESIGN THIS SHOULD BE PASSED TO THE DIFFERENT CALLS
+
+        
+            # ISSUE ORDER IS ORIGINATED HERE
+            #weightsList = sorted(weightsList, key = itemgetter(1))
+
+            
+
+            # This part has been copied from the original code
             self.nonCycleNodesSet = self.findNonCyclicNodes(subgraph)
 
             
@@ -371,15 +388,16 @@ class GraphGen(object):
 
         constraintsMet = True
 
-        if not self.remainsConnected(subgraph, numComp): constraintsMet = False
+        if not self.remainsConnected(subgraph, numComp):
+            constraintsMet = False
 
-	if constraintsMet :
-
-            if not self.checkCycleCovering(subgraph): constraintsMet = False
-
-	if constraintsMet :
-
-           if not self.checkMaxDistance(subgraph): constraintsMet = False
+        if constraintsMet:
+            if not self.checkCycleCovering(subgraph):
+                constraintsMet = False
+        
+        if constraintsMet:
+            if not self.checkMaxDistance(subgraph):
+                constaintsMet = False
 
         return constraintsMet
 
@@ -536,8 +554,7 @@ class GraphGen(object):
         
         self.workingSubgraphsList = [x for x in generator_graph]
         
-        #print self.workingSubgraphsList
-
+        
         
         if len(self.workingSubgraphsList) == 1:
 

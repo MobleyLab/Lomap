@@ -1,0 +1,52 @@
+package:
+  name: lomap
+  version: "0.0.0"
+
+source:
+  path: ../..
+
+build:
+  preserve_egg_dir: True
+  number: 0
+  skip:
+    - [py3k]
+
+requirements:
+  build:
+    - python
+    - boost ==1.59
+    - setuptools
+    - rdkit
+    - matplotlib
+    - pyqt
+    - networkx >=1.11
+    - graphviz
+    - pygraphviz
+    - pil
+    - nose
+
+  run:
+    - python
+    - boost ==1.59
+    - rdkit 
+    - matplotlib
+    - pyqt
+    - networkx
+    - graphviz
+    - pygraphviz
+    - pil
+
+test:
+  requires:
+    - nose
+  imports:
+    - lomap
+  commands:
+   - which lomap
+   - lomap -h
+
+about:
+  home: https://github.com/nividic/Lomap
+  license: LGPL
+  license_file: LICENCE.txt
+  summary: Alchemical free-energy calculations planner

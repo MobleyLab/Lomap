@@ -1,0 +1,39 @@
+language: python
+
+sudo: false
+
+branches:
+  only:
+    - master
+
+
+before_install:
+  - source devtools/travis-ci/install.sh 
+  - export PYTHONUNBUFFERED=true
+
+
+install: true
+
+
+script: 
+  - conda config --add channels ${ORGNAME}
+  - conda build devtools/conda-recipe 
+  - source activate _test
+  - conda install --yes --quiet pip nose nose-timer
+  - nosetests -v
+
+env:
+  matrix:
+    - CONDA_PY=27
+
+
+  global:
+    - ORGNAME="omnia"
+    - PACKAGENAME="lomap"
+
+
+after_success:
+  - echo "...DONE..."
+
+notifications:
+  email: false

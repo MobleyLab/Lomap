@@ -1,5 +1,7 @@
 [![Anaconda Badge](https://anaconda.org/nividic/lomap/badges/version.svg)](https://anaconda.org/nividic/lomap)
 
+[![Build Status](https://travis-ci.org/nividic/Lomap.svg?branch=master)](https://travis-ci.org/nividic/Lomap)
+
 # Lomap
 Alchemical free energy calculations hold increasing promise 
 as an aid to drug discovery efforts. However, applications of 
@@ -16,9 +18,9 @@ free tool to plan in advance binding free energy calculations
 
 
 ## Prerequisites
-* RDKit Release 2015.09.2
+* RDKit Release >2015.09.2
 * Graphviz 2.38
-* pygraphviz 1.12
+* pygraphviz 1.3.1
 * NetworkX 1.11
 * Matplotlib 1.5.1
 
@@ -52,7 +54,7 @@ nx_graph = db_mol.build_graph()
 
 ## Issues
 * Lomap is in debugging stage and it has been tested on Ubuntu 14.04 and OSX Yosemite
-
+* Lomap has been developed in python 2.7 and is not currently working in python 3.x
 
 ## Disclaimers
 * This code is currently in alpha release status. Use at your own risk. We will almost certainly be making changes to the API in the near future.

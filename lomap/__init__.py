@@ -59,12 +59,10 @@ Using
       MC.draw_mcs()
 """
 
-
-
-from dbmol import DBMolecules
-from dbmol import SMatrix
-from dbmol import Molecule
-from mcs import MCS
+from lomap.dbmol import DBMolecules
+from lomap.dbmol import SMatrix
+from lomap.dbmol import Molecule
+from lomap.mcs import MCS
 
 del dbmol
 del graphgen

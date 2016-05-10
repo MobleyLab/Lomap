@@ -42,8 +42,8 @@ potential ligands within a substantial of compounds.
 
 from rdkit import Chem
 import numpy as np
-import mcs
-import graphgen
+from lomap import mcs
+from lomap import graphgen
 import sys,os
 import math
 import multiprocessing
@@ -172,7 +172,7 @@ class DBMolecules(object):
         return self
 
     
-    def __next__(self):
+    def next(self): # Python 3: def __next__(self)
         """
         Select the molecule during an iteration
         """
@@ -260,11 +260,15 @@ class DBMolecules(object):
 
         # The .mol2 file format is the only supported so far
         mol_fnames = glob.glob(self.options.directory + "/*.mol2" )
+
+        mol_fnames.sort()
+
     
         if (len( mol_fnames ) < 2) :
-            raise ValueError('The directory %s must contain at least two mol2 files' % self.options.directory)
+            raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
         
         print_cnt = 0
+        mol_id_cnt = 0
 
         for fname in mol_fnames :
         
@@ -279,8 +283,8 @@ class DBMolecules(object):
                 continue
             
             # The Rdkit molecule is stored in a Molecule object
-            mol = Molecule(rdkit_mol, os.path.basename(fname))
-        
+            mol = Molecule(rdkit_mol, mol_id_cnt ,os.path.basename(fname))
+            mol_id_cnt +=1
 
             # Cosmetic printing and status
             if print_cnt < 15 or print_cnt == (len(mol_fnames) - 1):
@@ -446,12 +450,12 @@ class DBMolecules(object):
         logging.info('\nMatrix scoring in progress....\n')   
         
         # The similarity score matrices are defined instances of the class SMatrix
-        # which implemets a basic class for symmetric matrices
+        # which implements a basic class for symmetric matrices
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
 
         # The total number of the effective elements present in the symmetric matrix
-        l = self.nums()*(self.nums() - 1)/2
+        l = int(self.nums()*(self.nums() - 1)/2)
 
         
         if self.options.parallel == 1: # Serial execution
@@ -463,7 +467,7 @@ class DBMolecules(object):
             # Number of selected processes
             np = self.options.parallel
 
-            delta = l/np
+            delta = int(l/np)
             rem = l%np
 
             if delta < 1:
@@ -480,7 +484,7 @@ class DBMolecules(object):
             # Chopping the indexes ridistribuiting the remainder
             for k in range(0, kmax):
     
-                spc = delta + int(rem/(k+1) > 0)
+                spc = delta + int(int(rem/(k+1)) > 0)
     
                 if k == 0:
                     i = 0
@@ -491,6 +495,8 @@ class DBMolecules(object):
                     j = i + spc - 1
                 else:
                     j = l - 1
+
+                print(i,j)
 
                 # Python multiprocessing allocation
                 p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx))
@@ -570,14 +576,14 @@ class SMatrix(np.ndarray):
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0, strides=None, order=None):
         
         if len(shape) > 2:
-            raise ValueError('...0...')
+            raise ValueError('The matrix shape is greater than two')
 
         elif len(shape) == 2:
             if shape[0] != shape[1]:
-                raise ValueError('...1...')
+                raise ValueError('The matrix must be a squre matrix')
 
         n = shape[0]        
-        l = shape[0]*(shape[0] - 1)/2
+        l = int(shape[0]*(shape[0] - 1)/2)
 
         shape = (l,)
         
@@ -610,8 +616,12 @@ class SMatrix(np.ndarray):
             k = kargs[0]
             return super(SMatrix, self).__getitem__(k)
 
+        if isinstance( kargs[0], slice ):
+            k = kargs[0]
+            return super(SMatrix, self).__getitem__(k)
+
         elif len(kargs[0]) > 2:
-            raise ValueError('Tuple dimension must be two')
+            raise ValueError('Two indices can be addressed')
                 
         i = kargs[0][0]
         j = kargs[0][1]
@@ -632,9 +642,9 @@ class SMatrix(np.ndarray):
             raise ValueError('Second index out of bound')
       
         if i < j:
-            k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+            k = int((n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1)
         else:
-            k = (n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1 
+            k = int((n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1) 
         
         return super(SMatrix, self).__getitem__(k)
 
@@ -650,15 +660,21 @@ class SMatrix(np.ndarray):
         
             
         """
-             
+        
         if isinstance( kargs[0], int ):
             k = kargs[0]
             value = kargs[1]
             return super(SMatrix, self).__setitem__(k,value)
 
+        elif isinstance(kargs[0], slice):
+            start, stop, step = kargs[0].indices(len(self))
+            value = kargs[1]
+            return super(SMatrix, self).__setitem__(kargs[0],value)
+
         elif len(kargs[0]) > 2:
-            raise ValueError('Tuple dimension must be two')
-      
+            raise ValueError('Two indices can be addressed')
+            
+
         # Passed indexes and value to set
         i = kargs[0][0]
         j = kargs[0][1]
@@ -676,9 +692,9 @@ class SMatrix(np.ndarray):
             raise ValueError('Second index out of bound')
         
         if i < j:
-            k = (n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1
+            k = int((n*(n-1)/2) - (n-i)*((n-i)-1)/2 + j - i - 1)
         else:
-            k = (n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1 
+            k = int((n*(n-1)/2) - (n-j)*((n-j)-1)/2 + i - j - 1) 
         
         super(SMatrix, self).__setitem__(k,value)
 
@@ -748,7 +764,7 @@ class Molecule(object):
     __total_molecules = 0
 
     
-    def __init__(self, molecule, molname):
+    def __init__(self, molecule, mol_id, molname):
         """
         Initialization class function 
         
@@ -756,6 +772,10 @@ class Molecule(object):
         ----------
         molecule : Rdkit molecule object
            the molecule
+        
+        mol_id : int
+           the molecule identification number
+
         molname : str
            the molecule file name
         
@@ -777,14 +797,14 @@ class Molecule(object):
             
         # The variable __ID saves the molecule identification number 
         # The variable is defined as private
-        self.__ID = Molecule.__total_molecules
+        self.__ID = mol_id
 
         
         # The variable __name saves the molecule identification name 
         # The variable is defined as private
         self.__name = molname
     
-        Molecule.__total_molecules+=1
+        
 
     
     def getID(self):
@@ -830,22 +850,6 @@ class Molecule(object):
         return self.__name
 
 
-    
-    @staticmethod
-    def get_mol_num():
-        """
-        This class function returns the current total number of allocated molecules. 
- 
-
-        Returns
-        -------
-           : int 
-           the total number of allocated molecules 
-
-        """
-        return Molecule.__total_molecules
-
-
 
 # Classes used to check some of the passed user options in the main function
 
@@ -859,11 +863,19 @@ class check_dir(argparse.Action):
         else:
             raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
     
-# Class used to check the parallel and time user options
+# Class used to check the parallel, time and max user options
 class check_int(argparse.Action):
     def __call__(self, parser, namespace, value, option_string=None):
         if value < 1:
             raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
+        setattr(namespace, self.dest, value)
+
+
+# Class used to check the cutoff user option
+class check_float(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if not isinstance(value, float) or value < 0:
+            raise argparse.ArgumentTypeError('%s is not a positive real number' % value)
         setattr(namespace, self.dest, value)
 
 
@@ -908,7 +920,7 @@ parser.add_argument('-v', '--verbose', default='info', type=str,\
 out_group = parser.add_argument_group('Output setting')
 out_group.add_argument('-o', '--output', default=True, action='store_true',\
                        help='Generates output files')
-out_group.add_argument('-n', '--name', default='out',\
+out_group.add_argument('-n', '--name', type=str, default='out',\
                        help='File name prefix used to generate the output files')
 
 parser.add_argument('-d', '--display', default=False, action='store_true',\
@@ -917,7 +929,7 @@ parser.add_argument('-d', '--display', default=False, action='store_true',\
 graph_group = parser.add_argument_group('Graph setting')
 graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
-graph_group.add_argument('-c', '--cutoff', default=0.4 ,type=float,\
+graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_float, type=float,\
                          help='The Minimum Similariry Score (MSS) used to build the graph')
 
 #------------------------------------------------------------------
