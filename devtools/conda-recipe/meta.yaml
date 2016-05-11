@@ -9,6 +9,7 @@ build:
   preserve_egg_dir: True
   number: 0
   skip:
+    - [not unix]
     - [py3k]
 
 requirements:
