@@ -7,9 +7,12 @@ import networkx as nx
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('test/basic/', output=True, display=True)
+db_mol = lomap.DBMolecules('test/basic/', output=True)
+
+# db_mol = lomap.DBMolecules('test/basic/', output=True, display=True)
+
     
-# Generate the strict and loose syimmetric similarity 
+# Generate the strict and loose symmetric similarity 
 # score matrices
           
 strict, loose = db_mol.build_matrices()
