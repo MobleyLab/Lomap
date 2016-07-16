@@ -8,7 +8,6 @@ from logger import logger
 
 import openbabel as ob
 import rdkit.Chem as rdchem
-import rdkit.Chem.inchi as inchi
 from rdkit import rdBase
 
 
