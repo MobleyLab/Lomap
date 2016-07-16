@@ -102,7 +102,7 @@ def read_molecules(filename):
             if bond.IsAromatic(): pass
 
         mol_str = conv.WriteString(obmol)
-        rdmol = rdchem.MolFromMol2Block(mol_str, sanitize=True, removeHs=False)
+        rdmol = rdchem.MolFromMol2Block(mol_str, sanitize=False, removeHs=False)
         rdmols.append(rdmol)
 
     rdBase.EnableLog('rdApp.warning')
@@ -110,6 +110,7 @@ def read_molecules(filename):
     mols = []
 
     for rdmol, data in zip(rdmols, obdata):
+        rdchem.SanitizeMol(rdmol, rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
         mols.append(Molecule(rdmol, *data))
 
     return mols
