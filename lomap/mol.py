@@ -62,7 +62,7 @@ def read_molecules(filename):
         logger.warn('cannot guess file format of %s' % filename)
         return None
     
-    conv.SetInAndOutFormats(fmt.GetID(), 'mol')
+    conv.SetInAndOutFormats(fmt.GetID(), 'mol2')
 
     # FIXME: openbabel may produce unwanted warnings, do we want these?
     errlev = ob.obErrorLog.GetOutputLevel()
@@ -95,8 +95,15 @@ def read_molecules(filename):
 
     # FIXME: build RDKit Mol from scratch?
     for obmol in obmols:
+        for bond in ob.OBMolBondIter(obmol):
+            bond.UnsetAromatic()
+
+            # FIXME: for some reason this is needed otherwise aromaticity
+            #        would not be unset (???)
+            if bond.IsAromatic(): pass
+
         mol_str = conv.WriteString(obmol)
-        rdmol = rdchem.MolFromMolBlock(mol_str, sanitize=False, removeHs=False)
+        rdmol = rdchem.MolFromMol2Block(mol_str, sanitize=True, removeHs=False)
         rdmols.append(rdmol)
 
     rdBase.EnableLog('rdApp.warning')
