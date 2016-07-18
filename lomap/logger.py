@@ -38,7 +38,6 @@ class LogFormatter(logging.Formatter):
         return result
 
 
-logging.basicConfig(level=logging.DEBUG, filename=os.devnull)
+logging.basicConfig(level=logging.INFO, filename=os.devnull)
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-
