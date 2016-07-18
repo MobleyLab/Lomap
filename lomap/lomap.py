@@ -13,45 +13,10 @@ This is the user script.
 """
 
 import mol
+import rules
 from logger import logger
 
 
-def compute_similarity_matrix(mols, rules, nproc):
-    """
-    """
-
-    scores = []
-    N = len(mols)
-    simmat = np.zeros(shape=(N,N), dtype=mol.MorphPair)
-
-    if nproc > 1 or nproc <= 0:
-        import multiprocessing as mp
-
-        maxproc = mp.cpu_count()
-
-        if nproc > maxproc:
-            logger.warn('limitting number of processors to %i' % maxproc)
-            nproc = maxproc
-        elif nproc <= 0:
-            nproc = maxproc
-
-        pool = mp.Pool(nproc)
-        map_func = pool.imap
-    else:
-        map_func = map
-
-    for i in range(N-1):
-        partial_func = partial(score, rules, mols[i])
-        scores.append(map_func(partial_func, mols[i+1:N]) )
-
-    for i, row in enumerate(scores):
-        simmat[i][i+1:N] = [s for s in row]
-
-    if parallel:
-        pool.close()
-        pool.join()
-
-    return simmat
 
 def read_molecules(files):
     """
@@ -152,6 +117,7 @@ if __name__ == '__main__':
         logger.error('No molecular structures found in input file(s)')
         sys.exit(1)
 
-    rules = []
-    simmat = compute_similarity_matrix(all_mols, rules, opts.nproc)
+    score_methods = [rules.same_charges]
+    simmat = rules.compute_similarity_matrix(all_mols, score_methods, opts.nproc)
+    print simmat
 
