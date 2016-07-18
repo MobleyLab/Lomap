@@ -16,6 +16,43 @@ import mol
 from logger import logger
 
 
+def compute_similarity_matrix(mols, rules, nproc):
+    """
+    """
+
+    scores = []
+    N = len(mols)
+    simmat = np.zeros(shape=(N,N), dtype=mol.MorphPair)
+
+    if nproc > 1 or nproc <= 0:
+        import multiprocessing as mp
+
+        maxproc = mp.cpu_count()
+
+        if nproc > maxproc:
+            logger.warn('limitting number of processors to %i' % maxproc)
+            nproc = maxproc
+        elif nproc <= 0:
+            nproc = maxproc
+
+        pool = mp.Pool(nproc)
+        map_func = pool.imap
+    else:
+        map_func = map
+
+    for i in range(N-1):
+        partial_func = partial(score, rules, mols[i])
+        scores.append(map_func(partial_func, mols[i+1:N]) )
+
+    for i, row in enumerate(scores):
+        simmat[i][i+1:N] = [s for s in row]
+
+    if parallel:
+        pool.close()
+        pool.join()
+
+    return simmat
+
 def read_molecules(files):
     """
     Read molecules from a list of files.
@@ -34,7 +71,6 @@ def read_molecules(files):
             all_mols.extend(mols)
 
     return all_mols
-
 
 def setup_logger(logfile):
     """
@@ -75,10 +111,12 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--time', default=20, metavar='N', type=int,
                         help='Set the maximum time in seconds to perform the '
                         'mcs search between pair of molecules')
-    parser.add_argument('-p', '--parallel', metavar='N', default=1, type=int,
-                        help='Set the parallel mode. If an integer number N '
+    parser.add_argument('-np', '--nproc', metavar='N', default=1, type=int,
+                        help='Parallel mode: If an integer number N '
                         'is specified, N processes will be executed to build '
-                        'the similarity matrices')
+                        'the similarity matrices. The maximum numer of '
+                        'processors will be used if N<=0 or N exceeds the '
+                        'number of processors.')
     parser.add_argument('-v', '--verbose', default='info', type=str,
                         choices=['off', 'info', 'pedantic'],
                         help='verbose mode selection')
@@ -99,7 +137,7 @@ if __name__ == '__main__':
     graph_group.add_argument('-m', '--max', default=6, type=int,
                              help='The maximum distance used to cluster the '
                              'graph nodes')
-    graph_group.add_argument('-c', '--cutoff',  metavar='C', default=0.4,
+    graph_group.add_argument('-c', '--cutoff', metavar='C', default=0.4,
                              type=float,
                              help='The Minimum Similariry Score (MSS) used to '
                              'build the graph')
@@ -114,7 +152,6 @@ if __name__ == '__main__':
         logger.error('No molecular structures found in input file(s)')
         sys.exit(1)
 
-    for mol in all_mols:
-        logger.info('%s %s %s' % (mol.molecule.GetNumAtoms(), mol.name, mol.ID))
-
+    rules = []
+    simmat = compute_similarity_matrix(all_mols, rules, opts.nproc)
 

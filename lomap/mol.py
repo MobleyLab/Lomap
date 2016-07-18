@@ -37,6 +37,28 @@ class Molecule(object):
         self.molecule = rdmol
         self.name = molname
         self.ID = molid
+
+
+class MorphPair(object):
+    """
+    Simple container to keep basic information about a morph pair.
+    """
+
+    #__slots__ = []
+
+    def __init__(self, mol0, mol1):
+        """
+        :param mol0: molecule for state 0
+        :type mol0: Molecule
+        :param mol1: molecule for state 1
+        :type mol1: Molecule
+        """
+
+        self.mol0 = mol0
+        self.mol1 = mol1
+        self.mapping = None
+        self.strict_score = None
+        self.loose_score = None
   
 
 def read_molecules(filename):
