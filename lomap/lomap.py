@@ -109,6 +109,7 @@ if __name__ == '__main__':
 
     opts = parser.parse_args()
 
+    # FIXME: rethink this for multiprocessing
     setup_logger(opts.logfile)
 
     all_mols = read_molecules(opts.molfiles)
@@ -117,7 +118,13 @@ if __name__ == '__main__':
         logger.error('No molecular structures found in input file(s)')
         sys.exit(1)
 
-    score_methods = [rules.same_charges]
-    simmat = rules.compute_similarity_matrix(all_mols, score_methods, opts.nproc)
-    print simmat
+    simmat = rules.compute_similarity_matrix(all_mols, opts.time, opts.nproc)
+
+    N = len(all_mols)
+
+    for i in range(N-1):
+        for j in range(i+1, N):
+            print simmat[i][j].strict_score,
+
+        print
 
