@@ -2,15 +2,17 @@ r"""
 LOMAP
 =====
 
-Alchemical free energy calculations hold increasing promise as an aid to drug 
-discovery efforts. However, applications of these techniques in discovery 
-projects have been relatively few, partly because of the difficulty of planning 
-and setting up calculations. The Lead Optimization Mapper (LOMAP) is an 
-automated algorithm to plan efficient relative free energy calculations between 
+Alchemical free energy calculations hold increasing promise as an aid to drug
+discovery efforts. However, applications of these techniques in discovery
+projects have been relatively few, partly because of the difficulty of planning
+and setting up calculations. The Lead Optimization Mapper (LOMAP) is an
+automated algorithm to plan efficient relative free energy calculations between
 potential ligands within a substantial of compounds.
 
 This is the user script.
 """
+
+import os
 
 import mol
 import rules
@@ -18,19 +20,24 @@ from logger import logger
 
 
 
-def read_molecules(files):
+def read_molecules(filenames):
     """
     Read molecules from a list of files.
-    
-    :param files: files ontaining the molecule(s)
-    :type files: list
+
+    :param filenames: files ontaining the molecule(s)
+    :type filenames: list
     """
 
     all_mols = []
+    mol_reader = mol.RDKitMolReader()
 
-    for file in files:
-        logger.info('Attempting to read %s' % file)
-        mols = mol.read_molecules(file)
+    for filename in filenames:
+        if not os.path.isfile(filename):
+            logger.warn('file %s does not exist' % filename)
+            return None
+
+        logger.info('Attempting to read %s' % filename)
+        mols = mol_reader.read_molecules(filename)
 
         if mols:
             all_mols.extend(mols)
@@ -63,7 +70,7 @@ if __name__ == '__main__':
     import sys
     import argparse
     import logging
-    
+
     from logger import LogFormatter
 
 
@@ -127,4 +134,3 @@ if __name__ == '__main__':
             print simmat[i][j].strict_score,
 
         print
-

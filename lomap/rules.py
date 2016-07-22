@@ -87,7 +87,7 @@ class Rules(object):
         completed = not mcs.canceled
 
         if not completed:
-            logger.warn('MCSS timed out after %.2fs' % maxtime)
+            logger.warn('MCSS timed out after %.2fs' % self.maxtime)
 
         if not smarts:
             # FIXME: more detailled error message
@@ -150,7 +150,6 @@ class Scorer(object):
         # FIXME: how to differentiate between strict and loose rule
         morph_pair.strict_score = total_score
         morph_pair.loose_score = total_score
-        print morph_pair.mapping
 
         return morph_pair
 
