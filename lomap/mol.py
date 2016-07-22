@@ -61,28 +61,26 @@ class MorphPair(object):
         self.loose_score = None
 
 
+def _sdf_supplier(*args, **kwargs):
+    mols = []
+    supplier = rdchem.SDMolSupplier(*args, **kwargs)
+
+    for mol in supplier:
+        if mol:
+            mols.append(mol)
+
+    return mols
+
 class RDKitMolReader(object):
     """
     Read molecular structure information from files with RDKit.
     """
 
-    def __init__(self):
-        self.mol_readers = {'sdf': self._sdf_supplier,
-                            'mol': rdchem.MolFromMolFile,
-                            'mol2': rdchem.MolFromMol2File,
-                            'pdb': rdchem.MolFromPDBFile,
-                            'tpl': rdchem.MolFromTPLFile}
-
-    def _sdf_supplier(self, *args, **kwargs):
-        mols = []
-
-        supplier = rdchem.SDMolSupplier(*args, **kwargs)
-
-        for mol in supplier:
-            if mol:
-                mols.append(mol)
-
-        return mols
+    mol_readers = {'sdf': _sdf_supplier,
+                   'mol': rdchem.MolFromMolFile,
+                   'mol2': rdchem.MolFromMol2File,
+                   'pdb': rdchem.MolFromPDBFile,
+                   'tpl': rdchem.MolFromTPLFile}
 
     def read_molecules(self, filename):
         """
