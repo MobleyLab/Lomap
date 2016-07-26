@@ -41,6 +41,9 @@ def read_molecules(filenames):
 
         if mols:
             all_mols.extend(mols)
+            nmols = len(mols)
+            logger.info('  %i molecule%s found' %
+                        (nmols, 's' if nmols > 1 else ''))
 
     return all_mols
 

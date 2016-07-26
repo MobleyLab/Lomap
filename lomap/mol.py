@@ -61,13 +61,36 @@ class MorphPair(object):
         self.loose_score = None
 
 
-def _sdf_supplier(*args, **kwargs):
+def sdf_supplier(filename, *args, **kwargs):
     mols = []
-    supplier = rdchem.SDMolSupplier(*args, **kwargs)
+    supplier = rdchem.SDMolSupplier(filename, *args, **kwargs)
 
     for mol in supplier:
         if mol:
             mols.append(mol)
+
+    return mols
+
+def itermol2(filename):
+    lines = []
+    first = True
+
+    with open(filename, 'rb') as mol2_file:
+        for line in mol2_file:
+            if line.startswith('@<TRIPOS>MOLECULE') and not first:
+                yield ''.join(lines)
+                lines = []
+
+            first = False
+            lines.append(line)
+
+    yield ''.join(lines)
+
+def mol2_supplier(filename, *args, **kwargs):
+    mols = []
+
+    for mol in itermol2(filename):
+        mols.append(rdchem.MolFromMol2Block(mol, *args, **kwargs))
 
     return mols
 
@@ -76,9 +99,9 @@ class RDKitMolReader(object):
     Read molecular structure information from files with RDKit.
     """
 
-    mol_readers = {'sdf': _sdf_supplier,
+    mol_readers = {'sdf': sdf_supplier,
+                   'mol2': mol2_supplier,
                    'mol': rdchem.MolFromMolFile,
-                   'mol2': rdchem.MolFromMol2File,
                    'pdb': rdchem.MolFromPDBFile,
                    'tpl': rdchem.MolFromTPLFile}
 
