@@ -61,22 +61,6 @@ class MorphPair(object):
         self.loose_score = None
 
 
-def sdf_supplier(filename, *args, **kwargs):
-    """
-    Wrapper for RDKit's SDMolSupplier.
-
-    :param filename: name of file with molecules
-    :type filename: str
-    :returns: all molecules found
-    :rtype: list of rdkit.Chem.rdchem.Mol
-    """
-
-    mols = []
-    supplier = rdchem.SDMolSupplier(filename, *args, **kwargs)
-
-    for mol in supplier:
-        yield mol
-
 tipos_mol = '@<TRIPOS>MOLECULE'
 
 def mol2_supplier(filename, *args, **kwargs):
@@ -109,7 +93,7 @@ def mol2_supplier(filename, *args, **kwargs):
 def fake_supplier(func):
     """
     A fake supplier for molecule file formats containing only single molecules.
-    Implemented as closure.
+    Implemented as a closure.
 
     :param func: name of file with molecules
     :type func: function
@@ -128,11 +112,11 @@ class RDKitMolReader(object):
     Read molecular structure information from files with RDKit.
     """
 
-    mol_readers = {'sdf': sdf_supplier,
-                   'mol2': mol2_supplier,
-                   'mol': fake_supplier(rdchem.MolFromMolFile),
-                   'pdb': fake_supplier(rdchem.MolFromPDBFile),
-                   'tpl': fake_supplier(rdchem.MolFromTPLFile)}
+    suppliers = {'sdf': rdchem.SDMolSupplier,
+                 'mol2': mol2_supplier,
+                 'mol': fake_supplier(rdchem.MolFromMolFile),
+                 'pdb': fake_supplier(rdchem.MolFromPDBFile),
+                 'tpl': fake_supplier(rdchem.MolFromTPLFile)}
 
     def read_molecules(self, filename):
         """
@@ -148,19 +132,17 @@ class RDKitMolReader(object):
         file_ext = os.path.splitext(filename)[1][1:]
 
         try:
-            mol_reader = self.mol_readers[file_ext]
+            supplier = self.suppliers[file_ext]
         except KeyError:
             logger.warn('cannot guess file format of %s' % filename)
             yield None
             raise StopIteration
         else:
             # FIXME: error handling
-            mols = mol_reader(filename, sanitize=False, removeHs=False)
-
-            for mol in mols:
-                #rdchem.SanitizeMol(mol,
-                #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
+            for mol in supplier(filename, sanitize=False, removeHs=False):
                 if mol:
+                    #rdchem.SanitizeMol(mol,
+                    #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
                     yield Molecule(mol, '', '')
 
 
