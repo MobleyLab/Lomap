@@ -156,10 +156,12 @@ class RDKitMolReader(object):
     def read_molecules(self, filename):
         """
         Read molecules from a file with RDKit and convert each structure
-        to a RDKit molecule.
+        to a RDKit molecule.  Implemented as generator.
 
         :param filename: name of file that contains molecule(s)
         :type filename: str or None when failure
+        :returns: next molecule
+        :rtype: Molecule or None if error
         """
 
         file_ext = os.path.splitext(filename)[1][1:]
@@ -168,7 +170,7 @@ class RDKitMolReader(object):
             mol_reader = self.mol_readers[file_ext]
         except KeyError:
             logger.warn('cannot guess file format of %s' % filename)
-            return None
+            yield None
         else:
             # FIXME: error handling
             mols = mol_reader(filename, sanitize=False, removeHs=False)
@@ -177,9 +179,9 @@ class RDKitMolReader(object):
             for mol in mols:
                 #rdchem.SanitizeMol(mol,
                 #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
-                all_mols.append(Molecule(mol, '', ''))
+                #all_mols.append(Molecule(mol, '', ''))
+                yield Molecule(mol, '', '')
 
-        return all_mols
 
 class OBMolReader(object):
     """
@@ -192,7 +194,8 @@ class OBMolReader(object):
         """
         Read molecules from a file with Openbabel and convert each structure
         to a RDKit molecule.  This is currently done by RDKit reparsing the
-        string output from a Openbabel molecule in MDL mol format.
+        string output from a Openbabel molecule in Tripos mol2 format.
+        Implemented as generator.
 
         :param filename: name of file that contains molecule(s)
         :type filename: str or None when failure
@@ -204,7 +207,7 @@ class OBMolReader(object):
 
         if not fmt:
             logger.warn('cannot guess file format of %s' % filename)
-            return None
+            yield None
 
         conv.SetInAndOutFormats(fmt.GetID(), 'mol2')
 
@@ -217,7 +220,7 @@ class OBMolReader(object):
 
         if not ok:
             logger.warn('cannot read molecule data from file %s' % filename)
-            return None
+            yield None
 
         obmols = []
         obdata = []
@@ -245,15 +248,14 @@ class OBMolReader(object):
                                             removeHs=False)
             rdmols.append(rdmol)
 
-            rdBase.EnableLog('rdApp.warning')
+        rdBase.EnableLog('rdApp.warning')
 
         mols = []
 
         for rdmol, data in zip(rdmols, obdata):
-            rdchem.SanitizeMol(rdmol, rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
-            mols.append(Molecule(rdmol, *data))
-
-        return mols
+            rdchem.SanitizeMol(rdmol,
+                               rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
+            yield Molecule(rdmol, *data)
 
 
 if __name__ == '__main__':
