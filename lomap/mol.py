@@ -171,15 +171,14 @@ class RDKitMolReader(object):
         except KeyError:
             logger.warn('cannot guess file format of %s' % filename)
             yield None
+            return
         else:
             # FIXME: error handling
             mols = mol_reader(filename, sanitize=False, removeHs=False)
-            all_mols = []
 
             for mol in mols:
                 #rdchem.SanitizeMol(mol,
                 #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
-                #all_mols.append(Molecule(mol, '', ''))
                 yield Molecule(mol, '', '')
 
 
@@ -208,6 +207,7 @@ class OBMolReader(object):
         if not fmt:
             logger.warn('cannot guess file format of %s' % filename)
             yield None
+            return
 
         conv.SetInAndOutFormats(fmt.GetID(), 'mol2')
 
@@ -221,6 +221,7 @@ class OBMolReader(object):
         if not ok:
             logger.warn('cannot read molecule data from file %s' % filename)
             yield None
+            return
 
         obmols = []
         obdata = []
