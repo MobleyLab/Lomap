@@ -22,7 +22,7 @@ class Molecule(object):
 
     __slots__ = ['molecule', 'name', 'ID']
 
-    # FIXME: we ned to "know" that molecule is a rdkit.Chem.rdchem.Mol
+    # FIXME: we need to "know" that molecule is a rdkit.Chem.rdchem.Mol
     def __init__(self, rdmol, molname, molid=''):
         """
         :param rdmol: RDKit molecule
@@ -71,17 +71,21 @@ def sdf_supplier(filename, *args, **kwargs):
 
     return mols
 
+tipos_mol = '@<TRIPOS>MOLECULE'
+
 def itermol2(filename):
     lines = []
     first = True
 
     with open(filename, 'rb') as mol2_file:
         for line in mol2_file:
-            if line.startswith('@<TRIPOS>MOLECULE') and not first:
-                yield ''.join(lines)
-                lines = []
+            if line.startswith(tipos_mol):
+                if not first:
+                    yield ''.join(lines)
+                    lines = []
+                else:
+                    first = False
 
-            first = False
             lines.append(line)
 
     yield ''.join(lines)
@@ -89,6 +93,7 @@ def itermol2(filename):
 def mol2_supplier(filename, *args, **kwargs):
     mols = []
 
+    # FIXME: error handling
     for mol in itermol2(filename):
         mols.append(rdchem.MolFromMol2Block(mol, *args, **kwargs))
 
@@ -226,9 +231,10 @@ if __name__ == '__main__':
         logger.addHandler(hdlr)
 
     all_mols = []
+    mol_reader = RDKitMolReader()
 
     for filename in sys.argv[1:]:
-        mols = read_molecules(filename)
+        mols = mol_reader.read_molecules(filename)
 
         if mols:
             all_mols.extend(mols)
