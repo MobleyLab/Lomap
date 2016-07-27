@@ -75,14 +75,11 @@ def sdf_supplier(filename, *args, **kwargs):
     supplier = rdchem.SDMolSupplier(filename, *args, **kwargs)
 
     for mol in supplier:
-        if mol:
-            mols.append(mol)
-
-    return mols
+        yield mol
 
 tipos_mol = '@<TRIPOS>MOLECULE'
 
-def itermol2(filename):
+def mol2_supplier(filename, *args, **kwargs):
     """
     Mol2 file generator to return each individual Tripos molecule.
 
@@ -99,31 +96,15 @@ def itermol2(filename):
         for line in mol2_file:
             if line.startswith(tipos_mol):
                 if not first:
-                    yield ''.join(lines)
+                    yield rdchem.MolFromMol2Block(''.join(lines),
+                                                  *args, **kwargs)
                     lines = []
                 else:
                     first = False
 
             lines.append(line)
 
-    yield ''.join(lines)
-
-def mol2_supplier(filename, *args, **kwargs):
-    """
-    Simplistic mol2 supplier for RDKit.
-
-    :param filename: name of file with molecules
-    :type filename: str
-    :returns: all molecules found
-    :rtype: list of rdkit.Chem.rdchem.Mol
-    """
-
-    mols = []
-
-    for mol in itermol2(filename):
-        mols.append(rdchem.MolFromMol2Block(mol, *args, **kwargs))
-
-    return mols
+    yield rdchem.MolFromMol2Block(''.join(lines), *args, **kwargs)
 
 def fake_supplier(func):
     """
@@ -171,7 +152,7 @@ class RDKitMolReader(object):
         except KeyError:
             logger.warn('cannot guess file format of %s' % filename)
             yield None
-            return
+            raise StopIteration
         else:
             # FIXME: error handling
             mols = mol_reader(filename, sanitize=False, removeHs=False)
@@ -179,7 +160,8 @@ class RDKitMolReader(object):
             for mol in mols:
                 #rdchem.SanitizeMol(mol,
                 #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
-                yield Molecule(mol, '', '')
+                if mol:
+                    yield Molecule(mol, '', '')
 
 
 class OBMolReader(object):
@@ -207,7 +189,7 @@ class OBMolReader(object):
         if not fmt:
             logger.warn('cannot guess file format of %s' % filename)
             yield None
-            return
+            raise StopIteration
 
         conv.SetInAndOutFormats(fmt.GetID(), 'mol2')
 
@@ -221,7 +203,7 @@ class OBMolReader(object):
         if not ok:
             logger.warn('cannot read molecule data from file %s' % filename)
             yield None
-            return
+            raise StopIteration
 
         obmols = []
         obdata = []
@@ -287,4 +269,5 @@ if __name__ == '__main__':
         sys.exit(1)
 
     for mol in all_mols:
-        print mol.molecule.GetNumAtoms(), mol.name, mol.ID
+        if mol.molecule:
+            print mol.molecule.GetNumAtoms(), mol.name, mol.ID
