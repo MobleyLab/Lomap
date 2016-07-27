@@ -62,6 +62,15 @@ class MorphPair(object):
 
 
 def sdf_supplier(filename, *args, **kwargs):
+    """
+    Wrapper for RDKit's SDMolSupplier.
+
+    :param filename: name of file with molecules
+    :type filename: str
+    :returns: all molecules found
+    :rtype: list of rdkit.Chem.rdchem.Mol
+    """
+
     mols = []
     supplier = rdchem.SDMolSupplier(filename, *args, **kwargs)
 
@@ -74,6 +83,15 @@ def sdf_supplier(filename, *args, **kwargs):
 tipos_mol = '@<TRIPOS>MOLECULE'
 
 def itermol2(filename):
+    """
+    Mol2 file generator to return each individual Tripos molecule.
+
+    :param filename: name of file with molecules
+    :type filename: str
+    :returns: next molecule string
+    :rtype: str
+    """
+    
     lines = []
     first = True
 
@@ -91,13 +109,38 @@ def itermol2(filename):
     yield ''.join(lines)
 
 def mol2_supplier(filename, *args, **kwargs):
+    """
+    Simplistic mol2 supplier for RDKit.
+
+    :param filename: name of file with molecules
+    :type filename: str
+    :returns: all molecules found
+    :rtype: list of rdkit.Chem.rdchem.Mol
+    """
+
     mols = []
 
-    # FIXME: error handling
     for mol in itermol2(filename):
         mols.append(rdchem.MolFromMol2Block(mol, *args, **kwargs))
 
     return mols
+
+def fake_supplier(func):
+    """
+    A fake supplier for molecule file formats containing only single molecules.
+    Implemented as closure.
+
+    :param func: name of file with molecules
+    :type func: function
+    :returns: fake generator that yields only on molecule
+    :rtype: function
+    """
+
+    def iterfile(filename, *args, **kwargs):
+        """Fake generator."""
+        yield func(filename, *args, **kwargs)
+
+    return iterfile
 
 class RDKitMolReader(object):
     """
@@ -106,9 +149,9 @@ class RDKitMolReader(object):
 
     mol_readers = {'sdf': sdf_supplier,
                    'mol2': mol2_supplier,
-                   'mol': rdchem.MolFromMolFile,
-                   'pdb': rdchem.MolFromPDBFile,
-                   'tpl': rdchem.MolFromTPLFile}
+                   'mol': fake_supplier(rdchem.MolFromMolFile),
+                   'pdb': fake_supplier(rdchem.MolFromPDBFile),
+                   'tpl': fake_supplier(rdchem.MolFromTPLFile)}
 
     def read_molecules(self, filename):
         """
@@ -127,17 +170,14 @@ class RDKitMolReader(object):
             logger.warn('cannot guess file format of %s' % filename)
             return None
         else:
+            # FIXME: error handling
             mols = mol_reader(filename, sanitize=False, removeHs=False)
             all_mols = []
 
-            # FIXME: this is ugly
-            if hasattr(mols, '__iter__'):
-                for mol in mols:
-                    #rdchem.SanitizeMol(mol,
-                    #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
-                    all_mols.append(Molecule(mol, '', ''))
-            else:
-                all_mols = [Molecule(mols, '', '')]
+            for mol in mols:
+                #rdchem.SanitizeMol(mol,
+                #             rdchem.SANITIZE_ALL^rdchem.SANITIZE_KEKULIZE)
+                all_mols.append(Molecule(mol, '', ''))
 
         return all_mols
 
