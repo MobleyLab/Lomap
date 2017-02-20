@@ -28,7 +28,7 @@ env:
 
 
   global:
-    - ORGNAME="omnia"
+    - ORGNAME="nividic"
     - PACKAGENAME="lomap"
 
 
