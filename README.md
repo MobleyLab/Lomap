@@ -42,6 +42,7 @@ conda install lomap
 
 Usage
 -----
+```
 import lomap
 
 # Generate the molecule database starting from a directory containing .mol2 files
@@ -72,7 +73,7 @@ MC = lomap.MCS.getMapping(db_mol[0].getMolecule(), db_mol[1].getMolecule(), hydr
 
 
 db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, ecrscore=0.1)
-
+```
 
 
 
