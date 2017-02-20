@@ -42,7 +42,7 @@ conda install lomap
 
 Usage
 -----
-```
+```python
 import lomap
 
 # Generate the molecule database starting from a directory containing .mol2 files
