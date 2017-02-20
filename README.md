@@ -1,6 +1,8 @@
 [![Anaconda Badge](https://anaconda.org/nividic/lomap/badges/version.svg)](https://anaconda.org/nividic/lomap)
 
-[![Build Status](https://travis-ci.org/nividic/Lomap.svg?branch=master)](https://travis-ci.org/nividic/Lomap)
+[![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=master)](https://travis-ci.org/MobleyLab/Lomap)
+
+
 
 # Lomap
 Alchemical free energy calculations hold increasing promise 

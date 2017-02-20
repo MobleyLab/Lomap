@@ -23,7 +23,6 @@ script:
   - conda install --use-local lomap --yes
   - conda install --yes pip nose
   - pip install nose-timer
-  - ls
   - nosetests -v
 
 env:
