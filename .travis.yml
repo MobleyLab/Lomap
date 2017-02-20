@@ -20,8 +20,9 @@ script:
   - conda build devtools/conda-recipe 
   - conda create -n _test --yes
   - source activate _test
-  - conda install lomap
+  - conda install --use-local lomap --yes
   - conda install --yes --quiet pip nose nose-timer
+  - ls
   - nosetests -v
 
 env:
