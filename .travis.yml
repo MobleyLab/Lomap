@@ -18,6 +18,7 @@ install: true
 script: 
   - conda config --add channels ${ORGNAME}
   - conda build devtools/conda-recipe 
+  - conda create -n _test
   - source activate _test
   - conda install --yes --quiet pip nose nose-timer
   - nosetests -v
