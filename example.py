@@ -30,12 +30,9 @@ loose_numpy = loose.to_numpy_2D_array()
 nx_graph = db_mol.build_graph() 
 #print(nx_graph.edges(data=True))
 
-                
+
 # Calculate the Maximum Common Subgraph (MCS) between 
-# the first two molecules in the molecule database
+# the first two molecules in the molecule database 
+# ignoring hydrogens and depicting the mapping in a file
     
-#MC = lomap.MCS(db_mol[0].getMolecule(), db_mol[1].getMolecule())
-
-# Output the MCS in a .png file
-
-#MC.draw_mcs()
+MC = lomap.MCS.getMapping(db_mol[0].getMolecule(), db_mol[1].getMolecule(), hydrogens=False, fname='mcs.png')

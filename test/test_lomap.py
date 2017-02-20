@@ -5,15 +5,18 @@ import unittest
 from unittest import skipIf
 from lomap.dbmol import DBMolecules
 from lomap.graphgen import GraphGen
+from lomap.mcs import MCS
 import argparse
 import multiprocessing
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
+import pickle
+from rdkit import RDLogger
 
 class TestLomap(unittest.TestCase):
     
     def setUp(self):
-        self.inst = DBMolecules('test/basic/', time=20, parallel=1, verbose='off', output=False, name='out', display=False, max=6, cutoff=0.4)
+        self.inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0 ,name='out', display=False, max=6, cutoff=0.4)
     
     # Test class Inizialitazion
 
@@ -25,10 +28,12 @@ class TestLomap(unittest.TestCase):
     def test_TypeArgs(self):
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/nodir/')
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', time=-1)
-        self.assertRaises(SystemExit, self.inst.__init__, 'test/basic', time=-1.5)
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', parallel=-1)
         self.assertRaises(SystemExit, self.inst.__init__, 'test/basic', parallel=-1.5)
         self.assertRaises(SystemExit, self.inst.__init__, 'test/basic', verbose='err_option')
+        self.assertRaises(SystemExit, self.inst.__init__, 'test/basic', time=-1.5)
+        self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', ecrscore=-1.5)
+        self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', ecrscore=2.0)
         self.assertRaises(TypeError, self.inst.__init__, 'test/basic', output=-5.0)
         self.assertRaises(TypeError, self.inst.__init__, 'test/basic', display=-5.0)
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', max=-5)
@@ -94,6 +99,31 @@ class TestLomap(unittest.TestCase):
         
         self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
         
+    def test_mcs(self):
+        f = open('test/basic/MCS.pickle','rb')
+        data = pickle.load(f)
+        data_no_hydrogens = data[0]
+        data_hydrogens = data[1]
+        
+        db = self.inst
+        
+        nohyds = {}
+        hyds = {}
+        
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
+        
+        for i in range(0,db.nums()):
+            for j in range(i+1,db.nums()):
+                MCS_no_hyds = MCS.getMapping(db[i].getMolecule(), db[j].getMolecule())
+                MCS_hyds = MCS.getMapping(db[i].getMolecule(), db[j].getMolecule(), hydrogens=True)
+                nohyds[(i,j)] = MCS_no_hyds
+                hyds[(i,j)] = MCS_hyds
+
+        
+        self.assertEqual(True, nohyds == data_no_hydrogens)
+        self.assertEqual(True, hyds  == data_hydrogens)
+
     
 
 if __name__ =='__main__':

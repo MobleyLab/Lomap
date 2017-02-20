@@ -20,43 +20,43 @@ URL: https://github.com/nividic/Lomap
 
 Using
 -----
-      Just write in Python
+      Just write in Python 
 
-      # Import lomap
+      # Import Lomap
       import lomap
 
-      # Create the molecule database by using .mol2 files
-      # The DBMolecule class must be created with a valid
-      # directory name
-    
-      db_mol = lomap.DBMolecules('lomap/test/basic/')
+      # Generate the molecule database starting from 
+      # a directory containing .mol2 files
 
-      # Generate the strict and loose syimmetric similarity 
-      # score matrices
-      
+      db_mol = lomap.DBMolecules("lomap/test/basic", output=True)
+
+      # Calculate the similarity matrix betweeen the database 
+      # molecules. Two molecules are generated related to the 
+      # scrict rule and loose rule 
+
       strict, loose = db_mol.build_matrices()
 
-      # Convert the matrices in standard numpy matrices
-      
-      strict_numpy = strict.to_numpy_2D_array()
-      loose_numpy = loose.to_numpy_2D_array()
-
-      # Networkx graph generation based on the similarity 
-      # score matrices
-      
+      # Generate the NetworkX graph and output the results
       nx_graph = db_mol.build_graph() 
-            
+
+
       # Calculate the Maximum Common Subgraph (MCS) between 
-      # the first two molecules in the molecule database
+      # the first two molecules in the molecule database 
+      # ignoring hydrogens and depicting the mapping in a file
+    
+      MC = lomap.MCS.getMapping(db_mol[0].getMolecule(), db_mol[1].getMolecule(), hydrogens=False, fname='mcs.png')
 
-      MC = lomap.MCS(db_mol[0].getMolecule(), db_mol[1].getMolecule())
+ 
+      # Alchemical transformation are usually performed between molecules with
+      # the same charges. However, it is possible to allow these transformations
+      # manually setting the electrostatic score for the whole set of molecules 
+      # producing a connected graph. The electrostatic scrore must be in the 
+      # range [0,1]
 
-      # Get the map between atom indices 
-      mcs_map = MC.getMap()
 
-      # Output the MCS in a .png file
-
-      MC.draw_mcs()
+      db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, ecrscore=0.1)
+      strict, loose = db_mol.build_matrices()
+      nx_graph = db_mol.build_graph() 
 """
 
 from lomap.dbmol import DBMolecules

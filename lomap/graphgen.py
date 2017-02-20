@@ -56,7 +56,8 @@ from rdkit.Chem import AllChem
 import os.path
 import logging
 from PyQt4 import QtGui
-
+import tempfile
+import shutil
 
 __all__ = ['GraphGen']
 
@@ -99,11 +100,14 @@ class GraphGen(object):
         # THIS PART MUST BE CHANGED
         
         # Max number of displayed chemical compound images as graph nodes
-        self.max_images = 25
+        self.max_images = 50
         
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
 
+        # The maximum threshold distance in A unit used to select if a molecule is depicted
+        self.max_mol_size = 11.0
+        
 
         self.edge_labels = False
         
@@ -181,7 +185,6 @@ class GraphGen(object):
         
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
-
 
 
         for i in range(0, self.dbase.nums()):
@@ -684,10 +687,79 @@ class GraphGen(object):
         return self.resultGraph
 
 
+
+    def generate_depictions(self):
+
+        def max_dist_mol(mol):
+            
+            max_dist = 0.0
+            conf = mol.GetConformer()
+            
+            for i in range(0,conf.GetNumAtoms()):
+                
+                crdi = np.array([conf.GetAtomPosition(i).x,conf.GetAtomPosition(i).y,conf.GetAtomPosition(i).z])
+                
+                for j in range(i+1,conf.GetNumAtoms()):
+                    crdj = np.array([conf.GetAtomPosition(j).x,conf.GetAtomPosition(i).y,conf.GetAtomPosition(j).z])
+                    dist = np.linalg.norm(crdi-crdj)
+                    
+                    if dist > max_dist:
+                        max_dist = dist
+
+            return max_dist
+
+
+
+        directory_name = tempfile.mkdtemp()
+
+        if nx.number_of_nodes(self.resultGraph) <= self.max_images:
+            
+            #Draw.DrawingOptions.atomLabelFontSize=30
+            #Draw.DrawingOptions.dotsPerAngstrom=100            
+            
+            for n in self.resultGraph:
+
+                id_mol = self.resultGraph.node[n]['ID']
+                mol = self.dbase[id_mol].getMolecule()
+                max_dist = max_dist_mol(mol)
+
+                if max_dist < self.max_mol_size:
+                    
+                    mol = AllChem.RemoveHs(mol)
+        
+                    AllChem.Compute2DCoords(mol)
+                
+                    fname = os.path.join(directory_name, self.dbase[id_mol].getName() + ".png")
+                    
+                    Draw.MolToFile(mol, fname, size=(100,100), fitimage=True, imageType='png' )
+                    
+                    self.resultGraph.node[n]['image'] = fname
+                    #self.resultGraph.node[n]['label'] = ''
+                    self.resultGraph.node[n]['labelloc'] = 't'
+                    #self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
+
+
+        for u,v,d in self.resultGraph.edges(data=True):
+            if d['strict_flag']==True:
+                self.resultGraph[u][v]['color'] = 'green'
+            else:
+                self.resultGraph[u][v]['color'] = 'red'
+
+        
+        nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
+        
+        cmd = 'dot -Tpng ' + self.dbase.options.name + '.dot -o ' + self.dbase.options.name + '.png' 
+           
+        os.system(cmd)
+        
+        shutil.rmtree(directory_name, ignore_errors=True)
+
+        
+
     def writeGraph(self):
         """
 
-        This function write to a file the final generated NetworkX graph as 
+        This function writes to a file the final generated NetworkX graph as 
         .dot and the .ps files. The mapping between molecule IDs and compounds
         name is saved as text file
 
@@ -699,24 +771,14 @@ class GraphGen(object):
         except Exception as e:
             raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
  
-    
         try:
-            nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
-        except Exception:
-            raise IOError('It was no possible to generate the dot file: %s.dot' % self.dbase.options.name) 
-
-
-        cmd = 'dot -Tps ' + self.dbase.options.name + '.dot -o ' + self.dbase.options.name + '.ps' 
-        
-        
-        try:
-            os.system(cmd)
-        except Exception:
-            raise IOError('It was not possible to generate the %.ps file' % self.dbase.options.name)
-        
-
+            self.generate_depictions()
+        except Exception as e:
+            raise IOError('Problems during the file generation: %s' % str(e)) 
+             
+ 
         logging.info(30*'-')    
-        logging.info('The following files have been generated:\n%s.dot\tGraph file\n%s.ps\tPostscript file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))
+        logging.info('The following files have been generated:\n%s.dot\tGraph file\n%s.png\tPng file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name,  self.dbase.options.name ))
         logging.info(30*'-')
 
         return
@@ -733,7 +795,7 @@ class GraphGen(object):
         logging.info('\nDrawing....')
         
         if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
-            logging.info('The number of generated graph nodes %d exceede the max number of drawable nodes %s' % (nx.number_of_nodes(self.resultGraph), self.max_nodes))
+            logging.info('The number of generated graph nodes %d exceed the max number of drawable nodes %s' % (nx.number_of_nodes(self.resultGraph), self.max_nodes))
             return
 
 
@@ -813,7 +875,7 @@ class GraphGen(object):
   
 
         if nx.number_of_nodes(self.resultGraph) <= self.max_images:
-          
+            
             trans = ax.transData.transform
             trans2 = fig.transFigure.inverted().transform
 
@@ -835,7 +897,7 @@ class GraphGen(object):
             mol_size = (200,200)
 
             for each_node in self.resultGraph:
-            
+                
                 id_mol = self.resultGraph.node[each_node]['ID']
                 mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
             
@@ -846,8 +908,7 @@ class GraphGen(object):
                 AllChem.Compute2DCoords(mol)
                 
                 img_mol = Draw.MolToImage(mol,mol_size)
-
-            
+                            
                 xx, yy = trans(pos[each_node])
                 xa, ya = trans2((xx,yy))
             
@@ -864,8 +925,9 @@ class GraphGen(object):
                 a.axis('off')
              
         
+        # plt.savefig('graph.png', facecolor=fig.get_facecolor())
+        # print 'Graph .png file has been generated...'
+
         plt.show()
         
-        #plt.savefig('graph.png', facecolor=fig.get_facecolor())
-        #print 'Graph .png file has been generated...'
         return

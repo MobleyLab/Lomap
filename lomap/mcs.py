@@ -99,8 +99,17 @@ class MCS(object):
                 moli_sub = self.__moli_noh.GetSubstructMatch(self.mcs_mol) 
             else:
                 raise ValueError('RDkit MCS Subgraph first molecule search failed')
-                
-            mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
+
+
+            # GAC TEST 02/17/17
+            # mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
+
+            
+            if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
+                mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
+            else:
+                raise ValueError('RDkit MCS Subgraph search failed')
+
             
             # mcs to moli
             map_mcs_mol_to_moli_sub = zip(mcsi_sub, moli_sub)
@@ -252,10 +261,10 @@ class MCS(object):
                 
         try: # Try to sanitize the MCS molecule
             Chem.SanitizeMol(self.mcs_mol)
-        except Exception: # if not try to recover the atom aromaticity wich is 
+        except Exception: # if not, try to recover the atom aromaticity wich is 
             # important for the ring counter
             sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
-            if sanitFail: # if not the MCS is skipped
+            if sanitFail: # if not, the MCS is skipped
                 raise ValueError('Sanitization Failed...')
 
         # Mapping between the found MCS molecule and moli,  molj
@@ -281,7 +290,8 @@ class MCS(object):
         """
 
         This function is used to return a list of pairs of atom indexes generated
-        by the mapping between the two molecules used to calculate the MCS.
+        by the mapping between the two molecules used to calculate the MCS. 
+        The calculated mapping is performed without considering hydrogens 
 
         Returns
         -------
@@ -292,101 +302,123 @@ class MCS(object):
         return self.__map_moli_molj
 
 
-    def draw_molecule(self, mol, fname='mol.png'):
-      
-        """
+    @staticmethod
+    def getMapping(moli, molj, hydrogens=False, fname=None, time_out=150):
 
-        This function is used to draw a molecule. The main purpose is for debugging
-        
+        """
+        Compute the MCS between two passed molecules
+    
         Parameters
         ----------
-        mol : RDkit molecule obj 
-            the molecule to draw
-        fname : string
-            the filename used for the .png file
-        
+
+        moli : RDKit molecule object 
+            the first molecule used to perform the MCS calculation
+        molj : RDKit molecule object 
+            the second molecule used to perform the MCS calculation
+        hydrogens : bool 
+            incluse or not the hydrogens in the MCS calculation
+
+        fname : string 
+            the filename used to output a png file depicting the MCS mapping 
+
+        time_out: int
+            the max time in seconds used to compute the MCS
+
+        Returns:
+        --------
+        map_moli_molj: python list of tuple [...(i,j)...]
+            the list of tuple which contains the atom mapping indexes between 
+            the two molecules. The indexes (i,j) are resplectively related to 
+            the first (moli) and the second (molj) passed molecules 
+                 
         """
+
+        #Molecule copies
+        moli_c = Chem.Mol(moli)
+        molj_c = Chem.Mol(molj)
+                
+        if not hydrogens:
+            moli_c = AllChem.RemoveHs(moli_c)
+            molj_c = AllChem.RemoveHs(molj_c) 
+        
+                        
+        # MCS calculaton. In RDKit the MCS is a smart string. Ring atoms are 
+        # always mapped in ring atoms. 
+        mcs = rdFMCS.FindMCS([moli_c, molj_c],
+                                 timeout=time_out, 
+                                 atomCompare=rdFMCS.AtomCompare.CompareAny, 
+                                 bondCompare=rdFMCS.BondCompare.CompareAny, 
+                                 matchValences=False, 
+                                 ringMatchesRingOnly=True, 
+                                 completeRingsOnly=False, 
+                                 matchChiralTag=False)
+
+        # Checking
+        if mcs.canceled:
+            raise ValueError('Timeout! No MCS found between passed molecules')
   
-        DrawingOptions.includeAtomNumbers=True
-        AllChem.Compute2DCoords(mol)
-        Chem.Draw.MolToFile(mol,fname)
-        
-        # Useful info for debugging
-        # for at in mol.GetAtoms():
-        #     print 'atn = %d rc = %d org = %d to_molij = (%d,%d)' \
-        #         % (at.GetIdx(), int(at.GetProp('rc')),  
-        #            int(at.GetProp('org_idx')),
-        #            int(at.GetProp('to_moli')), int(at.GetProp('to_molj')))
-        return
+        if mcs.numAtoms == 0:
+            raise ValueError('No MCS was found between the molecules')
         
 
-    def draw_mcs(self, fname='mcs.png', verbose='off'):
-        """
-        
-        This function is used to draw the passed molecules and their mcs
-        The main use is for debugging
-       
-        Parameters
-        ----------
-        fname : string
-            the filename used for the .png file
-             
-        """
+        # The found MCS pattern (smart strings) is converted to a RDKit molecule
+        mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
 
-        #Copy of the molecules
-        moli_noh = Chem.Mol(self.__moli_noh)
-        molj_noh = Chem.Mol(self.__molj_noh)
-        mcs_mol = Chem.Mol(self.mcs_mol) 
-        
-        if not verbose == 'pedantic':
-            lg = RDLogger.logger()
-            lg.setLevel(RDLogger.CRITICAL)
-        
         try:
-            Chem.SanitizeMol(self.mcs_mol)
+            Chem.SanitizeMol(mcs_mol)
         except Exception: # if not try to recover the atom aromaticity wich is 
             # important for the ring counter
-            sanitFail = Chem.SanitizeMol(self.mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
+            sanitFail = Chem.SanitizeMol(mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY, catchErrors=True)
             if sanitFail: # if not the MCS is skipped
                 raise ValueError('Sanitization Failed...')
 
-        if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
-            moli_sub = moli_noh.GetSubstructMatch(mcs_mol)
+
+        # mcs indexes mapped back to the first molecule moli
+        if moli_c.HasSubstructMatch(mcs_mol):
+            moli_sub = moli_c.GetSubstructMatch(mcs_mol) 
         else:
-            raise ValueError('MCS Subgraph moli failed')
+            raise ValueError('RDkit MCS Subgraph first molecule search failed')
+        # mcs indexes mapped back to the second molecule molj
+        if molj_c.HasSubstructMatch(mcs_mol):
+            molj_sub = molj_c.GetSubstructMatch(mcs_mol)
+        else:
+            raise ValueError('RDkit MCS Subgraph second molecule search failed')
+             
             
-        if self.__molj_noh.HasSubstructMatch(self.mcs_mol):
-            molj_sub = molj_noh.GetSubstructMatch(mcs_mol)
+        if mcs_mol.HasSubstructMatch(mcs_mol):
+            mcs_sub = mcs_mol.GetSubstructMatch(mcs_mol)
         else:
-            raise ValueError('MCS Subgraph molj failed')
-
+            raise ValueError('RDkit MCS Subgraph search failed')
         
-        if self.mcs_mol.HasSubstructMatch(self.mcs_mol): 
-            mcs_sub =  self.mcs_mol.GetSubstructMatch(mcs_mol)
-        else:
-            raise ValueError('MCS Subgraph failed')
-
-        AllChem.Compute2DCoords(moli_noh)
-        AllChem.Compute2DCoords(molj_noh)
-        AllChem.Compute2DCoords(mcs_mol)
                
-        DrawingOptions.includeAtomNumbers=True
+        # Map between the two molecules
+        map_moli_to_molj = zip(moli_sub, molj_sub)
+
+        # depict the mapping by using a .png file
+        if fname:
+            AllChem.Compute2DCoords(moli_c)
+            AllChem.Compute2DCoords(molj_c)
+            AllChem.Compute2DCoords(mcs_mol)
+               
+            DrawingOptions.includeAtomNumbers=True
         
-        moli_fname='Moli'
-        molj_fname='Molj'
-        mcs_fname = 'Mcs'
+            moli_fname = 'Moli'
+            molj_fname = 'Molj'
+            mcs_fname  = 'Mcs'
 
-        img = Draw.MolsToGridImage([moli_noh, molj_noh, mcs_mol], 
-                                   molsPerRow=3, subImgSize=(400,400),
-                                   legends=[moli_fname,molj_fname,mcs_fname], 
-                                   highlightAtomLists=[moli_sub, molj_sub, mcs_sub])
+            img = Draw.MolsToGridImage([moli_c, molj_c, mcs_mol], 
+                                       molsPerRow=3, subImgSize=(400,400),
+                                       legends=[moli_fname, molj_fname,mcs_fname], 
+                                       highlightAtomLists=[moli_sub, molj_sub, mcs_sub])
 
-        img.save(fname)
+            img.save(fname)
 
-        DrawingOptions.includeAtomNumbers=False
+            DrawingOptions.includeAtomNumbers=False
 
-        return
+        return map_moli_to_molj 
 
+
+        
     ############ MCS BASED RULES ############
 
     # MCSR Rule
@@ -447,7 +479,7 @@ class MCS(object):
         nha_moli = self.moli.GetNumHeavyAtoms()
         nha_molj = self.molj.GetNumHeavyAtoms()
     
-        scr_mncar = float((nha_mcs_mol >= ths) or (nha_moli + 3) or (nha_molj + 3))
+        scr_mncar = float((nha_mcs_mol >= ths) or (nha_moli < ths + 3) or (nha_molj < ths + 3))
      
         return scr_mncar
 
@@ -522,7 +554,7 @@ class MCS(object):
                 
                 # Deleting broken ring atoms if the atom rc > 0 and the atom is not 
                 # in a ring anymore
-                mcs_conflict = [ at.GetIdx()  for at in mcs_mol.GetAtoms() if int(at.GetProp('rc')) > 0 and not at.IsInRing()]
+                mcs_conflict = [at.GetIdx()  for at in mcs_mol.GetAtoms() if int(at.GetProp('rc')) > 0 and not at.IsInRing()]
                 
                 mcs_conflict.sort(reverse=True)
 
@@ -698,24 +730,20 @@ class MCS(object):
 
 if ("__main__" == __name__) :
 
-    mola = Chem.MolFromMol2File('test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
-    molb = Chem.MolFromMol2File('test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
+    molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
+
+    mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
+
+    print mp
 
     # MCS calculation
     try:
-        MC = MCS(mola,molb)
+        MC = MCS(mola, molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
        
-    # Mapping between the passed molecules    
-    mcs_map = MC.getMap()
-    
-    print(mcs_map)
-
-    # Draw the molecules andd their MCS
-    MC.draw_mcs()
-    
-    # Rules calculations
+    # # Rules calculations
     mcsr = MC.mcsr()
     mncar =  MC.mncar()
     

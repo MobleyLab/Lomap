@@ -68,8 +68,9 @@ class DBMolecules(object):
     """
 
     # Initialization function
-    def __init__(self, directory, time=20, parallel=1, verbose='off',
-                 output=False, name='out', display=False, 
+    def __init__(self, directory, parallel=1, verbose='off',
+                 time=20, ecrscore=0.0, output=False, 
+                 name='out', display=False, 
                  max=6, cutoff=0.4): 
 
         """
@@ -79,12 +80,14 @@ class DBMolecules(object):
         ----------
         directory : str 
            the mol2 directory file name
-        time : int
-           the maximum time in seconds used to perform the MCS search
         parallel : int
            the number of cores used to generate the similarity score matrices
         verbose : bool
            verbose mode
+        time : int
+           the maximum time in seconds used to perform the MCS search
+        ecrscore: float
+           the electrostatic score to be used (if != 0) if two molecule have diffrent charges
         output : bool
            a flag used to generate or not the output files
         name : str
@@ -135,9 +138,8 @@ class DBMolecules(object):
                 display_str='--display'
 
 
-            names_str = '%s --time %s --parallel %s --verbose %s --name %s --max %s --cutoff %s %s %s'\
-                         % (directory, time, parallel, verbose, name, max, cutoff, output_str, display_str)
-
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s %s %s'\
+                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, output_str, display_str)
 
             self.options = parser.parse_args(names_str.split())
 
@@ -160,7 +162,7 @@ class DBMolecules(object):
         self.loose_mtx = SMatrix(shape=(0,))
 
         
-        # Empty pointer to the compound graph 
+        # Empty pointer to the networkx graph 
         self.Graph = nx.Graph() 
 
 
@@ -296,7 +298,6 @@ class DBMolecules(object):
                 logging.info(3*'\t.\t.\n')
             
                 
-                
             print_cnt+= 1
         
             molid_list.append(mol)
@@ -307,7 +308,7 @@ class DBMolecules(object):
     
         if mol_error_list_fn:
             logging.warning('Skipped molecules:')
-            loggign.warning(30*'-')
+            logging.warning(30*'-')
             for fn in  mol_error_list_fn:
                 logging.warning('%s'% fn)    
             print(30*'-')
@@ -408,7 +409,7 @@ class DBMolecules(object):
             ecr_score = ecr(moli, molj)
 
             # The MCS is computed just if the passed molecules have the same charges 
-            if ecr_score == 1.0:
+            if ecr_score or self.options.ecrscore:
                 try: 
                     if self.options.verbose == 'pedantic':
                         logging.info(50*'-')
@@ -424,7 +425,11 @@ class DBMolecules(object):
                     continue
             else:
                 continue
-
+                
+            if ecr_score == 0.0 and self.options.ecrscore:
+                logging.critical('WARNING: Mutation between different charge molecules is enabled')
+                ecr_score = self.options.ecrscore
+            
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
@@ -496,7 +501,7 @@ class DBMolecules(object):
                 else:
                     j = l - 1
 
-                print(i,j)
+                #print(i,j)
 
                 # Python multiprocessing allocation
                 p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx))
@@ -511,6 +516,8 @@ class DBMolecules(object):
             self.loose_mtx[:] = loose_mtx[:]
             
         return (self.strict_mtx, self.loose_mtx)
+
+
 
     def build_graph(self):
         """
@@ -820,6 +827,7 @@ class Molecule(object):
         """
         return self.__ID
 
+
     
     def getMolecule(self):
         """
@@ -864,7 +872,7 @@ class check_dir(argparse.Action):
             raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
     
 # Class used to check the parallel, time and max user options
-class check_int(argparse.Action):
+class check_pos(argparse.Action):
     def __call__(self, parser, namespace, value, option_string=None):
         if value < 1:
             raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
@@ -872,11 +880,19 @@ class check_int(argparse.Action):
 
 
 # Class used to check the cutoff user option
-class check_float(argparse.Action):
+class check_cutoff(argparse.Action):
     def __call__(self, parser, namespace, value, option_string=None):
-        if not isinstance(value, float) or value < 0:
+        if not isinstance(value, float) or value < 0.0:
             raise argparse.ArgumentTypeError('%s is not a positive real number' % value)
         setattr(namespace, self.dest, value)
+
+# Class used to check the handicap user option
+class check_ecrscore(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if not isinstance(value, float) or value < 0.0 or value > 1.0:
+            raise argparse.ArgumentTypeError('%s is not a real number in the range [0.0, 1.0]' % value)
+        setattr(namespace, self.dest, value)
+
 
 
 
@@ -909,12 +925,19 @@ def startup():
 parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A program to plan alchemical relative binding affinity calculations', prog='LOMAPv1.0')
 parser.add_argument('directory', action=check_dir,\
                     help='The mol2 file directory')
-parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
-                    help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
-parser.add_argument('-p', '--parallel', default=1, action=check_int,type=int,\
+# parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
+#                     help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
+parser.add_argument('-p', '--parallel', default=1, action=check_pos, type=int,\
                     help='Set the parallel mode. If an integer number N is specified, N processes will be executed to build the similarity matrices')
 parser.add_argument('-v', '--verbose', default='info', type=str,\
                     choices=['off', 'info', 'pedantic'], help='verbose mode selection')
+
+
+mcs_group = parser.add_argument_group('MCS setting')
+mcs_group.add_argument('-t', '--time', default=20, action=check_pos, type=int,\
+                    help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
+mcs_group.add_argument('-e', '--ecrscore', default=0.0, action=check_ecrscore, type=float,\
+                    help='If different from 0.0 the value is use to set the electrostatic score between two molecules with different charges')
 
 
 out_group = parser.add_argument_group('Output setting')
@@ -927,9 +950,9 @@ parser.add_argument('-d', '--display', default=False, action='store_true',\
                     help='Display the generated graph by using Matplotlib')
     
 graph_group = parser.add_argument_group('Graph setting')
-graph_group.add_argument('-m', '--max', default=6, action=check_int ,type=int,\
+graph_group.add_argument('-m', '--max', default=6, action=check_pos ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
-graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_float, type=float,\
+graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_cutoff, type=float,\
                          help='The Minimum Similariry Score (MSS) used to build the graph')
 
 #------------------------------------------------------------------
