@@ -32,7 +32,7 @@ setup(
     version              = '0.0.0', 
     description          = 'Lead Optimization Mapper 2',
     long_description     = descr,
-    url                  = 'https://github.com/nividic/Lomap',
+    url                  = 'https://github.com/MobleyLab/Lomap',
     author               = 'Gaetano Calabro and David Mobley',
     author_email         = 'gcalabro -at- uci.edu',
     license              = 'LGPL',
