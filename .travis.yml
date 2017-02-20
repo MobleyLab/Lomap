@@ -21,7 +21,8 @@ script:
   - conda create -n _test --yes
   - source activate _test
   - conda install --use-local lomap --yes
-  - conda install --yes --quiet pip nose nose-timer
+  - conda install --yes pip nose
+  - pip install nose-timer
   - ls
   - nosetests -v
 
