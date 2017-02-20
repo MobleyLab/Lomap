@@ -18,6 +18,9 @@ install: true
 script: 
   - conda config --add channels ${ORGNAME}
   - conda build devtools/conda-recipe 
+  - conda create -n _test --yes
+  - source activate _test
+  - conda install lomap
   - conda install --yes --quiet pip nose nose-timer
   - nosetests -v
 
