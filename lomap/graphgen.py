@@ -712,14 +712,16 @@ class GraphGen(object):
 
         directory_name = tempfile.mkdtemp()
 
-        if nx.number_of_nodes(self.resultGraph) <= self.max_images:
+        temp_graph = self.resultGraph.copy()
+
+        if nx.number_of_nodes(temp_graph) <= self.max_images:
             
             #Draw.DrawingOptions.atomLabelFontSize=30
             #Draw.DrawingOptions.dotsPerAngstrom=100            
             
-            for n in self.resultGraph:
+            for n in temp_graph:
 
-                id_mol = self.resultGraph.node[n]['ID']
+                id_mol = temp_graph.node[n]['ID']
                 mol = self.dbase[id_mol].getMolecule()
                 max_dist = max_dist_mol(mol)
 
@@ -733,25 +735,25 @@ class GraphGen(object):
                     
                     Draw.MolToFile(mol, fname, size=(100,100), fitimage=True, imageType='png' )
                     
-                    self.resultGraph.node[n]['image'] = fname
+                    temp_graph.node[n]['image'] = fname
                     #self.resultGraph.node[n]['label'] = ''
-                    self.resultGraph.node[n]['labelloc'] = 't'
+                    temp_graph.node[n]['labelloc'] = 't'
                     #self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
 
 
-        for u,v,d in self.resultGraph.edges(data=True):
+        for u,v,d in temp_graph.edges(data=True):
             if d['strict_flag']==True:
-                self.resultGraph[u][v]['color'] = 'green'
+                temp_graph[u][v]['color'] = 'green'
             else:
-                self.resultGraph[u][v]['color'] = 'red'
+                temp_graph[u][v]['color'] = 'red'
 
         
-        nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
+        nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name+'_tmp.dot')
         
-        cmd = 'dot -Tpng ' + self.dbase.options.name + '.dot -o ' + self.dbase.options.name + '.png' 
+        cmd = 'dot -Tpng ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.png' 
            
         os.system(cmd)
-        
+        os.remove(self.dbase.options.name+'_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
 
         
@@ -773,6 +775,7 @@ class GraphGen(object):
  
         try:
             self.generate_depictions()
+            nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
         except Exception as e:
             raise IOError('Problems during the file generation: %s' % str(e)) 
              
@@ -836,9 +839,8 @@ class GraphGen(object):
         
         ax = plt.subplot(111)
         plt.axis('off')
-        
+            
         pos=nx.nx_agraph.graphviz_layout( self.resultGraph, prog="neato")
-
         
         strict_edges = [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == True]
         loose_edges =  [(u,v) for (u,v,d) in self.resultGraph.edges(data=True) if d['strict_flag'] == False]
