@@ -118,7 +118,7 @@ class DBMolecules(object):
             self.options = parser.parse_args()
             
         else:
-            
+
             if not isinstance(output, bool):
                 raise TypeError('The output flag is not a bool type')
 
@@ -901,7 +901,7 @@ def startup():
     ops= parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
-    db_mol = DBMolecules(ops.directory, ops.time, ops.parallel, ops.verbose, 
+    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, 
                         ops.output, ops.name, ops.display, ops.max, ops.cutoff) 
 
    
