@@ -19,7 +19,7 @@ requirements:
     - setuptools
     - rdkit
     - matplotlib
-    - pyqt
+    - pyqt ==5.6.0
     - networkx >=1.11
     - graphviz
     - pygraphviz
@@ -31,7 +31,7 @@ requirements:
     - boost ==1.56
     - rdkit 
     - matplotlib
-    - pyqt
+    - pyqt ==5.6.0
     - networkx
     - graphviz
     - pygraphviz

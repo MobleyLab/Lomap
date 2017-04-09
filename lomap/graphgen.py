@@ -55,7 +55,7 @@ from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 import os.path
 import logging
-from PyQt4 import QtGui
+from PyQt5 import QtGui
 import tempfile
 import shutil
 
