@@ -23,7 +23,7 @@ requirements:
     - networkx >=1.11
     - graphviz
     - pygraphviz
-    - pil
+    - pillow
     - nose
 
   run:
