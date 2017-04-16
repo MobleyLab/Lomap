@@ -17,7 +17,7 @@ install: true
 
 script: 
   - conda config --add channels ${ORGNAME}
-  - conda build devtools/conda-recipe 
+  - conda build --no-build-id devtools/conda-recipe 
   - conda create -n _test --yes
   - source activate _test
   - conda install --use-local lomap --yes
