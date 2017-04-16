@@ -15,11 +15,11 @@ build:
 requirements:
   build:
     - python
-    - boost ==1.56
+    - boost
     - setuptools
     - rdkit
     - matplotlib
-    - pyqt ==4.11.4
+    - pyqt
     - networkx >=1.11
     - graphviz
     - pygraphviz
@@ -28,10 +28,10 @@ requirements:
 
   run:
     - python
-    - boost ==1.56
+    - boost
     - rdkit 
     - matplotlib
-    - pyqt ==4.11.4
+    - pyqt
     - networkx
     - graphviz
     - pygraphviz
