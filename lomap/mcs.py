@@ -735,7 +735,7 @@ if ("__main__" == __name__) :
 
     mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
 
-    print mp
+    print(mp)
 
     # MCS calculation
     try:
