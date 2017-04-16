@@ -34,7 +34,7 @@ requirements:
     - networkx
     - graphviz
     - pygraphviz
-    - pil
+    - pillow
 
 test:
   requires:
