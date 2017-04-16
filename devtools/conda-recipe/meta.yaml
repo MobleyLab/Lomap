@@ -18,7 +18,7 @@ requirements:
     - setuptools
     - rdkit
     - matplotlib
-    - pyqt
+    - pyqt ==4.11.4
     - networkx
     - graphviz
     - pygraphviz
