@@ -28,7 +28,7 @@ script:
 env:
   matrix:
     - CONDA_PY=27
-
+    - CONDA_PY=34
 
   global:
     - ORGNAME="nividic"
