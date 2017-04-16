@@ -10,7 +10,6 @@ build:
   number: 0
   skip:
     - [not unix]
-    - [py3k]
 
 requirements:
   build:
@@ -20,7 +19,7 @@ requirements:
     - rdkit
     - matplotlib
     - pyqt
-    - networkx >=1.11
+    - networkx
     - graphviz
     - pygraphviz
     - pillow
