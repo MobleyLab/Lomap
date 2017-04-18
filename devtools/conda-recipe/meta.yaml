@@ -44,7 +44,8 @@ test:
   commands:
    - which lomap
    - lomap -h
-
+   - nosetests -v
+   
 about:
   home: https://github.com/MobleyLab/Lomap
   license: LGPL
