@@ -42,6 +42,16 @@ and then:
 
 conda install lomap
 
+or
+
+Add to the conda channels:
+
+conda config --add channels mobleylab
+
+and then:
+
+conda install lomap
+
 
 Usage
 -----
