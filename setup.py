@@ -23,23 +23,23 @@ if sys.version_info[:2] < (2, 7):
 
 descr = """
 The Lead Optimization Mapper (LOMAP) is an automated algorithm
-to plan efficient relative free energy calculations between  
+to plan efficient relative free energy calculations between
 potential ligands within a substantial of compounds'
 """
 
 setup(
-    name                 = 'lomap', 
-    version              = '0.0.0', 
+    name                 = 'lomap',
+    version              = '0.0.0',
     description          = 'Lead Optimization Mapper 2',
     long_description     = descr,
     url                  = 'https://github.com/MobleyLab/Lomap',
     author               = 'Gaetano Calabro and David Mobley',
     author_email         = 'gcalabro -at- uci.edu',
-    license              = 'LGPL',
+    license              = 'MIT',
     platforms            = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
     packages             = find_packages()+['test'],
     include_package_data = True,
-      
+
     entry_points         = {'console_scripts':['lomap=lomap.dbmol:startup']},
     zip_safe             = False
 )
