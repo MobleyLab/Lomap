@@ -92,6 +92,11 @@ class GraphGen(object):
 
         self.similarityScoresLimit = dbase.options.cutoff
        
+        #sliu 07/17 add radial option of graphing
+        if dbase.options.radial:
+            self.lead_index = self.pick_lead()
+        else:
+            self.lead_index = None
         # A set of nodes that will be used to save nodes that are not a cycle cover for a given subgraph
         self.nonCycleNodesSet = set()
 
@@ -106,7 +111,8 @@ class GraphGen(object):
         self.max_nodes = 100
 
         # The maximum threshold distance in A unit used to select if a molecule is depicted
-        self.max_mol_size = 11.0
+        #sliu 07/17 switch to a larger size
+        self.max_mol_size = 50.0
         
 
         self.edge_labels = False
@@ -166,6 +172,31 @@ class GraphGen(object):
 
         return
 
+    #sliu 07/17 add function to pick the lead compounds for the radial graphing option
+    def pick_lead(self):
+        if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
+            raise ValueError("There are errors in the similarity score matrices")
+        if self.dbase.options.bias:
+            #bias radial option
+            biased_index = None
+            for i in range(0, self.dbase.nums()):
+                if os.path.basename(self.dbase[i].getName()) == self.dbase.options.bias:
+                    biased_index = i
+            if not biased_index:
+                logging.info("Warning: the specified center ligand %s is not in the ligand database, will not use the radial option."%self.dbase.options.bias)
+            return biased_index
+        else:
+            #complete radial option
+            all_sum_i = []
+            for i in range(0, self.dbase.nums()):
+                sum_i = 0
+                for j in range(0, self.dbase.nums()):
+                    sum_i += self.dbase.strict_mtx[i,j]
+                all_sum_i.append(sum_i)
+            max_value = max(all_sum_i)
+            max_index = [i for i, x in enumerate(all_sum_i) if x == max_value]
+            max_index_final = max_index[0]
+            return max_index_final
 
     def generateInitialSubgraphList(self):
         
@@ -200,7 +231,6 @@ class GraphGen(object):
                 
                 if wgt > 0.0:
                     compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True)
-        
 
         initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
         initialSubgraphList = [x for x in initialSubgraphGen]
@@ -332,12 +362,16 @@ class GraphGen(object):
             if len(subgraph.edges()) > 2:   # Graphs must have at least 3 edges to be minimzed
 
                 for edge in weightsList:
-
-                    subgraph.remove_edge(edge[0], edge[1])
-
-                    if self.checkConstraints(subgraph, numberOfComponents) == False:
-                        subgraph.add_edge(edge[0], edge[1], similarity = edge[2], strict_flag = True)
-
+                    #sliu 07/17 add radial option here to avoid removing edges connect to the lead compound
+                    if self.lead_index:
+                        if self.lead_index not in [edge[0], edge[1]]:
+                            subgraph.remove_edge(edge[0], edge[1])
+                            if self.checkConstraints(subgraph, numberOfComponents) == False:
+                                subgraph.add_edge(edge[0], edge[1], similarity = edge[2], strict_flag = True)
+                    else:
+                        subgraph.remove_edge(edge[0], edge[1])
+                        if self.checkConstraints(subgraph, numberOfComponents) == False:
+                            subgraph.add_edge(edge[0], edge[1], similarity = edge[2], strict_flag = True)
                 
 
     def findNonCyclicNodes(self, subgraph):
@@ -726,21 +760,22 @@ class GraphGen(object):
                 max_dist = max_dist_mol(mol)
 
                 if max_dist < self.max_mol_size:
-                    
-                    mol = AllChem.RemoveHs(mol)
-        
-                    AllChem.Compute2DCoords(mol)
-                
                     fname = os.path.join(directory_name, self.dbase[id_mol].getName() + ".png")
-                    
-                    Draw.MolToFile(mol, fname, size=(100,100), fitimage=True, imageType='png' )
-                    
+                    #sliu 07/17 
+                    #1, modify here to calculate the 2D structure for ligands cannot remove Hs by rdkit
+                    #2, change the graph size to get better resolution            
+                    try:
+                        mol = AllChem.RemoveHs(mol)
+                        AllChem.Compute2DCoords(mol)
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
+                    except:
+                        logging.info("This molecule %s has trouble to remove Hs using rdkit"%self.dbase[id_mol].getName())
+                        AllChem.Compute2DCoords(mol)
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
                     temp_graph.node[n]['image'] = fname
                     #self.resultGraph.node[n]['label'] = ''
                     temp_graph.node[n]['labelloc'] = 't'
                     #self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
-
-
         for u,v,d in temp_graph.edges(data=True):
             if d['strict_flag']==True:
                 temp_graph[u][v]['color'] = 'green'
@@ -755,8 +790,32 @@ class GraphGen(object):
         os.system(cmd)
         os.remove(self.dbase.options.name+'_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
-
-        
+    #sliu 07/27 add function to output the score and connectivity txt file
+    def layout_info(self):
+        info_txt = open(self.dbase.options.name+"_score_with_connection.txt", "w")
+        all_key_id = self.dbase.dic_mapping.keys()
+        data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n"%("Index_1", "Index_2","Filename_1","Filename_2", "Erc_sim","Str_sim", "Loose_sim", "Connect")]
+        for i in range (len(all_key_id)-1):
+            for j in range(i+1, len(all_key_id)):
+                connected = False
+                try:
+                    similarity = self.resultGraph.edge[i][j]['similarity']
+                    #print "Check the similarity", similarity
+                    connected = True
+                except:
+                    pass
+                Filename_i = self.dbase.dic_mapping[i]
+                Filename_j = self.dbase.dic_mapping[j]
+                #print "Check the filename", Filename_i, Filename_j
+                strict_similarity = self.dbase.strict_mtx[i,j]
+                loose_similarity = self.dbase.loose_mtx[i,j]
+                erc_similarity = self.dbase.erc_mtx[i,j]
+                if connected:
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, erc_similarity, strict_similarity, loose_similarity, "Yes")
+                else:
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, erc_similarity, strict_similarity, loose_similarity, "No")
+                data.append(new_line)
+        info_txt.writelines(data)
 
     def writeGraph(self):
         """
@@ -770,12 +829,15 @@ class GraphGen(object):
 
         try:
             self.dbase.write_dic()
+            #sliu 07/17 add layout_info function
+            self.layout_info()
         except Exception as e:
             raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
  
         try:
             self.generate_depictions()
             nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
+            #print "Check the number of nodes %s"%(nx.number_of_nodes(self.resultGraph))
         except Exception as e:
             raise IOError('Problems during the file generation: %s' % str(e)) 
              
@@ -901,15 +963,23 @@ class GraphGen(object):
             for each_node in self.resultGraph:
                 
                 id_mol = self.resultGraph.node[each_node]['ID']
-                mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
+                #sliu 07/17 skip remove Hs by rdkit if Hs cannot be removed
+                try:
+                    mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
+                except:
+                    mol = self.dbase[id_mol].getMolecule()
             
                 # max_dist = max_dist_mol(mol)
                 # if max_dist > 7.0:
                 #     continue
 
                 AllChem.Compute2DCoords(mol)
-                
-                img_mol = Draw.MolToImage(mol,mol_size)
+                #sliu 07/17 add try exception for cases cannot be draw
+                try:
+                    img_mol = Draw.MolToImage(mol,mol_size, kekulize = False)
+                except Exception as ex:
+                    img_mol = None
+                    logging.exception("This mol cannot be draw")
                             
                 xx, yy = trans(pos[each_node])
                 xa, ya = trans2((xx,yy))
