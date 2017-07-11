@@ -47,6 +47,8 @@ from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
+from rdkit import DataStructs
+from rdkit.Chem.Fingerprints import FingerprintMols
 import sys
 import math
 from rdkit import RDLogger
@@ -422,6 +424,12 @@ class MCS(object):
     ############ MCS BASED RULES ############
 
     # MCSR Rule
+    #sliu 0/17 add function to calculate tanimoto
+    def mtansr(self,):
+        fps_moli = FingerprintMols.FingerprintMol(self.moli)
+        fps_molj = FingerprintMols.FingerprintMol(self.molj)
+        scr_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
+        return scr_tan
     def mcsr(self, beta=0.1):
         
         """
@@ -733,7 +741,8 @@ if ("__main__" == __name__) :
     mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
     molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
 
-    mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
+    #mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
+    mp = MCS.getMapping(mola,molb, hydrogens=True, fname='mcs.png')
 
     print(mp)
 
