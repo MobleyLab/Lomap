@@ -741,8 +741,7 @@ if ("__main__" == __name__) :
     mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
     molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
 
-    #mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
-    mp = MCS.getMapping(mola,molb, hydrogens=True, fname='mcs.png')
+    mp = MCS.getMapping(mola,molb, hydrogens=False, fname='mcs.png')
 
     print(mp)
 
