@@ -363,7 +363,7 @@ class GraphGen(object):
 
                 for edge in weightsList:
                     #sliu 07/17 add radial option here to avoid removing edges connect to the lead compound
-                    if self.lead_index:
+                    if self.lead_index is not None:
                         if self.lead_index not in [edge[0], edge[1]]:
                             subgraph.remove_edge(edge[0], edge[1])
                             if self.checkConstraints(subgraph, numberOfComponents) == False:
