@@ -182,7 +182,7 @@ class GraphGen(object):
             for i in range(0, self.dbase.nums()):
                 if os.path.basename(self.dbase[i].getName()) == self.dbase.options.bias:
                     biased_index = i
-            if not biased_index:
+            if biased_index is None:
                 logging.info("Warning: the specified center ligand %s is not in the ligand database, will not use the radial option."%self.dbase.options.bias)
             return biased_index
         else:
