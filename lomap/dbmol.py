@@ -326,7 +326,7 @@ class DBMolecules(object):
         
 
         
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, erc_mtx):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx):
         """
         Compute a chunk of the similariry score matrices. The chunk is selected 
         by the start index a and the final index b. The matrices are indeed 
@@ -347,6 +347,11 @@ class DBMolecules(object):
 
         loose_mtx: python multiprocessing array
            loose similarity score matrix. This array is used as shared memory 
+           array managed by the different allocated processes. Each process 
+           operates on a separate chunk selected by the indexes a and b
+
+        ecr_mtx: python multiprocessing array
+           EleCtrostatic Rule (ECR) score matrix. This array is used as shared memory 
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 
@@ -447,7 +452,7 @@ class DBMolecules(object):
             #tanimoto = MC.mtansr()
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
-            erc_mtx[k] = ecr_score
+            ecr_mtx[k] = ecr_score
     
         return
 
@@ -466,13 +471,13 @@ class DBMolecules(object):
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
         #sliu 07/17 add this to output information about ligand charges
-        self.erc_mtx = SMatrix(shape=(self.nums(),))
+        self.ecr_mtx = SMatrix(shape=(self.nums(),))
         # The total number of the effective elements present in the symmetric matrix
         l = int(self.nums()*(self.nums() - 1)/2)
 
         
         if self.options.parallel == 1: # Serial execution
-            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.erc_mtx)
+            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.ecr_mtx)
         else: # Parallel execution
             
             logging.info('Parallel mode is on')
@@ -491,7 +496,7 @@ class DBMolecules(object):
             # Shared memory array used by the different allocated processes
             strict_mtx = multiprocessing.Array('d', self.strict_mtx)
             loose_mtx =  multiprocessing.Array('d', self.loose_mtx)
-            erc_mtx =  multiprocessing.Array('d', self.erc_mtx)
+            ecr_mtx =  multiprocessing.Array('d', self.ecr_mtx)
 
             # Chopping the indexes ridistribuiting the remainder
             for k in range(0, kmax):
@@ -511,7 +516,7 @@ class DBMolecules(object):
                 #print(i,j)
 
                 # Python multiprocessing allocation
-                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, erc_mtx))
+                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, ecr_mtx))
                 p.start()
                 proc.append(p)
             # End parallel execution        

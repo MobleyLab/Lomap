@@ -62,6 +62,13 @@ import lomap
 
 db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True)
 
+    #More graphing options:
+    # Use the complete radial graph option. The radial center (lead compound) is automatically picked by the structure similarity: the ligand shared the most structural similarity with others will be picked as lead compounds
+    db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, radial=True)
+
+    # Use the biased radial graph option. The radial center (lead compound) will be the filename specified by user.  
+    db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, radial=True, bias="python string pointing to the mol2 filename")
+
 # Calculate the similarity matrix betweeen the database molecules. Two molecules are generated
 # related to the scrict rule and loose rule 
 

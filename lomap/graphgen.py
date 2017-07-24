@@ -176,7 +176,7 @@ class GraphGen(object):
     def pick_lead(self):
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
-        if self.dbase.options.bias:
+        if not self.dbase.options.bias == "None":
             #bias radial option
             biased_index = None
             for i in range(0, self.dbase.nums()):
@@ -809,11 +809,11 @@ class GraphGen(object):
                 #print "Check the filename", Filename_i, Filename_j
                 strict_similarity = self.dbase.strict_mtx[i,j]
                 loose_similarity = self.dbase.loose_mtx[i,j]
-                erc_similarity = self.dbase.erc_mtx[i,j]
+                ecr_similarity = self.dbase.ecr_mtx[i,j]
                 if connected:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, erc_similarity, strict_similarity, loose_similarity, "Yes")
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes")
                 else:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, erc_similarity, strict_similarity, loose_similarity, "No")
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No")
                 data.append(new_line)
         info_txt.writelines(data)
 
