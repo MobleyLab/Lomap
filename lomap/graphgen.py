@@ -92,7 +92,6 @@ class GraphGen(object):
 
         self.similarityScoresLimit = dbase.options.cutoff
        
-        #sliu 07/17 add radial option of graphing
         if dbase.options.radial:
             self.lead_index = self.pick_lead()
         else:
@@ -110,8 +109,7 @@ class GraphGen(object):
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
 
-        # The maximum threshold distance in A unit used to select if a molecule is depicted
-        #sliu 07/17 switch to a larger size
+        # The maximum threshold distance in angstroms unit used to select if a molecule is depicted
         self.max_mol_size = 50.0
         
 
@@ -172,21 +170,20 @@ class GraphGen(object):
 
         return
 
-    #sliu 07/17 add function to pick the lead compounds for the radial graphing option
     def pick_lead(self):
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
-        if not self.dbase.options.bias == "None":
-            #bias radial option
-            biased_index = None
+        if not self.dbase.options.hub == "None":
+            #hub radial option. Use the provided reference compound as a hub 
+            hub_index = None
             for i in range(0, self.dbase.nums()):
-                if os.path.basename(self.dbase[i].getName()) == self.dbase.options.bias:
-                    biased_index = i
-            if biased_index is None:
-                logging.info("Warning: the specified center ligand %s is not in the ligand database, will not use the radial option."%self.dbase.options.bias)
-            return biased_index
+                if os.path.basename(self.dbase[i].getName()) == self.dbase.options.hub:
+                    hub_index = i
+            if hub_index is None:
+                logging.info("Warning: the specified center ligand %s is not in the ligand database, will not use the radial option."%self.dbase.options.hub)
+            return hub_index
         else:
-            #complete radial option
+            #complete radial option. Pick the compound with the highest total similarity to all other compounds to use as a hub
             all_sum_i = []
             for i in range(0, self.dbase.nums()):
                 sum_i = 0
@@ -362,8 +359,8 @@ class GraphGen(object):
             if len(subgraph.edges()) > 2:   # Graphs must have at least 3 edges to be minimzed
 
                 for edge in weightsList:
-                    #sliu 07/17 add radial option here to avoid removing edges connect to the lead compound
                     if self.lead_index is not None:
+                        #Here the radial option is appplied, will check if the remove_edge is connect to the hub(lead) compound, if the edge is connected to the lead compound, then add it back into the graph. 
                         if self.lead_index not in [edge[0], edge[1]]:
                             subgraph.remove_edge(edge[0], edge[1])
                             if self.checkConstraints(subgraph, numberOfComponents) == False:
@@ -761,15 +758,15 @@ class GraphGen(object):
 
                 if max_dist < self.max_mol_size:
                     fname = os.path.join(directory_name, self.dbase[id_mol].getName() + ".png")
-                    #sliu 07/17 
-                    #1, modify here to calculate the 2D structure for ligands cannot remove Hs by rdkit
+                    #1, modify here to calculate the 2D structure for ligands cannot remove Hydrogens by rdkit
                     #2, change the graph size to get better resolution            
                     try:
                         mol = AllChem.RemoveHs(mol)
                         AllChem.Compute2DCoords(mol)
                         Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
                     except:
-                        logging.info("This molecule %s has trouble to remove Hs using rdkit"%self.dbase[id_mol].getName())
+                        ######need to ask RDKit to fix this if possible, see the code issue tracker for more details######
+                        logging.info("Error attempting to remove hydrogens for molecule %s using RDKit. RDKit cannot kekulize the molecule"%self.dbase[id_mol].getName())
                         AllChem.Compute2DCoords(mol)
                         Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
                     temp_graph.node[n]['image'] = fname
@@ -790,7 +787,7 @@ class GraphGen(object):
         os.system(cmd)
         os.remove(self.dbase.options.name+'_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
-    #sliu 07/27 add function to output the score and connectivity txt file
+    #The function to output the score and connectivity txt file
     def layout_info(self):
         info_txt = open(self.dbase.options.name+"_score_with_connection.txt", "w")
         all_key_id = self.dbase.dic_mapping.keys()
@@ -829,7 +826,6 @@ class GraphGen(object):
 
         try:
             self.dbase.write_dic()
-            #sliu 07/17 add layout_info function
             self.layout_info()
         except Exception as e:
             raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
@@ -837,7 +833,6 @@ class GraphGen(object):
         try:
             self.generate_depictions()
             nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name+'.dot')
-            #print "Check the number of nodes %s"%(nx.number_of_nodes(self.resultGraph))
         except Exception as e:
             raise IOError('Problems during the file generation: %s' % str(e)) 
              
@@ -963,23 +958,25 @@ class GraphGen(object):
             for each_node in self.resultGraph:
                 
                 id_mol = self.resultGraph.node[each_node]['ID']
-                #sliu 07/17 skip remove Hs by rdkit if Hs cannot be removed
+                #skip remove Hs by rdkit if Hs cannot be removed
                 try:
                     mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
                 except:
+                    ######need to ask RDKit to fix this if possible, see the code issue tracker for more details######
                     mol = self.dbase[id_mol].getMolecule()
+                    logging.info("Error attempting to remove hydrogens for molecule %s using RDKit. RDKit cannot kekulize the molecule"%self.dbase[id_mol].getName())
             
                 # max_dist = max_dist_mol(mol)
                 # if max_dist > 7.0:
                 #     continue
 
                 AllChem.Compute2DCoords(mol)
-                #sliu 07/17 add try exception for cases cannot be draw
+                #add try exception for cases cannot be draw
                 try:
                     img_mol = Draw.MolToImage(mol,mol_size, kekulize = False)
                 except Exception as ex:
                     img_mol = None
-                    logging.exception("This mol cannot be draw")
+                    logging.exception("This mol cannot be draw using the RDKit Draw function, need to check for more details...")
                             
                 xx, yy = trans(pos[each_node])
                 xa, ya = trans2((xx,yy))

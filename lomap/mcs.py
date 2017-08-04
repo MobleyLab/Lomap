@@ -424,8 +424,16 @@ class MCS(object):
     ############ MCS BASED RULES ############
 
     # MCSR Rule
-    #sliu 0/17 add function to calculate tanimoto
+    #the mtansr method is not used but be retained here in case need to use in the future.
     def mtansr(self,):
+        """
+        This rule computes the structural similarity between the two passed molecules 
+        using the tanimoto score. 
+        Returns
+        -------
+        scr_tan : float
+            the rule score
+        """
         fps_moli = FingerprintMols.FingerprintMol(self.moli)
         fps_molj = FingerprintMols.FingerprintMol(self.molj)
         scr_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)

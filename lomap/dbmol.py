@@ -68,11 +68,10 @@ class DBMolecules(object):
     """
 
     # Initialization function
-    #sliu 07/17 add the radial graph option
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, output=False, 
                  name='out', display=False, 
-                 max=6, cutoff=0.4, radial=False, bias=None): 
+                 max=6, cutoff=0.4, radial=False, hub=None): 
 
         """
         Initialization of  the Molecule Database Class
@@ -127,7 +126,7 @@ class DBMolecules(object):
                 raise TypeError('The display flag is not a bool type')
 
             if not isinstance(radial,  bool):
-                raise TypeError('The display flag is not a bool type')
+                raise TypeError('The radial flag is not a bool type')
             output_str=''
             display_str=''
             radial_str=''
@@ -145,8 +144,8 @@ class DBMolecules(object):
             if radial:
                 radial_str='--radial'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --bias %s %s %s %s'\
-                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, bias, output_str, display_str, radial_str)
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s'\
+                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str, radial_str)
 
             self.options = parser.parse_args(names_str.split())
 
@@ -391,7 +390,6 @@ class DBMolecules(object):
             
             for atom in mol_j.GetAtoms():
                 total_charge_mol_j += float(atom.GetProp('_TriposPartialCharge'))
-            #sliu 07/17 change to a loose threshold
             if abs(total_charge_mol_j - total_charge_mol_i) < 1e-2:
                 scr_ecr = 1.0
             else:
@@ -449,7 +447,6 @@ class DBMolecules(object):
             tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
             strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
             loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
-            #tanimoto = MC.mtansr()
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
             ecr_mtx[k] = ecr_score
@@ -470,7 +467,6 @@ class DBMolecules(object):
         # which implements a basic class for symmetric matrices
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
-        #sliu 07/17 add this to output information about ligand charges
         self.ecr_mtx = SMatrix(shape=(self.nums(),))
         # The total number of the effective elements present in the symmetric matrix
         l = int(self.nums()*(self.nums() - 1)/2)
@@ -545,7 +541,6 @@ class DBMolecules(object):
         if self.options.output:
             try:
                 Gr.writeGraph()
-                #sliu 07/17 change here to output the object as pickle file
                 pickle_f = open(self.options.name+".pickle", "w")
                 pickle.dump(Gr, pickle_f)
             except Exception as e:
@@ -915,9 +910,8 @@ def startup():
     ops= parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
-    #sliu 07/17 change to add the radial option
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
-                        ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.bias)
+                        ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub)
     # Similarity score linear array generation
     strict, loose =  db_mol.build_matrices()
     
@@ -967,11 +961,10 @@ graph_group.add_argument('-m', '--max', default=6, action=check_pos ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
 graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_cutoff, type=float,\
                          help='The Minimum Similariry Score (MSS) used to build the graph')
-#sliu 07/17 add radial option
 graph_group.add_argument('-r', '--radial', default=False, action='store_true',\
                          help='Using the radial option to build the graph')
-graph_group.add_argument('-b', '--bias', default= None , action=check_pos, type=str,\
-                         help='Using the specific ligand file as the center ligand in the radial option')
+graph_group.add_argument('-b', '--hub', default= None , action=check_pos, type=str,\
+                         help='Using a radial graph approach with a manually specified hub compound')
 
 #------------------------------------------------------------------
 
