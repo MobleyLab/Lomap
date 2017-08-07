@@ -91,7 +91,7 @@ class TestLomap(unittest.TestCase):
         
         strict,loose = db.build_matrices()
         graph = db.build_graph()
-        
+       
         self.assertRaises(IOError, nx.nx_agraph.write_dot, graph, '/check.dot') 
 
         mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
@@ -137,7 +137,7 @@ class TestLomap(unittest.TestCase):
 
     #check the radial hub graph option 
     @skipIf(not GR_COMP, 'The graph test has been skipped untill a bug in the graph generation between py2 and py3 will be fixed')
-    def test_graph_radial(self):
+    def test_graph_radial_hub(self):
 
         db = DBMolecules('test/radial/', radial = True, hub="ejm_46.mol2")
         
