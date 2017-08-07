@@ -904,7 +904,6 @@ class check_ecrscore(argparse.Action):
 
 
 
-
 def startup():
     # Options and arguments passed by the user
     ops= parser.parse_args()
@@ -963,7 +962,7 @@ graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_cutoff, ty
                          help='The Minimum Similariry Score (MSS) used to build the graph')
 graph_group.add_argument('-r', '--radial', default=False, action='store_true',\
                          help='Using the radial option to build the graph')
-graph_group.add_argument('-b', '--hub', default= None , action=check_pos, type=str,\
+graph_group.add_argument('-b', '--hub', default= None , type=str,\
                          help='Using a radial graph approach with a manually specified hub compound')
 
 #------------------------------------------------------------------
