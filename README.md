@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=master)](https://travis-ci.org/MobleyLab/Lomap)
 
-
 # Lomap
 Alchemical free energy calculations hold increasing promise 
 as an aid to drug discovery efforts. However, applications of 
