@@ -25,7 +25,7 @@ if py_ver < 3:
 class TestLomap(unittest.TestCase):
     
     def setUp(self):
-        self.inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0 ,name='out', display=False, max=6, cutoff=0.4)
+        self.inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0 ,name='out', display=False, max=6, cutoff=0.4, radial=False, hub=None)
     
     # Test class Inizialitazion
 
@@ -44,6 +44,7 @@ class TestLomap(unittest.TestCase):
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', ecrscore=-1.5)
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', ecrscore=2.0)
         self.assertRaises(TypeError, self.inst.__init__, 'test/basic', output=-5.0)
+        self.assertRaises(TypeError, self.inst.__init__, 'test/basic', radial=-5.0)
         self.assertRaises(TypeError, self.inst.__init__, 'test/basic', display=-5.0)
         self.assertRaises(argparse.ArgumentTypeError, self.inst.__init__, 'test/basic', max=-5)
         self.assertRaises(SystemExit, self.inst.__init__, 'test/basic', max=-5.0)
@@ -90,7 +91,7 @@ class TestLomap(unittest.TestCase):
         
         strict,loose = db.build_matrices()
         graph = db.build_graph()
-        
+       
         self.assertRaises(IOError, nx.nx_agraph.write_dot, graph, '/check.dot') 
 
         mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
@@ -108,6 +109,57 @@ class TestLomap(unittest.TestCase):
         em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
         
         self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+
+    #check the radial graph option
+    @skipIf(not GR_COMP, 'The graph test has been skipped untill a bug in the graph generation between py2 and py3 will be fixed')
+    def test_graph_radial(self):
+
+        db = DBMolecules('test/radial/', radial = True)
+        
+        strict,loose = db.build_matrices()
+        graph = db.build_graph()
+        
+        mol2_graph = nx.read_gpickle("test/radial/radial.gpickle")
+
+        dic1_nodes = graph.nodes(data=True)
+        dic1_edges = graph.edges(data=True)
+
+        dic2_nodes = mol2_graph.nodes(data=True)
+        dic2_edges = mol2_graph.edges(data=True)
+
+        self.assertEqual(True, dic1_nodes == dic2_nodes)
+        self.assertEqual(True, dic2_edges == dic2_edges)
+        
+        nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+        em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+        self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+
+    #check the radial hub graph option 
+    @skipIf(not GR_COMP, 'The graph test has been skipped untill a bug in the graph generation between py2 and py3 will be fixed')
+    def test_graph_radial_hub(self):
+
+        db = DBMolecules('test/radial/', radial = True, hub="ejm_46.mol2")
+        
+        strict,loose = db.build_matrices()
+        graph = db.build_graph()
+        
+        mol2_graph = nx.read_gpickle("test/radial/radial_hub.gpickle")
+
+        dic1_nodes = graph.nodes(data=True)
+        dic1_edges = graph.edges(data=True)
+
+        dic2_nodes = mol2_graph.nodes(data=True)
+        dic2_edges = mol2_graph.edges(data=True)
+
+        self.assertEqual(True, dic1_nodes == dic2_nodes)
+        self.assertEqual(True, dic2_edges == dic2_edges)
+        
+        nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+        em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+        self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+        
         
     def test_mcs(self):
         f = open('test/basic/MCS.pickle','rb')

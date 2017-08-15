@@ -51,7 +51,7 @@ import networkx as nx
 import logging
 import glob
 import argparse
-
+import pickle
 
 __all__ = ['DBMolecules', 'SMatrix', 'Molecule']
 
@@ -71,7 +71,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, output=False, 
                  name='out', display=False, 
-                 max=6, cutoff=0.4): 
+                 max=6, cutoff=0.4, radial=False, hub=None): 
 
         """
         Initialization of  the Molecule Database Class
@@ -125,11 +125,15 @@ class DBMolecules(object):
             if not isinstance(display,  bool):
                 raise TypeError('The display flag is not a bool type')
 
+            if not isinstance(radial,  bool):
+                raise TypeError('The radial flag is not a bool type')
             output_str=''
             display_str=''
+            radial_str=''
 
             parser.set_defaults(output=output)
             parser.set_defaults(display=display)
+            parser.set_defaults(radial=radial)
             
             if output:
                 output_str='--output'
@@ -137,9 +141,11 @@ class DBMolecules(object):
             if display:
                 display_str='--display'
 
+            if radial:
+                radial_str='--radial'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s %s %s'\
-                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, output_str, display_str)
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s'\
+                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str, radial_str)
 
             self.options = parser.parse_args(names_str.split())
 
@@ -319,7 +325,7 @@ class DBMolecules(object):
         
 
         
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx):
         """
         Compute a chunk of the similariry score matrices. The chunk is selected 
         by the start index a and the final index b. The matrices are indeed 
@@ -340,6 +346,11 @@ class DBMolecules(object):
 
         loose_mtx: python multiprocessing array
            loose similarity score matrix. This array is used as shared memory 
+           array managed by the different allocated processes. Each process 
+           operates on a separate chunk selected by the indexes a and b
+
+        ecr_mtx: python multiprocessing array
+           EleCtrostatic Rule (ECR) score matrix. This array is used as shared memory 
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 
@@ -379,8 +390,7 @@ class DBMolecules(object):
             
             for atom in mol_j.GetAtoms():
                 total_charge_mol_j += float(atom.GetProp('_TriposPartialCharge'))
-
-            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
+            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-2:
                 scr_ecr = 1.0
             else:
                 scr_ecr = 0.0
@@ -435,12 +445,11 @@ class DBMolecules(object):
             # The total score will be the product of all the single rules
                
             tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
-            
             strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
             loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
-        
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
+            ecr_mtx[k] = ecr_score
     
         return
 
@@ -458,13 +467,13 @@ class DBMolecules(object):
         # which implements a basic class for symmetric matrices
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
-
+        self.ecr_mtx = SMatrix(shape=(self.nums(),))
         # The total number of the effective elements present in the symmetric matrix
         l = int(self.nums()*(self.nums() - 1)/2)
 
         
         if self.options.parallel == 1: # Serial execution
-            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx)
+            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.ecr_mtx)
         else: # Parallel execution
             
             logging.info('Parallel mode is on')
@@ -479,12 +488,11 @@ class DBMolecules(object):
                 kmax = l
             else:
                 kmax = np
-
             proc = []
-
             # Shared memory array used by the different allocated processes
             strict_mtx = multiprocessing.Array('d', self.strict_mtx)
             loose_mtx =  multiprocessing.Array('d', self.loose_mtx)
+            ecr_mtx =  multiprocessing.Array('d', self.ecr_mtx)
 
             # Chopping the indexes ridistribuiting the remainder
             for k in range(0, kmax):
@@ -504,7 +512,7 @@ class DBMolecules(object):
                 #print(i,j)
 
                 # Python multiprocessing allocation
-                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx))
+                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, ecr_mtx))
                 p.start()
                 proc.append(p)
             # End parallel execution        
@@ -514,7 +522,6 @@ class DBMolecules(object):
             # Copying back the results
             self.strict_mtx[:] = strict_mtx[:]
             self.loose_mtx[:] = loose_mtx[:]
-            
         return (self.strict_mtx, self.loose_mtx)
 
 
@@ -534,6 +541,8 @@ class DBMolecules(object):
         if self.options.output:
             try:
                 Gr.writeGraph()
+                pickle_f = open(self.options.name+".pickle", "w")
+                pickle.dump(Gr, pickle_f)
             except Exception as e:
                 logging.error(str(e))
 
@@ -895,16 +904,13 @@ class check_ecrscore(argparse.Action):
 
 
 
-
 def startup():
     # Options and arguments passed by the user
     ops= parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
-    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, 
-                        ops.output, ops.name, ops.display, ops.max, ops.cutoff) 
-
-   
+    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
+                        ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub)
     # Similarity score linear array generation
     strict, loose =  db_mol.build_matrices()
     
@@ -954,6 +960,10 @@ graph_group.add_argument('-m', '--max', default=6, action=check_pos ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
 graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_cutoff, type=float,\
                          help='The Minimum Similariry Score (MSS) used to build the graph')
+graph_group.add_argument('-r', '--radial', default=False, action='store_true',\
+                         help='Using the radial option to build the graph')
+graph_group.add_argument('-b', '--hub', default= None , type=str,\
+                         help='Using a radial graph approach with a manually specified hub compound')
 
 #------------------------------------------------------------------
 

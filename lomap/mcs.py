@@ -47,6 +47,8 @@ from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
+from rdkit import DataStructs
+from rdkit.Chem.Fingerprints import FingerprintMols
 import sys
 import math
 from rdkit import RDLogger
@@ -422,6 +424,20 @@ class MCS(object):
     ############ MCS BASED RULES ############
 
     # MCSR Rule
+    #the mtansr method is not used but be retained here in case need to use in the future.
+    def mtansr(self,):
+        """
+        This rule computes the structural similarity between the two passed molecules 
+        using the tanimoto score. 
+        Returns
+        -------
+        scr_tan : float
+            the rule score
+        """
+        fps_moli = FingerprintMols.FingerprintMol(self.moli)
+        fps_molj = FingerprintMols.FingerprintMol(self.molj)
+        scr_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
+        return scr_tan
     def mcsr(self, beta=0.1):
         
         """
