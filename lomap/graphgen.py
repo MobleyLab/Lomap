@@ -789,11 +789,16 @@ class GraphGen(object):
         shutil.rmtree(directory_name, ignore_errors=True)
     #The function to output the score and connectivity txt file
     def layout_info(self):
+        #pass the lead compound index if the radial option is on and generate the morph type of output required by FESetup
+        if self.lead_index:
+            morph_txt = open(self.dbase.options.name+"_morph.txt", "w")
+            morph_data = "morph_pairs = "
         info_txt = open(self.dbase.options.name+"_score_with_connection.txt", "w")
         all_key_id = self.dbase.dic_mapping.keys()
         data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n"%("Index_1", "Index_2","Filename_1","Filename_2", "Erc_sim","Str_sim", "Loose_sim", "Connect")]
         for i in range (len(all_key_id)-1):
             for j in range(i+1, len(all_key_id)):
+                morph_string = None
                 connected = False
                 try:
                     similarity = self.resultGraph.edge[i][j]['similarity']
@@ -809,10 +814,29 @@ class GraphGen(object):
                 ecr_similarity = self.dbase.ecr_mtx[i,j]
                 if connected:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes")
+                    #generate the morph type, and pick the start ligand based on the similarity
+                    if self.lead_index:
+                        morph_i = Filename_i.split(".")[0]
+                        morph_j = Filename_j.split(".")[0]
+                        if i == self.lead_index:
+                            morph_string = "%s > %s, "%(morph_i, morph_j)
+                        elif j == self.lead_index:
+                            morph_string = "%s > %s, "%(morph_j, morph_i)
+                        else:
+                            #compare i and j with the lead compound, and pick the one with the higher similarity as the start ligand
+                            similarity_i = self.dbase.strict_mtx[self.lead_index, i]
+                            similarity_j = self.dbase.strict_mtx[self.lead_index, j]
+                            if similarity_i> similarity_j:
+                                morph_string = "%s > %s, "%(morph_i, morph_j)
+                            else:
+                                morph_string = "%s > %s, "%(morph_j, morph_i)
+                        morph_data += morph_string
                 else:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No")
                 data.append(new_line)
         info_txt.writelines(data)
+        if self.lead_index:
+            morph_txt.write(morph_data)
 
     def writeGraph(self):
         """
