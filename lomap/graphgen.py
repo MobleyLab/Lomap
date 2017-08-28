@@ -790,7 +790,7 @@ class GraphGen(object):
     #The function to output the score and connectivity txt file
     def layout_info(self):
         #pass the lead compound index if the radial option is on and generate the morph type of output required by FESetup
-        if self.lead_index:
+        if self.lead_index is not None:
             morph_txt = open(self.dbase.options.name+"_morph.txt", "w")
             morph_data = "morph_pairs = "
         info_txt = open(self.dbase.options.name+"_score_with_connection.txt", "w")
@@ -815,7 +815,7 @@ class GraphGen(object):
                 if connected:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes")
                     #generate the morph type, and pick the start ligand based on the similarity
-                    if self.lead_index:
+                    if self.lead_index is not None:
                         morph_i = Filename_i.split(".")[0]
                         morph_j = Filename_j.split(".")[0]
                         if i == self.lead_index:
@@ -835,7 +835,7 @@ class GraphGen(object):
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No")
                 data.append(new_line)
         info_txt.writelines(data)
-        if self.lead_index:
+        if self.lead_index is not None:
             morph_txt.write(morph_data)
 
     def writeGraph(self):
