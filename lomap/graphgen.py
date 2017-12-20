@@ -808,26 +808,35 @@ class GraphGen(object):
                     try:
                         mol = AllChem.RemoveHs(mol)
                         AllChem.Compute2DCoords(mol)
-                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
+                        from rdkit.Chem.Draw.MolDrawing import DrawingOptions
+                        DrawingOptions.bondLineWidth = 2.5
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png', options=DrawingOptions)
                     except:
                         ######need to ask RDKit to fix this if possible, see the code issue tracker for more details######
                         logging.info("Error attempting to remove hydrogens for molecule %s using RDKit. RDKit cannot kekulize the molecule"%self.dbase[id_mol].getName())
                         AllChem.Compute2DCoords(mol)
-                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
+                        from rdkit.Chem.Draw.MolDrawing import DrawingOptions
+                        DrawingOptions.bondLineWidth = 2.5
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png', options=DrawingOptions)
                     temp_graph.node[n]['image'] = fname
                     #self.resultGraph.node[n]['label'] = ''
                     temp_graph.node[n]['labelloc'] = 't'
+                    temp_graph.node[n]['penwidth'] =2.5
                     #self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
         for u,v,d in temp_graph.edges(data=True):
             if d['strict_flag']==True:
-                temp_graph[u][v]['color'] = 'green'
+                temp_graph[u][v]['color'] = 'cyan'
+                temp_graph[u][v]['penwidth'] = 2.5
             else:
                 temp_graph[u][v]['color'] = 'red'
-
+                temp_graph[u][v]['penwidth'] = 2.5
         
         nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name+'_tmp.dot')
         
         cmd = 'dot -Tpng ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.png' 
+           
+        os.system(cmd)
+        cmd = 'dot -Teps ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.eps' 
            
         os.system(cmd)
         cmd = 'dot -Tpdf ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.pdf' 
