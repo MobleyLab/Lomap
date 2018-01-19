@@ -160,7 +160,54 @@ class TestLomap(unittest.TestCase):
 
         self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
         
+    @skipIf(not GR_COMP, 'The graph test has been skipped untill a bug in the graph generation between py2 and py3 will be fixed')
+    def test_graph_radial_hub_fingerprint(self):
+
+        db = DBMolecules('test/radial/', radial = True, fingerprint=True, hub="ejm_46.mol2")
         
+        strict,loose = db.build_matrices()
+        graph = db.build_graph()
+        
+        mol2_graph = nx.read_gpickle("test/radial/radial_hub_fingerprint.gpickle")
+
+        dic1_nodes = graph.nodes(data=True)
+        dic1_edges = graph.edges(data=True)
+
+        dic2_nodes = mol2_graph.nodes(data=True)
+        dic2_edges = mol2_graph.edges(data=True)
+
+        self.assertEqual(True, dic1_nodes == dic2_nodes)
+        self.assertEqual(True, dic2_edges == dic2_edges)
+        
+        nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+        em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+        self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+
+    @skipIf(not GR_COMP, 'The graph test has been skipped untill a bug in the graph generation between py2 and py3 will be fixed')
+    def test_graph_radial_hub_fingerprint(self):
+
+        db = DBMolecules('test/radial/', radial = True, fingerprint=True, fast=True, hub="ejm_46.mol2")
+        
+        strict,loose = db.build_matrices()
+        graph = db.build_graph()
+        
+        mol2_graph = nx.read_gpickle("test/radial/radial_hub_fingerprint_fast.gpickle")
+
+        dic1_nodes = graph.nodes(data=True)
+        dic1_edges = graph.edges(data=True)
+
+        dic2_nodes = mol2_graph.nodes(data=True)
+        dic2_edges = mol2_graph.edges(data=True)
+
+        self.assertEqual(True, dic1_nodes == dic2_nodes)
+        self.assertEqual(True, dic2_edges == dic2_edges)
+        
+        nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+        em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+        
+        self.assertEqual(True, nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+
     def test_mcs(self):
         f = open('test/basic/MCS.pickle','rb')
         data = pickle.load(f)

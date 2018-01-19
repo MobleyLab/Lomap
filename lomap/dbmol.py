@@ -43,6 +43,7 @@ potential ligands within a substantial of compounds.
 from rdkit import Chem
 import numpy as np
 from lomap import mcs
+from lomap import fp 
 from lomap import graphgen
 import sys,os
 import math
@@ -52,6 +53,8 @@ import logging
 import glob
 import argparse
 import pickle
+from rdkit import DataStructs
+from rdkit.Chem.Fingerprints import FingerprintMols
 
 __all__ = ['DBMolecules', 'SMatrix', 'Molecule']
 
@@ -71,7 +74,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, output=False, 
                  name='out', display=False, 
-                 max=6, cutoff=0.4, radial=False, hub=None): 
+                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False): 
 
         """
         Initialization of  the Molecule Database Class
@@ -130,11 +133,14 @@ class DBMolecules(object):
             output_str=''
             display_str=''
             radial_str=''
+            fingerprint_str=''
+            fast_str=''
 
             parser.set_defaults(output=output)
             parser.set_defaults(display=display)
             parser.set_defaults(radial=radial)
-            
+            parser.set_defaults(fingerprint=fingerprint)
+            parser.set_defaults(fast=fast)
             if output:
                 output_str='--output'
 
@@ -144,8 +150,14 @@ class DBMolecules(object):
             if radial:
                 radial_str='--radial'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s'\
-                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str, radial_str)
+            if fingerprint:
+                fingerprint_str='--fingerprint'
+            
+            if fast:
+                fast_str = '--fast'
+
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s'\
+                         % (directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str, radial_str, fingerprint_str, fast_str)
 
             self.options = parser.parse_args(names_str.split())
 
@@ -325,7 +337,7 @@ class DBMolecules(object):
         
 
         
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint = False):
         """
         Compute a chunk of the similariry score matrices. The chunk is selected 
         by the start index a and the final index b. The matrices are indeed 
@@ -353,7 +365,11 @@ class DBMolecules(object):
            EleCtrostatic Rule (ECR) score matrix. This array is used as shared memory 
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
-
+        
+        fingerprint: boolean
+           using the structural fingerprint as the similarity matrix, 
+           not suggested option but currently runs faster than mcss based similarity
+          
         """
         # name = multiprocessing.current_process().name
         # print name
@@ -426,7 +442,14 @@ class DBMolecules(object):
                         logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName())) 
                     
                     # Maximum Common Subgraph (MCS) calculation    
-                    MC = mcs.MCS(moli, molj, options=self.options)
+                    logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
+                    if not fingerprint:
+                        MC = mcs.MCS(moli, molj, options=self.options)
+                    else:
+                        #use the fingerprint as similarity calculation
+                        fps_moli = FingerprintMols.FingerprintMol(moli)
+                        fps_molj = FingerprintMols.FingerprintMol(molj)
+                        fps_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
 
                 except Exception as e:
                     if self.options.verbose == 'pedantic':
@@ -443,13 +466,22 @@ class DBMolecules(object):
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
-               
-            tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
-            strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
-            loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
-            strict_mtx[k] = strict_scr
-            loose_mtx[k] = loose_scr
-            ecr_mtx[k] = ecr_score
+            if not fingerprint:   
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
+                strict_scr = tmp_scr *  MC.tmcsr(strict_flag=True) 
+                loose_scr = tmp_scr * MC.tmcsr(strict_flag=False) 
+                strict_mtx[k] = strict_scr
+                loose_mtx[k] = loose_scr
+                ecr_mtx[k] = ecr_score
+            else:
+                #for the fingerprint option, currently just use the identical strict and loose mtx
+                strict_scr = fps_tan
+                loose_scr = fps_tan
+                strict_mtx[k] = strict_scr
+                loose_mtx[k] = loose_scr
+                ecr_mtx[k] = ecr_score
+                
+            logging.info('MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
     
         return
 
@@ -473,8 +505,10 @@ class DBMolecules(object):
 
         
         if self.options.parallel == 1: # Serial execution
-            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.ecr_mtx)
+            self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, self.options.fingerprint)
         else: # Parallel execution
+            #add the fingerprint option
+            fingerprint = self.options.fingerprint
             
             logging.info('Parallel mode is on')
             
@@ -512,7 +546,7 @@ class DBMolecules(object):
                 #print(i,j)
 
                 # Python multiprocessing allocation
-                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, ecr_mtx))
+                p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, ecr_mtx, fingerprint,))
                 p.start()
                 proc.append(p)
             # End parallel execution        
@@ -522,8 +556,8 @@ class DBMolecules(object):
             # Copying back the results
             self.strict_mtx[:] = strict_mtx[:]
             self.loose_mtx[:] = loose_mtx[:]
+            self.ecr_mtx[:] = ecr_mtx[:]
         return (self.strict_mtx, self.loose_mtx)
-
 
 
     def build_graph(self):
@@ -910,7 +944,7 @@ def startup():
     
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
-                        ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub)
+                        ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast)
     # Similarity score linear array generation
     strict, loose =  db_mol.build_matrices()
     
@@ -964,6 +998,10 @@ graph_group.add_argument('-r', '--radial', default=False, action='store_true',\
                          help='Using the radial option to build the graph')
 graph_group.add_argument('-b', '--hub', default= None , type=str,\
                          help='Using a radial graph approach with a manually specified hub compound')
+graph_group.add_argument('-f', '--fingerprint', default=False, action='store_true',\
+                         help='Using the fingerprint option to build similarity matrices')
+graph_group.add_argument('-a', '--fast', default=False, action='store_true',\
+                         help='Using the fast graphing when the lead compound is specificed')
 
 #------------------------------------------------------------------
 

@@ -104,7 +104,7 @@ class GraphGen(object):
         # THIS PART MUST BE CHANGED
         
         # Max number of displayed chemical compound images as graph nodes
-        self.max_images = 50
+        self.max_images = 2000 
         
         # Max number of displayed nodes in the graph
         self.max_nodes = 100
@@ -119,7 +119,11 @@ class GraphGen(object):
         # The following Section has been strongly copied/adapted from the original implementation
 
         # Generate a list related to the disconnected graphs present in the initial graph 
-        self.initialSubgraphList = self.generateInitialSubgraphList()
+        if dbase.options.fast and dbase.options.radial:
+            #only enable the fast map option if use the radial option
+            self.initialSubgraphList = self.generateInitialSubgraphList(fast_map = True)
+        else:
+            self.initialSubgraphList = self.generateInitialSubgraphList()
 
     
         # A list of elementes made of [edge, weights] for each subgraph
@@ -143,29 +147,36 @@ class GraphGen(object):
         # Remove edges, whose removal does not violate constraints, from the subgraphs,
         # starting with lowest similarity score first
     
-
-        #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-        self.minimizeEdges()
-        #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        if dbase.options.fast and dbase.options.radial:
+            #if we use the fast and radial option, just need to add the surrounding edges from the initial graph
+            self.resultGraph = self.addsurroundEdges()
+            #after adding the surround edges, some subgraphs may merge into a larger graph and so need to update the current subgraphs
+            #self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
+            #merge all Subgraphs together for layout
+            #self.resultGraph = self.mergeAllSubgraphs()
+        else:
+            #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+            self.minimizeEdges()
+            #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
         
 
 
-        # Collect together disjoint subgraphs of like charge into subgraphs
-        self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
+            # Collect together disjoint subgraphs of like charge into subgraphs
+            self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
 
-        # Combine seperate subgraphs into a single resulting graph
-        self.resultGraph = self.mergeAllSubgraphs()
+            # Combine seperate subgraphs into a single resulting graph
+            self.resultGraph = self.mergeAllSubgraphs()
 
-        # Make a copy of the resulting graph for later processing in connectResultingComponents()
-        self.copyResultGraph = self.resultGraph.copy()
+            # Make a copy of the resulting graph for later processing in connectResultingComponents()
+            self.copyResultGraph = self.resultGraph.copy()
 
-        # Holds list of edges that were added in the connect components phase
-        self.edgesAddedInFirstTreePass = []
+            # Holds list of edges that were added in the connect components phase
+            self.edgesAddedInFirstTreePass = []
 
-        # Add edges to the resultingGraph to connect its components
-        self.connectSubgraphs()
+            # Add edges to the resultingGraph to connect its components
+            self.connectSubgraphs()
 
 
         return
@@ -195,7 +206,7 @@ class GraphGen(object):
             max_index_final = max_index[0]
             return max_index_final
 
-    def generateInitialSubgraphList(self):
+    def generateInitialSubgraphList(self, fast_map = False):
         
         """
         This function generates a starting graph connecting with edges all the 
@@ -214,20 +225,30 @@ class GraphGen(object):
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
 
-
-        for i in range(0, self.dbase.nums()):
-            if i==0:
-                compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
+        if not fast_map:
+            #if not fast map option, connect all possible nodes to generate the initial graph
+            for i in range(0, self.dbase.nums()):
+                if i==0:
+                    compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
             
-            for j in range(i+1, self.dbase.nums()):
+                for j in range(i+1, self.dbase.nums()):
                 
-                if i == 0:
-                    compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[j].getName()))
+                    if i == 0:
+                        compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[j].getName()))
                 
-                wgt = self.dbase.strict_mtx[i,j]
+                    wgt = self.dbase.strict_mtx[i,j]
                 
-                if wgt > 0.0:
-                    compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True)
+                    if wgt > 0.0:
+                        compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True)
+        else:
+            #if fast map option, then add all possible radial edges as the initial graph
+            for i in range(0, self.dbase.nums()):
+                #add the node for i
+                compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
+                if i != self.lead_index:
+                    wgt = self.dbase.strict_mtx[i, self.lead_index]
+                    if wgt > 0:
+                        compound_graph.add_edge(i,self.lead_index,similarity = wgt, strict_flag = True)
 
         initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
         initialSubgraphList = [x for x in initialSubgraphGen]
@@ -370,7 +391,31 @@ class GraphGen(object):
                         if self.checkConstraints(subgraph, numberOfComponents) == False:
                             subgraph.add_edge(edge[0], edge[1], similarity = edge[2], strict_flag = True)
                 
-
+    def addsurroundEdges(self):
+        """
+        Add surrounding edges in each subgraph to make sure all nodes are in cycle
+        """
+        for subgraph in self.workingSubgraphsList:
+            subgraph_nodes = subgraph.nodes()
+            if self.lead_index in subgraph_nodes:
+                #here we only consider the subgraph with lead compound
+                self.nonCycleNodesSet = self.findNonCyclicNodes(subgraph)
+                for node in self.nonCycleNodesSet:
+                    #for each node in the noncyclenodeset, find the fingerprint similarity compare to all other surrounding nodes and pick the one with the max score and connect them
+                    node_score_list = []
+                    for i in range(0, self.dbase.nums()):
+                        if i != node and i != self.lead_index:
+                            node_score_list.append(self.dbase.strict_mtx[node, i])
+                        else:
+                            node_score_list.append(0.0)
+                    max_value = max(node_score_list)
+                    if max_value > self.similarityScoresLimit:
+                        max_index = [i for i, x in enumerate(node_score_list) if x == max_value]
+                        max_index_final = max_index[0]
+                        subgraph.add_edge(node, max_index_final, similarity = self.dbase.strict_mtx[node, max_index_final], strict_flag = True )
+                return subgraph
+        
+    
     def findNonCyclicNodes(self, subgraph):
         """
         Generates a list of nodes of the subgraph that are not in a cycle
@@ -763,37 +808,54 @@ class GraphGen(object):
                     try:
                         mol = AllChem.RemoveHs(mol)
                         AllChem.Compute2DCoords(mol)
-                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
+                        from rdkit.Chem.Draw.MolDrawing import DrawingOptions
+                        DrawingOptions.bondLineWidth = 2.5
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png', options=DrawingOptions)
                     except:
                         ######need to ask RDKit to fix this if possible, see the code issue tracker for more details######
                         logging.info("Error attempting to remove hydrogens for molecule %s using RDKit. RDKit cannot kekulize the molecule"%self.dbase[id_mol].getName())
                         AllChem.Compute2DCoords(mol)
-                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png' )
+                        from rdkit.Chem.Draw.MolDrawing import DrawingOptions
+                        DrawingOptions.bondLineWidth = 2.5
+                        Draw.MolToFile(mol, fname, size=(200,200), kekulize=False, fitimage=True, imageType='png', options=DrawingOptions)
                     temp_graph.node[n]['image'] = fname
                     #self.resultGraph.node[n]['label'] = ''
                     temp_graph.node[n]['labelloc'] = 't'
+                    temp_graph.node[n]['penwidth'] =2.5
                     #self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
         for u,v,d in temp_graph.edges(data=True):
             if d['strict_flag']==True:
-                temp_graph[u][v]['color'] = 'green'
+                temp_graph[u][v]['color'] = 'cyan'
+                temp_graph[u][v]['penwidth'] = 2.5
             else:
                 temp_graph[u][v]['color'] = 'red'
-
+                temp_graph[u][v]['penwidth'] = 2.5
         
         nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name+'_tmp.dot')
         
         cmd = 'dot -Tpng ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.png' 
            
         os.system(cmd)
+        cmd = 'dot -Teps ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.eps' 
+           
+        os.system(cmd)
+        cmd = 'dot -Tpdf ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.pdf' 
+           
+        os.system(cmd)
         os.remove(self.dbase.options.name+'_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
     #The function to output the score and connectivity txt file
     def layout_info(self):
+        #pass the lead compound index if the radial option is on and generate the morph type of output required by FESetup
+        if self.lead_index is not None:
+            morph_txt = open(self.dbase.options.name+"_morph.txt", "w")
+            morph_data = "morph_pairs = "
         info_txt = open(self.dbase.options.name+"_score_with_connection.txt", "w")
         all_key_id = self.dbase.dic_mapping.keys()
         data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n"%("Index_1", "Index_2","Filename_1","Filename_2", "Erc_sim","Str_sim", "Loose_sim", "Connect")]
         for i in range (len(all_key_id)-1):
             for j in range(i+1, len(all_key_id)):
+                morph_string = None
                 connected = False
                 try:
                     similarity = self.resultGraph.edge[i][j]['similarity']
@@ -809,10 +871,29 @@ class GraphGen(object):
                 ecr_similarity = self.dbase.ecr_mtx[i,j]
                 if connected:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes")
+                    #generate the morph type, and pick the start ligand based on the similarity
+                    if self.lead_index is not None:
+                        morph_i = Filename_i.split(".")[0]
+                        morph_j = Filename_j.split(".")[0]
+                        if i == self.lead_index:
+                            morph_string = "%s > %s, "%(morph_i, morph_j)
+                        elif j == self.lead_index:
+                            morph_string = "%s > %s, "%(morph_j, morph_i)
+                        else:
+                            #compare i and j with the lead compound, and pick the one with the higher similarity as the start ligand
+                            similarity_i = self.dbase.strict_mtx[self.lead_index, i]
+                            similarity_j = self.dbase.strict_mtx[self.lead_index, j]
+                            if similarity_i> similarity_j:
+                                morph_string = "%s > %s, "%(morph_i, morph_j)
+                            else:
+                                morph_string = "%s > %s, "%(morph_j, morph_i)
+                        morph_data += morph_string
                 else:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n"%(i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No")
                 data.append(new_line)
         info_txt.writelines(data)
+        if self.lead_index is not None:
+            morph_txt.write(morph_data)
 
     def writeGraph(self):
         """
