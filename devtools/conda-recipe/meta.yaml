@@ -31,7 +31,7 @@ requirements:
     - rdkit 
     - matplotlib
     - pyqt
-    - networkx
+    - networkx ==1.11
     - graphviz
     - pygraphviz
     - pillow
