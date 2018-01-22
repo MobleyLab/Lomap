@@ -406,7 +406,7 @@ class DBMolecules(object):
             
             for atom in mol_j.GetAtoms():
                 total_charge_mol_j += float(atom.GetProp('_TriposPartialCharge'))
-            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-2:
+            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
                 scr_ecr = 1.0
             else:
                 scr_ecr = 0.0
