@@ -19,7 +19,7 @@ requirements:
     - rdkit
     - matplotlib
     - pyqt ==4.11.4
-    - networkx ==1.11
+    - networkx ==2.1
     - graphviz
     - pygraphviz
     - pillow
@@ -31,7 +31,7 @@ requirements:
     - rdkit 
     - matplotlib
     - pyqt
-    - networkx ==1.11
+    - networkx ==2.1
     - graphviz
     - pygraphviz
     - pillow
