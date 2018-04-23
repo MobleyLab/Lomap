@@ -649,21 +649,22 @@ class GraphGen(object):
             nodesOfI = self.workingSubgraphsList[i].nodes()
 
             for j in range(i+1,len(self.workingSubgraphsList)):
-
                 nodesOfJ = self.workingSubgraphsList[j].nodes()
 
-                for k in range(0,len(nodesOfI)):
+                #change the following lines to be compatible with networkx 2.0
+                for k in nodesOfI.keys():
 
-                    for l in range(0,len(nodesOfJ)):
+                    for l in nodesOfJ.keys():
                         """produce an edge from nodesOfI[k] and nodesofJ[l] if nonzero weights push this edge into possibleEdgeList """
 
                         #print 'Molecules (%d,%d)' % (nodesOfI[k],nodesOfJ[l])
                         # I assumed that the score matrix is symmetric. In the Graph part this does not seems to be true: <<<<<<<<<<<<<DEBUG>>>>>>>>>>>>>>>
-                        similarity = self.dbase.loose_mtx[nodesOfI[k],nodesOfJ[l]]
+
+                        similarity = self.dbase.loose_mtx[nodesOfI[k]["ID"],nodesOfJ[l]["ID"]]
                         
                         if similarity > 0.0 :
-                            edgesToCheck.append((nodesOfI[k], nodesOfJ[l], similarity))
-                            edgesToCheckAdditionalInfo.append((nodesOfI[k], nodesOfJ[l], similarity, i, j))
+                            edgesToCheck.append((nodesOfI[k]["ID"], nodesOfJ[l]["ID"], similarity))
+                            edgesToCheckAdditionalInfo.append((nodesOfI[k]["ID"], nodesOfJ[l]["ID"], similarity, i, j))
                         else :
                             numzeros = numzeros + 1
 
@@ -719,18 +720,18 @@ class GraphGen(object):
 
                 #print '(%d,%d)' % (i,j)
                 
-                for k in range(0,len(nodesOfI)):
+                for k in nodesOfI.keys():
 
-                    for l in range(0,len(nodesOfJ)):
+                    for l in nodesOfJ.keys():
 
                         """produce an edge from nodesOfI[k] and nodesofJ[l] if nonzero weights push this edge into possibleEdgeList """
 
                         #print 'Molecules (%d,%d)' % (nodesOfI[k],nodesOfJ[l])
                         # I assumed that the score matrix is symmetric. In the Graph part this does not seems to be true: <<<<<<<<<<<<<DEBUG>>>>>>>>>>>>>>>
-                        similarity = self.dbase.loose_mtx[nodesOfI[k],nodesOfJ[l]]
+                        similarity = self.dbase.loose_mtx[nodesOfI[k]["ID"],nodesOfJ[l]["ID"]]
                         
                         if (similarity > 0.0):
-                            edgesToCheck.append((nodesOfI[k], nodesOfJ[l], similarity))
+                            edgesToCheck.append((nodesOfI[k]["ID"], nodesOfJ[l]["ID"], similarity))
 
         finalEdgesToCheck = [edge for edge in edgesToCheck if edge not in self.edgesAddedInFirstTreePass]
 
