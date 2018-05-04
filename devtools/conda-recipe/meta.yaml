@@ -30,7 +30,7 @@ requirements:
     - boost
     - rdkit 
     - matplotlib
-    - pyqt
+    - pyqt ==4.11.4
     - networkx >=2.0
     - graphviz
     - pygraphviz
