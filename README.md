@@ -22,7 +22,7 @@ free tool to plan in advance binding free energy calculations
 * RDKit Release >2015.09.2
 * Graphviz 2.38
 * pygraphviz
-* NetworkX 
+* NetworkX >2.0 
 * Matplotlib 
 * PyQt 4.11
 
