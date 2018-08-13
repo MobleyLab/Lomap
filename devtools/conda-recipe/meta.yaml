@@ -16,7 +16,7 @@ requirements:
     - python
     - boost
     - setuptools
-    - rdkit ==v2018.03.3.0
+    - rdkit
     - matplotlib
     - pyqt ==4.11.4
     - networkx >=2.0
@@ -28,7 +28,7 @@ requirements:
   run:
     - python
     - boost
-    - rdkit ==v2018.03.3.0
+    - rdkit
     - matplotlib
     - pyqt ==4.11.4
     - networkx >=2.0
