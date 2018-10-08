@@ -23,7 +23,7 @@ free tool to plan in advance binding free energy calculations
 * Graphviz 2.38
 * pygraphviz
 * NetworkX 
-* Matplotlib 
+* Matplotlib > 2.0
 * PyQt 4.11
 
 Authors
