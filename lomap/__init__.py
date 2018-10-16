@@ -67,3 +67,7 @@ from lomap.mcs import MCS
 del dbmol
 del graphgen
 del mcs
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
