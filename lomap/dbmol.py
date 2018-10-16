@@ -40,19 +40,19 @@ potential ligands within a substantial of compounds.
 # MODULE IMPORTS
 #****************
 
-from rdkit import Chem
-import numpy as np
-from lomap import mcs
-from lomap import fp 
-from lomap import graphgen
-import sys,os
+import argparse
+import glob
+import logging
 import math
 import multiprocessing
-import networkx as nx
-import logging
-import glob
-import argparse
+import os
 import pickle
+
+import networkx as nx
+import numpy as np
+from lomap import graphgen
+from lomap import mcs
+from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem.Fingerprints import FingerprintMols
 
@@ -284,7 +284,7 @@ class DBMolecules(object):
         mol_fnames.sort()
 
     
-        if (len( mol_fnames ) < 2) :
+        if len(mol_fnames) < 2:
             raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
         
         print_cnt = 0
@@ -351,7 +351,7 @@ class DBMolecules(object):
            the final index of the chunk
         
         strict_mtx: python multiprocessing array
-           srict simimarity score matrix. This array is used as shared memory 
+           srict similarity score matrix. This array is used as shared memory
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 
@@ -379,7 +379,7 @@ class DBMolecules(object):
         
         def ecr(mol_i, mol_j):
             """
-            This function computes the similariry score between the passed molecules 
+            This function computes the similarity score between the passed molecules
             by using the EleCtrostatic Rule (ECR)
 
             Parameters
@@ -423,13 +423,13 @@ class DBMolecules(object):
             # an hypothetical bidimensional symmetric matrix
             i = int(n - 2 - math.floor(math.sqrt(-8*k + 4*n*(n-1)-7)/2.0 - 0.5))
             j = int(k + i + 1 - n*(n-1)/2 + (n-i)*((n-i)-1)/2)
-            #print 'k = %d , i = %d , j = %d' % (k,i,j)
+            # print 'k = %d , i = %d , j = %d' % (k,i,j)
     
             # The Rdkit molecules moli and molj are extracted form the molecule database
             moli = self[i].getMolecule()
             molj = self[j].getMolecule()
 
-            #print 'Processing molecules:\n%s\n%s' % (self[i].getName(),self[j].getName())
+            # print 'Processing molecules:\n%s\n%s' % (self[i].getName(),self[j].getName())
 
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
@@ -446,7 +446,7 @@ class DBMolecules(object):
                     if not fingerprint:
                         MC = mcs.MCS(moli, molj, options=self.options)
                     else:
-                        #use the fingerprint as similarity calculation
+                        # use the fingerprint as similarity calculation
                         fps_moli = FingerprintMols.FingerprintMol(moli)
                         fps_molj = FingerprintMols.FingerprintMol(molj)
                         fps_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
@@ -462,7 +462,6 @@ class DBMolecules(object):
             if ecr_score == 0.0 and self.options.ecrscore:
                 logging.critical('WARNING: Mutation between different charge molecules is enabled')
                 ecr_score = self.options.ecrscore
-            
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
@@ -474,7 +473,7 @@ class DBMolecules(object):
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = ecr_score
             else:
-                #for the fingerprint option, currently just use the identical strict and loose mtx
+                # for the fingerprint option, currently just use the identical strict and loose mtx
                 strict_scr = fps_tan
                 loose_scr = fps_tan
                 strict_mtx[k] = strict_scr
@@ -484,7 +483,6 @@ class DBMolecules(object):
             logging.info('MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
     
         return
-
 
     def build_matrices(self):
         """
@@ -506,8 +504,9 @@ class DBMolecules(object):
         
         if self.options.parallel == 1: # Serial execution
             self.compute_mtx(0, l-1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, self.options.fingerprint)
-        else: # Parallel execution
-            #add the fingerprint option
+        else:
+            # Parallel execution
+            # add the fingerprint option
             fingerprint = self.options.fingerprint
             
             logging.info('Parallel mode is on')
@@ -538,12 +537,10 @@ class DBMolecules(object):
                 else:
                     i = j + 1
 
-                if k!= kmax - 1:
+                if k != kmax - 1:
                     j = i + spc - 1
                 else:
                     j = l - 1
-
-                #print(i,j)
 
                 # Python multiprocessing allocation
                 p = multiprocessing.Process(target=self.compute_mtx , args=(i, j, strict_mtx, loose_mtx, ecr_mtx, fingerprint,))
@@ -557,7 +554,7 @@ class DBMolecules(object):
             self.strict_mtx[:] = strict_mtx[:]
             self.loose_mtx[:] = loose_mtx[:]
             self.ecr_mtx[:] = ecr_mtx[:]
-        return (self.strict_mtx, self.loose_mtx)
+        return self.strict_mtx, self.loose_mtx
 
 
     def build_graph(self):
@@ -723,7 +720,6 @@ class SMatrix(np.ndarray):
 
         elif len(kargs[0]) > 2:
             raise ValueError('Two indices can be addressed')
-            
 
         # Passed indexes and value to set
         i = kargs[0][0]
@@ -831,7 +827,7 @@ class Molecule(object):
         
         """
 
-        #Check Inputs
+        # Check Inputs
         if not isinstance(molecule, Chem.rdchem.Mol):
             raise ValueError('The passed molecule object is not a RdKit molecule')
 
@@ -849,7 +845,6 @@ class Molecule(object):
         # The variable is defined as private
         self.__ID = mol_id
 
-        
         # The variable __name saves the molecule identification name 
         # The variable is defined as private
         self.__name = molname
@@ -901,11 +896,9 @@ class Molecule(object):
         return self.__name
 
 
-
-# Classes used to check some of the passed user options in the main function
-
-# Class used to check the input directory 
 class check_dir(argparse.Action):
+    # Classes used to check some of the passed user options in the main function
+    # Class used to check the input directory
     def __call__(self, parser, namespace, directory, option_string=None):
         if not os.path.isdir(directory):
             raise argparse.ArgumentTypeError('The directory name is not a valid path: %s' % directory)
@@ -914,23 +907,26 @@ class check_dir(argparse.Action):
         else:
             raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
     
-# Class used to check the parallel, time and max user options
+
 class check_pos(argparse.Action):
+    # Class used to check the parallel, time and max user options
     def __call__(self, parser, namespace, value, option_string=None):
         if value < 1:
             raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
         setattr(namespace, self.dest, value)
 
 
-# Class used to check the cutoff user option
+
 class check_cutoff(argparse.Action):
+    # Class used to check the cutoff user option
     def __call__(self, parser, namespace, value, option_string=None):
         if not isinstance(value, float) or value < 0.0:
             raise argparse.ArgumentTypeError('%s is not a positive real number' % value)
         setattr(namespace, self.dest, value)
 
-# Class used to check the handicap user option
+
 class check_ecrscore(argparse.Action):
+    # Class used to check the handicap user option
     def __call__(self, parser, namespace, value, option_string=None):
         if not isinstance(value, float) or value < 0.0 or value > 1.0:
             raise argparse.ArgumentTypeError('%s is not a real number in the range [0.0, 1.0]' % value)
@@ -940,13 +936,13 @@ class check_ecrscore(argparse.Action):
 
 def startup():
     # Options and arguments passed by the user
-    ops= parser.parse_args()
+    ops = parser.parse_args()
     
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
                         ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast)
     # Similarity score linear array generation
-    strict, loose =  db_mol.build_matrices()
+    strict, loose = db_mol.build_matrices()
     
     # Get the 2D numpy matrices
     # strict.to_numpy_2D_array()
@@ -992,8 +988,8 @@ parser.add_argument('-d', '--display', default=False, action='store_true',\
 graph_group = parser.add_argument_group('Graph setting')
 graph_group.add_argument('-m', '--max', default=6, action=check_pos ,type=int,\
                          help='The maximum distance used to cluster the graph nodes')
-graph_group.add_argument('-c', '--cutoff', default=0.4 , action=check_cutoff, type=float,\
-                         help='The Minimum Similariry Score (MSS) used to build the graph')
+graph_group.add_argument('-c', '--cutoff', default=0.4, action=check_cutoff, type=float,\
+                         help='The Minimum Similarity Score (MSS) used to build the graph')
 graph_group.add_argument('-r', '--radial', default=False, action='store_true',\
                          help='Using the radial option to build the graph')
 graph_group.add_argument('-b', '--hub', default= None , type=str,\
@@ -1001,12 +997,11 @@ graph_group.add_argument('-b', '--hub', default= None , type=str,\
 graph_group.add_argument('-f', '--fingerprint', default=False, action='store_true',\
                          help='Using the fingerprint option to build similarity matrices')
 graph_group.add_argument('-a', '--fast', default=False, action='store_true',\
-                         help='Using the fast graphing when the lead compound is specificed')
+                         help='Using the fast graphing when the lead compound is specified')
 
 #------------------------------------------------------------------
 
 
 # Main function         
-if ("__main__" == __name__) :
+if "__main__" == __name__:
     startup()
-    

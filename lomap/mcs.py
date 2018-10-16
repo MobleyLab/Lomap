@@ -63,6 +63,7 @@ import argparse
 
 __all__ = ['MCS']
 
+
 class MCS(object):
     """
 
@@ -115,8 +116,6 @@ class MCS(object):
             
             # mcs to moli
             map_mcs_mol_to_moli_sub = zip(mcsi_sub, moli_sub)
-
-            #print  map_mcs_mol_to_moli_sub
            
             # An RDkit atomic property is defined to store the mapping to moli
             for idx in map_mcs_mol_to_moli_sub:
@@ -134,13 +133,11 @@ class MCS(object):
                 mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             else:
                 raise ValueError('RDkit MCS Subgraph search failed')
-        
-   
+
             # mcs to molj
             map_mcs_mol_to_molj_sub = zip(mcsj_sub, molj_sub)
-             
-            #print map_mcs_mol_to_molj_sub
-            
+
+
             # Map between the two molecules
             self.__map_moli_molj = zip(moli_sub, molj_sub)
 
@@ -190,8 +187,6 @@ class MCS(object):
             ----------
             mol : RDKit Molecule obj
                 the molecule used to define the atom ring counters
-       
-
             """
             
             # set to zero the atom ring counters
@@ -202,13 +197,13 @@ class MCS(object):
 
             rgs = rginfo.AtomRings()
          
-            #print rgs
+            # print rgs
    
             rgs_set = set([e for l in rgs for e in l])
             
             for idx in rgs_set:
                 for r in rgs:
-                    if(idx in r):
+                    if idx in r:
                         val = int(mol.GetAtomWithIdx(idx).GetProp('rc'))
                         val = val + 1
                         mol.GetAtomWithIdx(idx).SetProp('rc',str(val))
@@ -385,14 +380,12 @@ class MCS(object):
             molj_sub = molj_c.GetSubstructMatch(mcs_mol)
         else:
             raise ValueError('RDkit MCS Subgraph second molecule search failed')
-             
-            
+
         if mcs_mol.HasSubstructMatch(mcs_mol):
             mcs_sub = mcs_mol.GetSubstructMatch(mcs_mol)
         else:
             raise ValueError('RDkit MCS Subgraph search failed')
-        
-               
+
         # Map between the two molecules
         map_moli_to_molj = zip(moli_sub, molj_sub)
 
@@ -401,9 +394,7 @@ class MCS(object):
             AllChem.Compute2DCoords(moli_c)
             AllChem.Compute2DCoords(molj_c)
             AllChem.Compute2DCoords(mcs_mol)
-               
             DrawingOptions.includeAtomNumbers=True
-        
             moli_fname = 'Moli'
             molj_fname = 'Molj'
             mcs_fname  = 'Mcs'
@@ -438,6 +429,7 @@ class MCS(object):
         fps_molj = FingerprintMols.FingerprintMol(self.molj)
         scr_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
         return scr_tan
+
     def mcsr(self, beta=0.1):
         
         """
@@ -467,7 +459,6 @@ class MCS(object):
         scr_mcsr = math.exp(-beta*(nha_moli + nha_molj - 2*nha_mcs_mol))
 
         return scr_mcsr
-
 
     # MNACR rule
     def mncar(self, ths=4):
@@ -502,13 +493,13 @@ class MCS(object):
 
     # TMCRS rule (Trim rule) 
     def tmcsr(self, beta=0.1, strict_flag=True):
-       
+
         """
         This rule check if rings have been broken during the MCS mapping 
         and if chiral atoms are presents. If rings are broken all the 
         remaining ring atoms are deleted. Atoms connected to chiral centers
         are deleted as well
-        
+
  
         Parameters
         ----------
@@ -520,7 +511,7 @@ class MCS(object):
             a flag used to select the scrict or loose mode
              
         """
-       
+
         def delete_broken_ring():
 
             # Strict: we cancel all the atoms in conflict in the mcs and 
@@ -575,7 +566,6 @@ class MCS(object):
                 mcs_conflict.sort(reverse=True)
 
                 edit_mcs_mol = Chem.EditableMol(mcs_mol)
-                
                 # WARNING: atom indexes are changed
                 for i in mcs_conflict:
                     edit_mcs_mol.RemoveAtom(i) 
@@ -597,27 +587,22 @@ class MCS(object):
                     if lgt > lgt_max:
                         lgt_max = lgt
                         max_idx = idx
-    
+
                         
                 max_frag = fragments[max_idx]
-
                 mcs_conflict = [ at.GetIdx() for at in mcs_mol.GetAtoms() if not at.GetIdx() in max_frag ]
-        
                 mcs_conflict.sort(reverse=True)
-
                 edit_mcs_mol = Chem.EditableMol(mcs_mol)
 
                 # WARNING: atom indexes have changed
                 for i in mcs_conflict:
-                    edit_mcs_mol.RemoveAtom(i) 
-                    
+                    edit_mcs_mol.RemoveAtom(i)
                 mcs_mol = edit_mcs_mol.GetMol()
 
-                #self.draw_molecule(mcs_mol)
 
                 return mcs_mol
-                
-            
+
+
             mcs_conflict = set()
             
             for at in self.mcs_mol.GetAtoms():
@@ -648,7 +633,7 @@ class MCS(object):
                             mcs_conflict.add(at.GetIdx())
 
             mcs_mol = extend_conflict(self.mcs_mol, mcs_conflict)
-            
+
             return mcs_mol
 
 
@@ -662,7 +647,7 @@ class MCS(object):
 
         # The mcs molecule could be empty at this point
         if not mcs_mol_copy.GetNumAtoms():
-            return math.exp(-2*beta*(orig_nha_mcs_mol))
+            return math.exp(-2 * beta * orig_nha_mcs_mol)
 
         ### Chiral Atoms ###
 
@@ -714,7 +699,7 @@ class MCS(object):
         
         # The mcs molecule could be empty at this point
         if not mcs_mol_copy.GetNumAtoms():
-            return math.exp(-2*beta*(orig_nha_mcs_mol))
+            return math.exp(-2 * beta * orig_nha_mcs_mol)
 
 
         #self.draw_molecule(mcs_mol_copy)
@@ -744,7 +729,7 @@ class MCS(object):
         return math.exp(-2*beta*(orig_nha_mcs_mol - max_frag_num_heavy_atoms))
         
 
-if ("__main__" == __name__) :
+if "__main__" == __name__:
 
     mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)    
     molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)

@@ -71,7 +71,7 @@ class Figureprint(object):
     
     """
 
-    def __init__(self, moli, molj ):
+    def __init__(self, moli, molj):
         """
         Inizialization function
     
@@ -105,4 +105,4 @@ class Figureprint(object):
         self.fps_tan = DataStructs.FingerprintSimilarity(self.fps_moli, self.fps_molj)
     def get_fps_tan(self):
         return self.fps_tan
-        
+

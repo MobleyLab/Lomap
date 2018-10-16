@@ -499,7 +499,8 @@ class GraphGen(object):
         -------
         isConnected : bool
             True if the subgraph is connected, False otherwise
-        
+            :param numComponents:
+
         """
 
         isConnected = False
@@ -530,7 +531,7 @@ class GraphGen(object):
         hasCovering = False
 
         # if it is not the same set as before
-        if(not self.findNonCyclicNodes(subgraph).difference(self.nonCycleNodesSet)): hasCovering = True
+        if not self.findNonCyclicNodes(subgraph).difference(self.nonCycleNodesSet): hasCovering = True
 
         return hasCovering
 
@@ -600,7 +601,7 @@ class GraphGen(object):
         connectSuccess = self.connectGraphComponents_brute_force()
 
         
-        while (connectSuccess) :
+        while connectSuccess:
 
             connectSuccess = self.connectGraphComponents_brute_force()
 
@@ -610,7 +611,7 @@ class GraphGen(object):
 
         connectSuccess = self.connectGraphComponents_brute_force_2()
 
-        while (connectSuccess) :
+        while connectSuccess:
 
             connectSuccess = self.connectGraphComponents_brute_force_2()
 
@@ -730,7 +731,7 @@ class GraphGen(object):
                         # I assumed that the score matrix is symmetric. In the Graph part this does not seems to be true: <<<<<<<<<<<<<DEBUG>>>>>>>>>>>>>>>
                         similarity = self.dbase.loose_mtx[nodesOfI[k]["ID"],nodesOfJ[l]["ID"]]
                         
-                        if (similarity > 0.0):
+                        if similarity > 0.0:
                             edgesToCheck.append((nodesOfI[k]["ID"], nodesOfJ[l]["ID"], similarity))
 
         finalEdgesToCheck = [edge for edge in edgesToCheck if edge not in self.edgesAddedInFirstTreePass]
