@@ -1,43 +1,25 @@
 language: python
-
-sudo: false
+python:
+  - "3.6"
 
 branches:
   only:
-    - master
-
+    - networkx2
+    - master 
 
 before_install:
   - source devtools/travis-ci/install.sh 
   - export PYTHONUNBUFFERED=true
-
-
-install: true
-
-
-script: 
-  - conda config --add channels ${ORGNAME}
-  - conda build devtools/conda-recipe 
-  - conda create -n _test --yes
-  - source activate _test
-  - conda install --use-local lomap --yes
-  - conda install --yes pip nose
-  - pip install nose-timer
+# command to install dependencies
+install:
+  - pip install nose
+  - python setup.py install
+# command to run tests
+script:
   - nosetests -v
 
-env:
-  matrix:
-    - CONDA_PY=27
-    - CONDA_PY=35
-    - CONDA_PY=36
-
-  global:
-    - ORGNAME="nividic"
-    - PACKAGENAME="lomap"
-
-
-after_success:
+  after_success:
   - echo "...DONE..."
 
 notifications:
-  email: false
+  email: antonia.mey@ed.ac.uk
