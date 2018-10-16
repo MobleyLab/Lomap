@@ -12,7 +12,7 @@ matrix:
 
 branches:
   only:
-    - networkx2
+    - devel
     - master 
 
 before_install: 
