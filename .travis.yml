@@ -12,26 +12,27 @@ branches:
 
 
 before_install:
-  - source devtools/travis-ci/install.sh 
-  - export PYTHONUNBUFFERED=true
-
-
-install: true
-
-
-script: 
-  - python setup.py install
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+  - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
+  - source activate test-env
   - conda install --yes -c rdkit rdkit
   - conda install --yes networkx
   - conda install --yes matplotlib
   - conda install --yes pip nose
   - pip install nose-timer
-  - nosetests -v
 
-env:
-  matrix:
-    - CONDA_PY=35
-    - CONDA_PY=36
+
+install:
+  - python setup.py install
+
+script: 
+  - nosetests -v
 
   global:
     - ORGNAME="nividic"
