@@ -18,13 +18,15 @@ install: true
 
 script: 
   - python setup.py install
+  - conda install --yes rdkit
+  - conda install --yes networkx
+  - conda install --yes matplotlib
   - conda install --yes pip nose
   - pip install nose-timer
   - nosetests -v
 
 env:
   matrix:
-    - CONDA_PY=27
     - CONDA_PY=35
     - CONDA_PY=36
 
