@@ -18,7 +18,7 @@ install: true
 
 script: 
   - python setup.py install
-  - conda install --yes rdkit
+  - conda install --yes -c rdkit rdkit
   - conda install --yes networkx
   - conda install --yes matplotlib
   - conda install --yes pip nose
