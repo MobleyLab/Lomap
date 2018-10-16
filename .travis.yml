@@ -28,11 +28,11 @@ before_install:
   - pip install nose-timer
 
 
-install:
-  - python setup.py install
+install: yes
 
 script: 
   - nosetests -v
+  - python setup.py install
 
   global:
     - ORGNAME="nividic"
