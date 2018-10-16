@@ -30,6 +30,7 @@ before_install:
   - conda install matplotlib=1.5
   - conda install pip nose
   - conda install pyqt=4
+  - conda install pygraphviz
   - pip install nose-timer
 
 install: yes
