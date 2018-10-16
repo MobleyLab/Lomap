@@ -8,6 +8,7 @@ python setup.py install
 
 import sys,os
 from os.path import relpath, join
+import versioneer
 
 from setuptools import setup, find_packages
 
@@ -29,7 +30,8 @@ potential ligands within a substantial of compounds'
 
 setup(
     name                 = 'lomap',
-    version              = '0.0.0',
+    version              = versioneer.get_version(),
+    cmdclass             = versioneer.get_cmdclass(),
     description          = 'Lead Optimization Mapper 2',
     long_description     = descr,
     url                  = 'https://github.com/MobleyLab/Lomap',
