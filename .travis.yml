@@ -27,6 +27,7 @@ before_install:
   - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
   - conda install networkx
+  - conda install numpy
   - conda install matplotlib
   - conda install -c rdkit rdkit
   - conda install pip nose
