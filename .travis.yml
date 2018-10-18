@@ -30,14 +30,13 @@ before_install:
   - conda install numpy
   - conda install matplotlib
   - conda install -c rdkit rdkit
-  - conda install pip nose
-  - pip install nose-timer
+  - conda install pip pytest
   - pip install codecov
 install: yes
 
 script:
   - python setup.py install
-  - nosetests -v --with-coverage
+  - pytest -v test/test_lomap.py
 
 after_success:
   - echo "...DONE..."
