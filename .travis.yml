@@ -26,12 +26,10 @@ before_install:
   - conda info -a
   - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
-  - conda install -c rdkit rdkit=2016
   - conda install networkx
-  - conda install matplotlib=1.5
+  - conda install matplotlib
+  - conda install -c rdkit rdkit
   - conda install pip nose
-  - conda install pyqt=4
-  - conda install pygraphviz
   - pip install nose-timer
   - pip install codecov
 install: yes

@@ -47,7 +47,7 @@ potential ligands within a substantial of compounds.
 
 import networkx as nx
 import numpy as np
-import sys
+import subprocess
 import matplotlib.pyplot as plt
 import copy
 from operator import itemgetter
@@ -55,7 +55,6 @@ from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 import os.path
 import logging
-from PyQt4 import QtGui
 import tempfile
 import shutil
 
@@ -961,15 +960,17 @@ class GraphGen(object):
             return max_dist
 
 
-        # Determine the screen resolution by using PyQt4 
-        app = QtGui.QApplication([])
-        screen_resolution = app.desktop().screenGeometry()
-        
+        # Determine the screen resolution by using dxpyinfo and removing massive qt dependency
+        command = ('xdpyinfo | grep dimensions')
+        p = subprocess.run(command, stdout=subprocess.PIPE, shell=True, executable='/bin/bash')
+        width = int(p.stdout.split()[1].split(b'x')[0])
+        height = int(p.stdout.split()[1].split(b'x')[1])
+
         # Canvas scale factor 
         scale_canvas = 0.75
         
         # Canvas resolution
-        max_canvas_size = (int(screen_resolution.width() * scale_canvas)  , int(screen_resolution.height() * scale_canvas))
+        max_canvas_size = (int(width * scale_canvas), int(height * scale_canvas))
 
         fig = plt.figure(1,facecolor='white')
         
