@@ -4,6 +4,22 @@ from rdkit import RDLogger
 import pickle
 from lomap.dbmol import DBMolecules
 import multiprocessing
+import networkx as nx
+import networkx.algorithms.isomorphism as iso
+import subprocess
+
+
+@pytest.fixture
+def executable():
+    return 'lomap'
+
+
+def test_insufficient_arguments(executable):
+    cmd = [executable]
+    error_string = b'error: the following arguments are required: directory'
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr = subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    assert(error_string in stderr)
 
 
 def test_mcs():
@@ -32,6 +48,7 @@ def test_mcs():
     assert(nohyds == data_no_hydrogens)
     assert(hyds == data_hydrogens)
 
+
 # Check serial and parallel mode
 def test_serial_parallel():
     db =  DBMolecules('test/basic')
@@ -42,8 +59,129 @@ def test_serial_parallel():
     assert (all(s_strict == p_strict))
     assert (all(s_loose == p_loose))
 
+
 def test_read_mol2_files():
-    db =  DBMolecules('test/basic')
+    db = DBMolecules('test/basic')
     db.options.directory = 'test/'
     with pytest.raises(IOError):
         db.read_mol2_files()
+
+
+#Testing the graphs
+def test_graph():
+    db = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0,name='out', display=False, max=6, cutoff=0.4, radial=False, hub=None)
+
+    strict, loose = db.build_matrices()
+    graph = db.build_graph()
+
+
+    mol2_graph = nx.read_gpickle("test/basic/molecules.gpickle")
+
+    dic1_nodes = graph.nodes()
+    dic1_edges = graph.edges()
+
+    dic2_nodes = mol2_graph.nodes()
+    dic2_edges = mol2_graph.edges()
+
+    assert(dic1_nodes.keys() == dic2_nodes.keys())
+    assert(dic1_edges.keys() == dic2_edges.keys())
+
+    nm = iso.categorical_node_match(['fname_comp', 'ID'], ['noname', -1])
+    em = iso.categorical_edge_match(['strict_flag', 'similarity'], [False, -1.0])
+
+    assert (nx.is_isomorphic(graph, mol2_graph, node_match=nm, edge_match=em))
+
+
+def test_graph_radial():
+    db = DBMolecules('test/radial/', radial=True)
+
+    strict, loose = db.build_matrices()
+    graph = db.build_graph()
+
+    mol2_graph = nx.read_gpickle("test/radial/radial.gpickle")
+
+    dic1_nodes = graph.nodes()
+    dic1_edges = graph.edges()
+
+    dic2_nodes = mol2_graph.nodes()
+    dic2_edges = mol2_graph.edges()
+
+    assert(dic1_nodes.keys() == dic2_nodes.keys())
+    assert(dic1_edges.keys() == dic2_edges.keys())
+
+    nm = iso.categorical_node_match(['fname_comp', 'ID'], ['noname', -1])
+    em = iso.categorical_edge_match(['strict_flag', 'similarity'], [False, -1.0])
+
+    assert(nx.is_isomorphic(graph, mol2_graph, node_match=nm, edge_match=em))
+
+
+def test_graph_radial_hub():
+
+    db = DBMolecules('test/radial/', radial = True, hub="ejm_46.mol2")
+
+    strict,loose = db.build_matrices()
+    graph = db.build_graph()
+
+    mol2_graph = nx.read_gpickle("test/radial/radial_hub.gpickle")
+
+    dic1_nodes = graph.nodes()
+    dic1_edges = graph.edges()
+
+    dic2_nodes = mol2_graph.nodes()
+    dic2_edges = mol2_graph.edges()
+
+    assert(dic1_nodes.keys() == dic2_nodes.keys())
+    assert(dic1_edges.keys() == dic2_edges.keys())
+
+    nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+    em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+    assert(nx.is_isomorphic(graph, mol2_graph, node_match=nm, edge_match=em))
+
+
+def test_graph_radial_hub_fingerprint():
+
+    db = DBMolecules('test/radial/', radial=True, fingerprint=True, hub="ejm_46.mol2")
+
+    strict,loose = db.build_matrices()
+    graph = db.build_graph()
+
+    mol2_graph = nx.read_gpickle("test/radial/radial_hub_fingerprint.gpickle")
+
+    dic1_nodes = graph.nodes()
+    dic1_edges = graph.edges()
+
+    dic2_nodes = mol2_graph.nodes()
+    dic2_edges = mol2_graph.edges()
+
+    assert(dic1_nodes.keys() == dic2_nodes.keys())
+    assert(dic1_edges.keys() == dic2_edges.keys())
+
+    nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+    em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+    assert(nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
+
+
+def test_graph_radial_hub_fingerprint():
+
+    db = DBMolecules('test/radial/', radial=True, fingerprint=True, fast=True, hub="ejm_46.mol2")
+
+    strict,loose = db.build_matrices()
+    graph = db.build_graph()
+
+    mol2_graph = nx.read_gpickle("test/radial/radial_hub_fingerprint_fast.gpickle")
+
+    dic1_nodes = graph.nodes()
+    dic1_edges = graph.edges()
+
+    dic2_nodes = mol2_graph.nodes()
+    dic2_edges = mol2_graph.edges()
+
+    assert(dic1_nodes.keys() == dic2_nodes.keys())
+    assert(dic1_edges.keys() == dic2_edges.keys())
+
+    nm = iso.categorical_node_match(['fname_comp','ID'],['noname',-1])
+    em = iso.categorical_edge_match(['strict_flag','similarity'],[False,-1.0])
+
+    assert(nx.is_isomorphic(graph, mol2_graph , node_match=nm, edge_match=em))
