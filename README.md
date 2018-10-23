@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=master)](https://travis-ci.org/MobleyLab/Lomap)
 
+[![codecov](https://codecov.io/gh/MobleyLab/Lomap/branch/devel/graph/badge.svg)](https://codecov.io/gh/MobleyLab/Lomap)
+
 
 # Lomap
 Alchemical free energy calculations hold increasing promise 
