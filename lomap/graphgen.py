@@ -120,7 +120,7 @@ class GraphGen(object):
         # Generate a list related to the disconnected graphs present in the initial graph 
         if dbase.options.fast and dbase.options.radial:
             #only enable the fast map option if use the radial option
-            self.initialSubgraphList = self.generateInitialSubgraphList(fast_map = True)
+            self.initialSubgraphList = self.generateInitialSubgraphList(fast_map=True)
         else:
             self.initialSubgraphList = self.generateInitialSubgraphList()
 
@@ -205,7 +205,7 @@ class GraphGen(object):
             max_index_final = max_index[0]
             return max_index_final
 
-    def generateInitialSubgraphList(self, fast_map = False):
+    def generateInitialSubgraphList(self, fast_map=False):
         
         """
         This function generates a starting graph connecting with edges all the 
@@ -233,12 +233,12 @@ class GraphGen(object):
                 for j in range(i+1, self.dbase.nums()):
                 
                     if i == 0:
-                        compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp = os.path.basename(self.dbase[j].getName()))
+                        compound_graph.add_node(j,ID=self.dbase[j].getID(), fname_comp=os.path.basename(self.dbase[j].getName()))
                 
                     wgt = self.dbase.strict_mtx[i,j]
                 
                     if wgt > 0.0:
-                        compound_graph.add_edge(i,j,similarity = wgt, strict_flag = True)
+                        compound_graph.add_edge(i, j, similarity=wgt, strict_flag=True)
         else:
             #if fast map option, then add all possible radial edges as the initial graph
             for i in range(0, self.dbase.nums()):
