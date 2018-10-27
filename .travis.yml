@@ -36,7 +36,7 @@ install: yes
 
 script:
   - python setup.py install
-  - pytest test/test_lomap.py 
+  - pytest -v test/test_lomap.py 
 
 after_success:
   - echo "...DONE..."
