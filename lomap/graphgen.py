@@ -219,13 +219,12 @@ class GraphGen(object):
         
         """
         compound_graph = nx.Graph()  
-        
-        
+
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
 
         if not fast_map:
-            #if not fast map option, connect all possible nodes to generate the initial graph
+            # if not fast map option, connect all possible nodes to generate the initial graph
             for i in range(0, self.dbase.nums()):
                 if i==0:
                     compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
@@ -240,21 +239,19 @@ class GraphGen(object):
                     if wgt > 0.0:
                         compound_graph.add_edge(i, j, similarity=wgt, strict_flag=True)
         else:
-            #if fast map option, then add all possible radial edges as the initial graph
+            # if fast map option, then add all possible radial edges as the initial graph
             for i in range(0, self.dbase.nums()):
-                #add the node for i
+                # add the node for i
                 compound_graph.add_node(i,ID=self.dbase[i].getID(), fname_comp = os.path.basename(self.dbase[i].getName()))
                 if i != self.lead_index:
                     wgt = self.dbase.strict_mtx[i, self.lead_index]
                     if wgt > 0:
-                        compound_graph.add_edge(i,self.lead_index,similarity = wgt, strict_flag = True)
+                        compound_graph.add_edge(i, self.lead_index, similarity=wgt, strict_flag=True)
 
         initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
         initialSubgraphList = [x for x in initialSubgraphGen]
 
         return initialSubgraphList
-
-
 
     def generateSubgraphScoresLists(self, subgraphList):
         
