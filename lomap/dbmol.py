@@ -130,11 +130,11 @@ class DBMolecules(object):
 
             if not isinstance(radial,  bool):
                 raise TypeError('The radial flag is not a bool type')
-            output_str=''
-            display_str=''
-            radial_str=''
-            fingerprint_str=''
-            fast_str=''
+            output_str = ''
+            display_str = ''
+            radial_str = ''
+            fingerprint_str = ''
+            fast_str = ''
 
             parser.set_defaults(output=output)
             parser.set_defaults(display=display)
@@ -142,16 +142,16 @@ class DBMolecules(object):
             parser.set_defaults(fingerprint=fingerprint)
             parser.set_defaults(fast=fast)
             if output:
-                output_str='--output'
+                output_str = '--output'
 
             if display:
-                display_str='--display'
+                display_str = '--display'
 
             if radial:
-                radial_str='--radial'
+                radial_str = '--radial'
 
             if fingerprint:
-                fingerprint_str='--fingerprint'
+                fingerprint_str = '--fingerprint'
             
             if fast:
                 fast_str = '--fast'
@@ -161,10 +161,8 @@ class DBMolecules(object):
 
             self.options = parser.parse_args(names_str.split())
 
-        
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_mol2_files()
-    
 
         # Dictionary which holds the mapping between the generated molecule IDs and molecule file names
         self.dic_mapping = {}
@@ -179,19 +177,15 @@ class DBMolecules(object):
         self.strict_mtx = SMatrix(shape=(0,))
         self.loose_mtx = SMatrix(shape=(0,))
 
-        
         # Empty pointer to the networkx graph 
         self.Graph = nx.Graph() 
 
-
-    
     def __iter__(self):
         """
         Index generator
         """
         return self
 
-    
     def next(self): # Python 3: def __next__(self)
         """
         Select the molecule during an iteration
@@ -203,15 +197,13 @@ class DBMolecules(object):
         else:
             self.__ci = self.__ci + 1
             return self.__list[self.__ci - 1] 
-           
-        
+
     def __getitem__(self, index):
         """
         Slicing and index selection function
         """
         
         return self.__list[index]
-
 
     def __setitem__(self, index, molecule):
         """
