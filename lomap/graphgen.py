@@ -110,62 +110,50 @@ class GraphGen(object):
 
         # The maximum threshold distance in angstroms unit used to select if a molecule is depicted
         self.max_mol_size = 50.0
-        
 
         self.edge_labels = False
-        
 
         # The following Section has been strongly copied/adapted from the original implementation
 
         # Generate a list related to the disconnected graphs present in the initial graph 
         if dbase.options.fast and dbase.options.radial:
-            #only enable the fast map option if use the radial option
+            # only enable the fast map option if use the radial option
             self.initialSubgraphList = self.generateInitialSubgraphList(fast_map=True)
         else:
             self.initialSubgraphList = self.generateInitialSubgraphList()
 
-    
-        # A list of elementes made of [edge, weights] for each subgraph
+        # A list of elements made of [edge, weights] for each subgraph
         self.subgraphScoresLists = self.generateSubgraphScoresLists(self.initialSubgraphList)
-    
 
-        
-        # Elimintates from each subgraph those edges whose weights are less than the hard limit
+        # Eliminates from each subgraph those edges whose weights are less than the hard limit
         self.removeEdgesBelowHardLimit()
-
 
         # Make a new master list of subgraphs now that there may be more disconnected components
         self.workingSubgraphsList = self.generateWorkingSubgraphsList()
 
-
-
         # Make a new sorted list of [edge, weights] for each subgraph now that there may be new subgraphs
         self.workingSubgraphScoresLists = self.generateSubgraphScoresLists(self.workingSubgraphsList)        
 
-
         # Remove edges, whose removal does not violate constraints, from the subgraphs,
         # starting with lowest similarity score first
-    
+
         if dbase.options.fast and dbase.options.radial:
-            #if we use the fast and radial option, just need to add the surrounding edges from the initial graph
+            # if we use the fast and radial option, just need to add the surrounding edges from the initial graph
             self.resultGraph = self.addsurroundEdges()
-            #after adding the surround edges, some subgraphs may merge into a larger graph and so need to update the current subgraphs
-            #self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
-            #merge all Subgraphs together for layout
-            #self.resultGraph = self.mergeAllSubgraphs()
+            # after adding the surround edges, some subgraphs may merge into a larger graph and so need to update the
+            # current subgraphs
+            # self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
+            # merge all Subgraphs together for layout
+            # self.resultGraph = self.mergeAllSubgraphs()
         else:
-            #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+            # >>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             self.minimizeEdges()
-            #>>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
-        
-
+            # >>>>>>>>>>>>>>>>>>>>>>>>>>>ISSUE ORDER PROBLEM<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
             # Collect together disjoint subgraphs of like charge into subgraphs
             self.resultingSubgraphsList = copy.deepcopy(self.workingSubgraphsList)
 
-            # Combine seperate subgraphs into a single resulting graph
+            # Combine separate subgraphs into a single resulting graph
             self.resultGraph = self.mergeAllSubgraphs()
 
             # Make a copy of the resulting graph for later processing in connectResultingComponents()
@@ -177,14 +165,13 @@ class GraphGen(object):
             # Add edges to the resultingGraph to connect its components
             self.connectSubgraphs()
 
-
         return
 
     def pick_lead(self):
         if (self.dbase.nums() * (self.dbase.nums() - 1)/2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
         if not self.dbase.options.hub == "None":
-            #hub radial option. Use the provided reference compound as a hub 
+            # hub radial option. Use the provided reference compound as a hub
             hub_index = None
             for i in range(0, self.dbase.nums()):
                 if os.path.basename(self.dbase[i].getName()) == self.dbase.options.hub:
@@ -193,7 +180,7 @@ class GraphGen(object):
                 logging.info("Warning: the specified center ligand %s is not in the ligand database, will not use the radial option."%self.dbase.options.hub)
             return hub_index
         else:
-            #complete radial option. Pick the compound with the highest total similarity to all other compounds to use as a hub
+            # complete radial option. Pick the compound with the highest total similarity to all other compounds to use as a hub
             all_sum_i = []
             for i in range(0, self.dbase.nums()):
                 sum_i = 0
@@ -315,10 +302,6 @@ class GraphGen(object):
             del weightsList[:index + 1]
         
             totalEdges = totalEdges + subgraph.number_of_edges()
-        
-        #print "Removed = ", totalEdges
-
-
 
     def generateWorkingSubgraphsList(self):
         """
@@ -345,39 +328,29 @@ class GraphGen(object):
 
                 workingSubgraphsList.append(newSubgraph)
 
-        
         return workingSubgraphsList
-
-
 
     def minimizeEdges(self):
         """
         Minimize edges in each subgraph while ensuring constraints are met
         """
 
-
         for subgraph in self.workingSubgraphsList:
 
             weightsList = self.workingSubgraphScoresLists[self.workingSubgraphsList.index(subgraph)]
 
-
-        
             # ISSUE ORDER IS ORIGINATED HERE
-            #weightsList = sorted(weightsList, key = itemgetter(1))
-
-            
+            # weightsList = sorted(weightsList, key = itemgetter(1))
 
             # This part has been copied from the original code
             self.nonCycleNodesSet = self.findNonCyclicNodes(subgraph)
-
-            
             numberOfComponents = nx.number_connected_components(subgraph)
             
             if len(subgraph.edges()) > 2:   # Graphs must have at least 3 edges to be minimzed
 
                 for edge in weightsList:
                     if self.lead_index is not None:
-                        #Here the radial option is appplied, will check if the remove_edge is connect to the hub(lead) compound, if the edge is connected to the lead compound, then add it back into the graph. 
+                        # Here the radial option is appplied, will check if the remove_edge is connect to the hub(lead) compound, if the edge is connected to the lead compound, then add it back into the graph.
                         if self.lead_index not in [edge[0], edge[1]]:
                             subgraph.remove_edge(edge[0], edge[1])
                             if self.checkConstraints(subgraph, numberOfComponents) == False:
@@ -410,8 +383,7 @@ class GraphGen(object):
                         max_index_final = max_index[0]
                         subgraph.add_edge(node, max_index_final, similarity = self.dbase.strict_mtx[node, max_index_final], strict_flag = True )
                 return subgraph
-        
-    
+
     def findNonCyclicNodes(self, subgraph):
         """
         Generates a list of nodes of the subgraph that are not in a cycle
@@ -563,8 +535,6 @@ class GraphGen(object):
 
         return withinMaxDistance
 
-
-
     def mergeAllSubgraphs(self):
         """Generates a single networkx graph object from the subgraphs that have
         been processed
@@ -584,7 +554,6 @@ class GraphGen(object):
             finalGraph = nx.union(finalGraph, subgraph)
 
         return finalGraph
-
 
     def connectSubgraphs(self):
         """
@@ -611,8 +580,6 @@ class GraphGen(object):
 
             connectSuccess = self.connectGraphComponents_brute_force_2()
 
-
-
     def connectGraphComponents_brute_force(self):
         """
         Adds edges to the resultGraph to connect all components that can be 
@@ -629,13 +596,10 @@ class GraphGen(object):
         generator_graph = nx.connected_component_subgraphs(self.resultGraph)
         
         self.workingSubgraphsList = [x for x in generator_graph]
-        
-        
-        
+
         if len(self.workingSubgraphsList) == 1:
 
             return False
-
 
         edgesToCheck = []
         edgesToCheckAdditionalInfo = []
@@ -673,7 +637,7 @@ class GraphGen(object):
             sortedListAdditionalInfo = sorted(edgesToCheckAdditionalInfo, key = itemgetter(2), reverse=True)
             
             edgeToAdd = sortedList[0]
-            #self.edgeFile.write("\n" + str(edgeToAdd))
+            # self.edgeFile.write("\n" + str(edgeToAdd))
             edgeToAddAdditionalInfo = sortedListAdditionalInfo[0]
             
             self.edgesAddedInFirstTreePass.append(edgeToAdd)
@@ -687,7 +651,6 @@ class GraphGen(object):
         else:
 
             return False
-
 
     def connectGraphComponents_brute_force_2(self):
         """
@@ -749,8 +712,6 @@ class GraphGen(object):
 
             return False
 
-
-
     def getGraph(self):
         """
 
@@ -759,8 +720,6 @@ class GraphGen(object):
         """
 
         return self.resultGraph
-
-
 
     def generate_depictions(self):
 
@@ -782,16 +741,13 @@ class GraphGen(object):
 
             return max_dist
 
-
-
         directory_name = tempfile.mkdtemp()
 
         temp_graph = self.resultGraph.copy()
 
         if nx.number_of_nodes(temp_graph) <= self.max_images:
-            
-            #Draw.DrawingOptions.atomLabelFontSize=30
-            #Draw.DrawingOptions.dotsPerAngstrom=100            
+            # Draw.DrawingOptions.atomLabelFontSize=30
+            # Draw.DrawingOptions.dotsPerAngstrom=100
             
             for n in temp_graph:
 
@@ -828,7 +784,7 @@ class GraphGen(object):
             else:
                 temp_graph[u][v]['color'] = 'red'
                 temp_graph[u][v]['penwidth'] = 2.5
-        
+
         nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name+'_tmp.dot')
         
         cmd = 'dot -Tpng ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.png' 
@@ -838,7 +794,7 @@ class GraphGen(object):
            
         os.system(cmd)
         cmd = 'dot -Tpdf ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.pdf' 
-           
+
         os.system(cmd)
         os.remove(self.dbase.options.name+'_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
@@ -922,7 +878,6 @@ class GraphGen(object):
 
         return
 
-
     ###### Still in developing stage ######
 
     def draw(self):
@@ -936,7 +891,6 @@ class GraphGen(object):
         if nx.number_of_nodes(self.resultGraph) > self.max_nodes:
             logging.info('The number of generated graph nodes %d exceed the max number of drawable nodes %s' % (nx.number_of_nodes(self.resultGraph), self.max_nodes))
             return
-
 
         def max_dist_mol(mol):
             
@@ -955,7 +909,6 @@ class GraphGen(object):
                         max_dist = dist
 
             return max_dist
-
 
         # Determine the screen resolution by using dxpyinfo and removing massive qt dependency
         command = ('xdpyinfo | grep dimensions')
@@ -985,13 +938,11 @@ class GraphGen(object):
 
         node_labels = dict([(u, d['ID']) for u,d in self.resultGraph.nodes(data=True)])
 
-
-        #Draw nodes
+        # Draw nodes
         nx.draw_networkx_nodes(self.resultGraph, pos , node_size=500, node_color='r')
-        #Draw node labels
+        # Draw node labels
         nx.draw_networkx_labels(self.resultGraph, pos,labels=node_labels,font_size=10) 
 
-        
         if self.edge_labels:
             edge_weight_strict = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == True])
             edge_weight_loose = dict([((u,v,), d['similarity']) for u,v,d in self.resultGraph.edges(data=True) if d['strict_flag'] == False])
@@ -1002,17 +953,15 @@ class GraphGen(object):
             for key in edge_weight_loose:
                 edge_weight_loose[key] = round(edge_weight_loose[key],2)
        
-            #edge strict    
+            # edge strict
             nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_strict, font_color='g')
-            #edge loose
+            # edge loose
             nx.draw_networkx_edge_labels(self.resultGraph, pos, edge_labels=edge_weight_loose, font_color='r')
-        
-        
-        #edges strict
+
+        # edges strict
         nx.draw_networkx_edges(self.resultGraph, pos, edgelist=strict_edges, edge_color='g')
-        #edges loose
+        # edges loose
         nx.draw_networkx_edges(self.resultGraph, pos, edgelist=loose_edges, edge_color='r')
-  
 
         if nx.number_of_nodes(self.resultGraph) <= self.max_images:
             
@@ -1037,9 +986,9 @@ class GraphGen(object):
             mol_size = (200,200)
 
             for each_node in self.resultGraph:
-                
+
                 id_mol = self.resultGraph.node[each_node]['ID']
-                #skip remove Hs by rdkit if Hs cannot be removed
+                # skip remove Hs by rdkit if Hs cannot be removed
                 try:
                     mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
                 except:
@@ -1052,7 +1001,7 @@ class GraphGen(object):
                 #     continue
 
                 AllChem.Compute2DCoords(mol)
-                #add try exception for cases cannot be draw
+                # add try exception for cases cannot be draw
                 try:
                     img_mol = Draw.MolToImage(mol,mol_size, kekulize = False)
                 except Exception as ex:
@@ -1069,12 +1018,11 @@ class GraphGen(object):
                 p2_1 = nodesize_1/2
          
                 a = plt.axes([xa - p2_2, ya - p2_1, nodesize_2, nodesize_1]) 
-                #self.resultGraph.node[id_mol]['image'] = img_mol
-                #a.imshow(self.resultGraph.node[each_node]['image'])
+                # self.resultGraph.node[id_mol]['image'] = img_mol
+                # a.imshow(self.resultGraph.node[each_node]['image'])
                 a.imshow(img_mol)
                 a.axis('off')
-             
-        
+
         # plt.savefig('graph.png', facecolor=fig.get_facecolor())
         # print 'Graph .png file has been generated...'
 
