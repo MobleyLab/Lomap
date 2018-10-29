@@ -29,7 +29,7 @@ before_install:
   - conda install networkx
   - conda install numpy
   - conda install matplotlib
-  - conda install -c rdkit rdkit
+  - conda install -c rdkit rdkit=2018.03.4
   - conda install pip pytest
   - pip install codecov
 install: yes
