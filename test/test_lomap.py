@@ -91,6 +91,12 @@ def test_read_mol2_files():
         db.read_mol2_files()
 
 
+def test_num():
+    pass
+
+
+def test_compute_mtx():
+    pass
 # Testing the graphs
 # def test_graph():
 #     db = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
