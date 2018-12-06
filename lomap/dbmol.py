@@ -554,14 +554,14 @@ class DBMolecules(object):
         # Writing the results is files
         if self.options.output:
             try:
-                Gr.writeGraph()
+                Gr.write_graph()
                 pickle_f = open(self.options.name + ".pickle", "w")
                 pickle.dump(Gr, pickle_f)
             except Exception as e:
                 logging.error(str(e))
 
         # Handle to the the NetworkX generated graph
-        self.Graph = Gr.getGraph()
+        self.Graph = Gr.get_graph()
 
         # print self.Graph.nodes(data=True)
 

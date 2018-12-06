@@ -787,9 +787,9 @@ class GraphGen(object):
         # pass the lead compound index if the radial option is on and generate the
         # morph type of output required by FESetup
         if self.lead_index is not None:
-            morph_txt = open(self.dbase.options.name + "_morph.txt", "w")
+            morph_txt = open(self.dbase.options.name + "_morph.txt", "wb")
             morph_data = "morph_pairs = "
-        info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "w")
+        info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "wb")
         all_key_id = self.dbase.dic_mapping.keys()
         data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
         "Index_1", "Index_2", "Filename_1", "Filename_2", "Erc_sim", "Str_sim", "Loose_sim", "Connect")]
@@ -862,8 +862,7 @@ class GraphGen(object):
 
         logging.info(30 * '-')
         logging.info(
-            'The following files have been generated:\n%s.dot\tGraph file\n%s.png\tPng file\n%s.txt\tMapping Text file' % (
-            self.dbase.options.name, self.dbase.options.name, self.dbase.options.name))
+            'The following files have been generated:\n%s.dot\tGraph file\n%s.png\tPng file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name, self.dbase.options.name))
         logging.info(30 * '-')
 
         return
