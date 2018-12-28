@@ -1,38 +1,15 @@
-# Import lomap
 import lomap
-import sys
-import networkx as nx
 
-    
-# Create the molecule database by using .mol2 files
-# The DBMolecule class must be created with a valid
-# directory name
-        
-db_mol = lomap.DBMolecules('test/basic/', output=True)
+# If multiple toolkits are present OE will be the default one
+db_oe = lomap.DBMolecules("./tests/data")
 
-# db_mol = lomap.DBMolecules('test/basic/', output=True, display=True)
+# Checking OE mol
+print(db_oe[0].molecule)
 
-    
-# Generate the strict and loose symmetric similarity 
-# score matrices
-          
-strict, loose = db_mol.build_matrices()
-    
-# Convert the matrices in standard numpy matrices
+# Switching Toolkit
+lomap.toolkits.set_default("RDK")
 
-strict_numpy = strict.to_numpy_2D_array()
-loose_numpy = loose.to_numpy_2D_array()
+db_rdk = lomap.DBMolecules("./tests/data")
 
-    
-# Networkx graph generation based on the similarity 
-# score matrices
-          
-nx_graph = db_mol.build_graph() 
-#print(nx_graph.edges(data=True))
-
-
-# Calculate the Maximum Common Subgraph (MCS) between 
-# the first two molecules in the molecule database 
-# ignoring hydrogens and depicting the mapping in a file
-    
-MC = lomap.MCS.getMapping(db_mol[0].getMolecule(), db_mol[1].getMolecule(), hydrogens=False, fname='mcs.png')
+# Checking RDK mol
+print(db_rdk[0].molecule)

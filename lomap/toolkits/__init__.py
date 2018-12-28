@@ -18,30 +18,6 @@
 # if not, see https://opensource.org/licenses/MIT
 # *****************************************************************************
 
-"""
-Lomap
-======
 
-Alchemical free energy calculations hold increasing promise as an aid to drug 
-discovery efforts. However, applications of these techniques in discovery 
-projects have been relatively few, partly because of the difficulty of planning 
-and setting up calculations. The Lead Optimization Mapper (LOMAP) is an 
-automated algorithm to plan efficient relative free energy calculations between 
-potential ligands within a substantial of compounds.
+from .toolkits import *
 
-Authors: Gaetano Calabro' <gcalabro@eyesopen.com>
-         David Mobley     <dmobley@uci.edu>
-
-
-Licence: MIT
-
-URL: https://github.com/nividic/Lomap
-
-
-Using
------
-TESTING
-"""
-
-from . import toolkits
-from .dbmol import DBMolecules
