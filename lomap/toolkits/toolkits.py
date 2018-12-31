@@ -22,6 +22,9 @@ import importlib
 import lomap
 
 try:
+    import openeye
+    if not openeye.OEChemIsLicensed():
+        raise ImportError
     from openeye import oechem
     HAS_OE = True
 except ImportError:
@@ -33,12 +36,12 @@ try:
 except ImportError:
     HAS_RDK = False
 
-if HAS_OE:
+if HAS_RDK:
+    DEFAULT = "RDK"
+    from .rdk import read_molecules
+elif HAS_OE:
     DEFAULT = "OE"
     from .oe import read_molecules
-elif HAS_RDK:
-    from .rdk import read_molecules
-    DEFAULT = "RDK"
 else:
     raise ImportError("No Cheminformatics toolkit has been found")
 

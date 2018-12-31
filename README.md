@@ -19,12 +19,11 @@ free tool to plan in advance binding free energy calculations
 
 
 ## Prerequisites
-* RDKit Release >2015.09.2
-* Graphviz 2.38
-* pygraphviz
-* NetworkX 
-* Matplotlib > 2.0
-* PyQt 4.11
+* Python 3.6
+* RDKit Release >= 2018.09.1.0
+* (optional) Openeye-toolkits >= 2018.10.1
+
+
 
 Authors
 -------
@@ -33,23 +32,16 @@ Authors
 
 ## Installation
 
-Add to the conda channels:
+by using the local env file:
 
-conda config --add channels nividic
+* conda env create -f env.yaml -n lomap
 
-and then:
+* source activate lomap
 
-conda install lomap
+inside the lomap directory type"
 
-or
+* python setup.py develop
 
-Add to the conda channels:
-
-conda config --add channels mobleylab
-
-and then:
-
-conda install lomap
 
 
 Usage
@@ -57,54 +49,30 @@ Usage
 ```python
 import lomap
 
-# Generate the molecule database starting from a directory containing .mol2 files
+# If multiple toolkits are present RDK will be the default one
+db_rdk = lomap.DBMolecules("./tests/data")
 
-db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True)
+# Checking RDK mol
+print(db_rdk[0].molecule)
 
-    #More graphing options:
-    # Use the complete radial graph option. The ligand with the most structural similarity to all of the others will be picked as the 'lead compounds' and used as the central compound.
-    db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, radial=True)
+# Switching Toolkit
 
-    # Use a radial graph with a manually specified hub compound
-    db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, radial=True, hub=filename.mol2)
+try:
+    lomap.toolkits.set_default("OE")
 
-    # Use a radial graph with a manually specified hub compound and fast graphing option
-    #the fast graphing option create the initial graph by connecting the hub ligand with the possible surrounding ligands and add surrounding edges based on the similarities accoss surrounding nodes
-    db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, radial=True, hub=filename.mol2, fast=True)
+    db_oe = lomap.DBMolecules("./tests/data")
 
-# Calculate the similarity matrix betweeen the database molecules. Two molecules are generated
-# related to the scrict rule and loose rule 
-
-strict, loose = db_mol.build_matrices()
-
-# Generate the NetworkX graph and output the results
-nx_graph = db_mol.build_graph() 
-
-
-# Calculate the Maximum Common Subgraph (MCS) between 
-# the first two molecules in the molecule database 
-# ignoring hydrogens and depicting the mapping in a file
-    
-MC = lomap.MCS.getMapping(db_mol[0].getMolecule(), db_mol[1].getMolecule(), hydrogens=False, fname='mcs.png')
-
-
-# Alchemical transformation are usually performed between molecules with
-# the same charges. However, it is possible to allow this transformation
-# manually setting the electrostatic score for the whole set of molecules 
-# producing a connected graph. The electrostatic scrore must be in the 
-# range [0,1]
-
-
-db_mol = lomap.DBMolecules("python string pointing to a directory with mol2 files", output=True, ecrscore=0.1)
-strict, loose = db_mol.build_matrices()
-nx_graph = db_mol.build_graph() 
+    # Checking OE mol
+    print(db_oe[0].molecule)
+except:
+    pass
 ```
 
 
 
 ## Issues
-* Lomap is in debugging stage and it has been tested on Ubuntu 14.04 and OSX Yosemite
-* Lomap has been developed in python 2.7 and 3.4
+* Lomap is in debugging stage and it has been tested on Ubuntu 16.04 and OSX High Sierra
+* Lomap has been developed in python 3.6
 
 ## Disclaimers
 * This code is currently in alpha release status. Use at your own risk. We will almost certainly be making changes to the API in the near future.
