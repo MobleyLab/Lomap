@@ -1,6 +1,6 @@
-#******************
+# ******************
 # MODULE DOCSTRING
-#******************
+# ******************
 
 """
 
@@ -16,7 +16,7 @@ potential ligands within a substantial of compounds.
 
 """
 
-#*****************************************************************************
+# *****************************************************************************
 # Lomap2: A toolkit to plan alchemical relative binding affinity calculations
 # Copyright 2015 - 2016  UC Irvine and the Authors
 #
@@ -34,12 +34,12 @@ potential ligands within a substantial of compounds.
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, see http://www.gnu.org/licenses/
-#*****************************************************************************
+# *****************************************************************************
 
 
-#****************
+# ****************
 # MODULE IMPORTS
-#****************
+# ****************
 
 
 from rdkit import Chem
@@ -55,13 +55,13 @@ from rdkit import RDLogger
 import logging
 import argparse
 
-
-#*******************************
+# *******************************
 # Figureprint Class
-#*******************************
+# *******************************
 
 
 __all__ = ['FIGUREPRINT']
+
 
 class Figureprint(object):
     """
@@ -87,22 +87,20 @@ class Figureprint(object):
        
         """
 
-
         # Set logging level and format
         logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
-    
+
         # Local pointers to the passed molecules
         self.moli = moli
         self.molj = molj
-        
+
         if not options.verbose == 'pedantic':
             lg = RDLogger.logger()
             lg.setLevel(RDLogger.CRITICAL)
-        
 
         self.fps_moli = FingerprintMols.FingerprintMol(self.moli)
         self.fps_molj = FingerprintMols.FingerprintMol(self.molj)
         self.fps_tan = DataStructs.FingerprintSimilarity(self.fps_moli, self.fps_molj)
+
     def get_fps_tan(self):
         return self.fps_tan
-

@@ -8,7 +8,7 @@ import networkx as nx
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('test/basic/', output=True)
+db_mol = lomap.DBMolecules('../test/basic/', output=True)
 
 # db_mol = lomap.DBMolecules('test/basic/', output=True, display=True)
 

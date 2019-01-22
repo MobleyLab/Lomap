@@ -13,7 +13,8 @@ matrix:
 branches:
   only:
     - devel
-    - master 
+    - master
+    - feat_pytest 
 
 before_install: 
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -25,22 +26,20 @@ before_install:
   - conda info -a
   - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
-  - conda install -c rdkit rdkit=2016
   - conda install networkx
-  - conda install matplotlib=1.5
-  - conda install pip nose
-  - conda install pyqt=4
-  - conda install pygraphviz
-  - pip install nose-timer
-
+  - conda install numpy
+  - conda install matplotlib
+  - conda install -c rdkit rdkit=2018.03.4
+  - conda install pip pytest
+  - pip install codecov
 install: yes
 
 script:
   - python setup.py install
-  - nosetests -v
+  - pytest -v test/test_lomap.py 
 
 after_success:
   - echo "...DONE..."
-
+  - codecov
 notifications:
   email: false

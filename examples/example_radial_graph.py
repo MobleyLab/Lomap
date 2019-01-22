@@ -7,7 +7,7 @@ import networkx as nx
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('test/radial/', output=True, radial=True )
+db_mol = lomap.DBMolecules('../test/radial/', output=True, radial=True )
 #use the radial option with hub ligand set as 
 #db_mol = lomap.DBMolecules('test/radial/', output=True, radial=True, hub="ejm_46.mol2")
     
