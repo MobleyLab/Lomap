@@ -634,7 +634,7 @@ class MCS(object):
             if atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW:
                 mcs_chiral_set.add(atom.GetIdx())
 
-        # Loop over the mcs chirial atoms to check if they are also ring atoms
+        # Loop over the mcs chiral atoms to check if they are also ring atoms
         delete_atoms = set()
 
         for atom_idx in mcs_chiral_set:
