@@ -83,7 +83,7 @@ class DBMolecules(object):
         Parameters
         ----------
         directory : str 
-           the mol2 directory file name
+           the mol2/sdf directory file name
         parallel : int
            the number of cores used to generate the similarity score matrices
         verbose : bool
@@ -165,7 +165,7 @@ class DBMolecules(object):
             self.options = parser.parse_args(names_str.split())
 
         # Internal list container used to store the loaded molecule objects
-        self.__list = self.read_mol2_files()
+        self.__list = self.read_molecule_files()
 
         # Dictionary which holds the mapping between the generated molecule IDs and molecule file names
         self.dic_mapping = {}
@@ -258,9 +258,9 @@ class DBMolecules(object):
         """
         return len(self.__list)
 
-    def read_mol2_files(self):
+    def read_molecule_files(self):
         """
-        Read in all the mol2 files
+        Read in all the mol2 or SDF files
 
         Returns
         -------
@@ -278,21 +278,26 @@ class DBMolecules(object):
 
         logging.info(30 * '-')
 
-        # The .mol2 file format is the only supported so far
+        # The .mol2 and .sdf file formats are the only supported so far
         mol_fnames = glob.glob(self.options.directory + "/*.mol2")
+        mol_fnames += glob.glob(self.options.directory + "/*.sdf")
 
         mol_fnames.sort()
 
         if len(mol_fnames) < 2:
-            raise IOError('The directory %s must contain at least two mol2 files' % self.options.directory)
+            raise IOError('The directory %s must contain at least two mol2/sdf files' % self.options.directory)
 
         print_cnt = 0
         mol_id_cnt = 0
 
         for fname in mol_fnames:
-            # The RDkit molecule object reads in as mol2 file. The molecule is not sanitized and 
-            # all the hydrogens are kept in place
-            rdkit_mol = Chem.MolFromMol2File(fname, sanitize=False, removeHs=False)
+            # The RDkit molecule object reads in as mol2/sdf file. The molecule is not sanitized and 
+            # all the hydrogens are kept in place - we are assuming 3D input, correctly charged
+            # and prepared in the protein active site
+            if fname.endswith(".mol2"):
+                rdkit_mol = Chem.MolFromMol2File(fname, sanitize=False, removeHs=False)
+            else:
+                rdkit_mol = Chem.MolFromMolFile(fname, sanitize=False, removeHs=False)
 
             # Reading problems
             if rdkit_mol == None:
@@ -379,6 +384,21 @@ class DBMolecules(object):
         # print 'a = %d, b = %d' % (a,b)
         # print '\n'  
 
+        def formal_charge(mol):
+            total_charge_mol = 0.0
+
+            try:
+                # Assume mol2
+                for atom in mol.GetAtoms():
+                    total_charge_mol += float(atom.GetProp('_TriposPartialCharge'))
+            except:
+                # wasn't mol2, so assume SDF with correct formal charge props for mols
+                for atom in mol.GetAtoms():
+                    total_charge_mol += float(atom.GetFormalCharge())
+            return total_charge_mol
+
+
+
         def ecr(mol_i, mol_j):
             """
             This function computes the similarity score between the passed molecules
@@ -399,15 +419,9 @@ class DBMolecules(object):
 
             """
 
-            total_charge_mol_i = 0.0
+            total_charge_mol_i = formal_charge(mol_i) 
+            total_charge_mol_j = formal_charge(mol_j) 
 
-            for atom in mol_i.GetAtoms():
-                total_charge_mol_i += float(atom.GetProp('_TriposPartialCharge'))
-
-            total_charge_mol_j = 0.0
-
-            for atom in mol_j.GetAtoms():
-                total_charge_mol_j += float(atom.GetProp('_TriposPartialCharge'))
             if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
                 scr_ecr = 1.0
             else:
@@ -953,7 +967,7 @@ parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A prog
                                              'binding affinity calculations',
                                  prog='LOMAP v. %s' % get_versions()['version'])
 parser.add_argument('directory', action=CheckDir, \
-                    help='The mol2 file directory')
+                    help='The mol2/sdf file directory')
 # parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
 #                     help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
 parser.add_argument('-p', '--parallel', default=1, action=CheckPos, type=int, \
