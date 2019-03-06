@@ -57,6 +57,7 @@ import os.path
 import logging
 import tempfile
 import shutil
+import traceback
 
 __all__ = ['GraphGen']
 
@@ -787,9 +788,9 @@ class GraphGen(object):
         # pass the lead compound index if the radial option is on and generate the
         # morph type of output required by FESetup
         if self.lead_index is not None:
-            morph_txt = open(self.dbase.options.name + "_morph.txt", "wb")
+            morph_txt = open(self.dbase.options.name + "_morph.txt", "w")
             morph_data = "morph_pairs = "
-        info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "wb")
+        info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "w")
         all_key_id = self.dbase.dic_mapping.keys()
         data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
         "Index_1", "Index_2", "Filename_1", "Filename_2", "Erc_sim", "Str_sim", "Loose_sim", "Connect")]
@@ -797,11 +798,12 @@ class GraphGen(object):
             for j in range(i + 1, len(all_key_id)):
                 morph_string = None
                 connected = False
+                similarity=0
                 try:
-                    similarity = self.resultGraph.edge[i][j]['similarity']
-                    # print "Check the similarity", similarity
+                    edgedata=[d for (u,v,d) in self.resultGraph.edges(data=True) if ((u==i and v==j) or (u==j and v==i))]
+                    similarity = edgedata[0]['similarity']
                     connected = True
-                except:
+                except IndexError:
                     pass
                 Filename_i = self.dbase.dic_mapping[i]
                 Filename_j = self.dbase.dic_mapping[j]
@@ -852,12 +854,14 @@ class GraphGen(object):
             self.dbase.write_dic()
             self.layout_info()
         except Exception as e:
+            traceback.print_exc()
             raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
 
         try:
             self.generate_depictions()
             nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name + '.dot')
         except Exception as e:
+            traceback.print_exc()
             raise IOError('Problems during the file generation: %s' % str(e))
 
         logging.info(30 * '-')

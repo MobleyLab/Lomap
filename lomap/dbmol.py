@@ -75,7 +75,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, output=False,
                  name='out', display=False,
-                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False):
+                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, linksfile=None):
 
         """
         Initialization of  the Molecule Database Class
@@ -102,6 +102,8 @@ class DBMolecules(object):
            the maximum distance used to cluster the graph nodes
         cutoff : float
            the Minimum Similarity Score (MSS) used to build the graph
+        linksfile : str
+           the name of a file containing links to seed the graph with
 
         """
 
@@ -155,9 +157,9 @@ class DBMolecules(object):
             if fast:
                 fast_str = '--fast'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s' \
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s --linksfile %s %s %s %s %s %s' \
                         % (
-                        directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str,
+                        directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, linksfile, output_str, display_str,
                         radial_str, fingerprint_str, fast_str)
 
             self.options = parser.parse_args(names_str.split())
@@ -167,9 +169,17 @@ class DBMolecules(object):
 
         # Dictionary which holds the mapping between the generated molecule IDs and molecule file names
         self.dic_mapping = {}
+        self.inv_dic_mapping = {}
+
+        # Pre-specified links between molecules - a list of molecule index tuples
+        self.prespecified_links = []
 
         for mol in self.__list:
             self.dic_mapping[mol.getID()] = mol.getName()
+            self.inv_dic_mapping[mol.getName()] = mol.getID()
+
+        if self.options.linksfile:
+            self.parse_links_file(self.options.linksfile)
 
         # Index used to perform index selection by using __iter__ function
         self.__ci = 0
@@ -320,6 +330,16 @@ class DBMolecules(object):
 
         return molid_list
 
+    def parse_links_file(self, links_file):
+        with open(links_file,"r") as lf:
+            for line in lf:
+                mols = line.split();
+                indexa = self.inv_dic_mapping[mols[0]]
+                indexb = self.inv_dic_mapping[mols[1]]
+                self.prespecified_links.append((indexa,indexb))
+                self.prespecified_links.append((indexb,indexa))
+                print("Added prespecified link for mols",mols,"->",(indexa,indexb))
+
     def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint=False):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
@@ -415,6 +435,15 @@ class DBMolecules(object):
 
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
+
+            if (i,j) in self.prespecified_links:
+                print("Molecule pair",i,j,"prespecified - score set to 1")
+                strict_scr = 1.0
+                loose_scr = 1.0
+                strict_mtx[k] = strict_scr
+                loose_mtx[k] = loose_scr
+                ecr_mtx[k] = ecr_score
+                continue
 
             # The MCS is computed just if the passed molecules have the same charges 
             if ecr_score or self.options.ecrscore:
@@ -555,7 +584,7 @@ class DBMolecules(object):
         if self.options.output:
             try:
                 Gr.write_graph()
-                pickle_f = open(self.options.name + ".pickle", "w")
+                pickle_f = open(self.options.name + ".pickle", "wb")
                 pickle.dump(Gr, pickle_f)
             except Exception as e:
                 logging.error(str(e))
@@ -903,7 +932,7 @@ def startup():
 
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
-                         ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast)
+                         ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
 
@@ -944,6 +973,8 @@ out_group.add_argument('-o', '--output', default=True, action='store_true', \
                        help='Generates output files')
 out_group.add_argument('-n', '--name', type=str, default='out', \
                        help='File name prefix used to generate the output files')
+out_group.add_argument('-l', '--linksfile', type=str, default='out', \
+                       help='File name prefix used to generate the output files')
 
 parser.add_argument('-d', '--display', default=False, action='store_true', \
                     help='Display the generated graph by using Matplotlib')
@@ -961,6 +992,8 @@ graph_group.add_argument('-f', '--fingerprint', default=False, action='store_tru
                          help='Using the fingerprint option to build similarity matrices')
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
+#graph_group.add_argument('-l', '--linksfile', default='', type=str, \
+#                         help='Specify a filename listing the molecule files that should be initialised as linked')
 
 # ------------------------------------------------------------------
 
