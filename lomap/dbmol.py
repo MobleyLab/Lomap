@@ -157,12 +157,12 @@ class DBMolecules(object):
             if fast:
                 fast_str = '--fast'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s --linksfile %s %s %s %s %s %s' \
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s' \
                         % (
-                        directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, linksfile, output_str, display_str,
+                        directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str,
                         radial_str, fingerprint_str, fast_str)
 
-            self.options = parser.parse_args(names_str.split())
+            self.options = parser.parse_args(names_str.split().extend(['--linksfile',linksfile]))
 
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_molecule_files()
@@ -178,7 +178,7 @@ class DBMolecules(object):
             self.dic_mapping[mol.getID()] = mol.getName()
             self.inv_dic_mapping[mol.getName()] = mol.getID()
 
-        if self.options.linksfile:
+        if len(self.options.linksfile)>0:
             self.parse_links_file(self.options.linksfile)
 
         # Index used to perform index selection by using __iter__ function
@@ -336,14 +336,17 @@ class DBMolecules(object):
         return molid_list
 
     def parse_links_file(self, links_file):
-        with open(links_file,"r") as lf:
-            for line in lf:
-                mols = line.split();
-                indexa = self.inv_dic_mapping[mols[0]]
-                indexb = self.inv_dic_mapping[mols[1]]
-                self.prespecified_links.append((indexa,indexb))
-                self.prespecified_links.append((indexb,indexa))
-                print("Added prespecified link for mols",mols,"->",(indexa,indexb))
+        try:
+            with open(links_file,"r") as lf:
+                for line in lf:
+                    mols = line.split();
+                    indexa = self.inv_dic_mapping[mols[0]]
+                    indexb = self.inv_dic_mapping[mols[1]]
+                    self.prespecified_links.append((indexa,indexb))
+                    self.prespecified_links.append((indexb,indexa))
+                    print("Added prespecified link for mols",mols,"->",(indexa,indexb))
+        except KeyError as e:
+            raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
 
     def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint=False):
         """
@@ -389,12 +392,11 @@ class DBMolecules(object):
 
             try:
                 # Assume mol2
-                for atom in mol.GetAtoms():
-                    total_charge_mol += float(atom.GetProp('_TriposPartialCharge'))
+                total_charge_mol=sum([float(a.GetProp('_TriposPartialCharge')) for a in mol.GetAtoms()])
             except:
                 # wasn't mol2, so assume SDF with correct formal charge props for mols
-                for atom in mol.GetAtoms():
-                    total_charge_mol += float(atom.GetFormalCharge())
+                total_charge_mol=sum([a.GetFormalCharge() for a in mol.GetAtoms()])
+
             return total_charge_mol
 
 
@@ -987,8 +989,6 @@ out_group.add_argument('-o', '--output', default=True, action='store_true', \
                        help='Generates output files')
 out_group.add_argument('-n', '--name', type=str, default='out', \
                        help='File name prefix used to generate the output files')
-out_group.add_argument('-l', '--linksfile', type=str, default='out', \
-                       help='File name prefix used to generate the output files')
 
 parser.add_argument('-d', '--display', default=False, action='store_true', \
                     help='Display the generated graph by using Matplotlib')
@@ -1006,8 +1006,8 @@ graph_group.add_argument('-f', '--fingerprint', default=False, action='store_tru
                          help='Using the fingerprint option to build similarity matrices')
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
-#graph_group.add_argument('-l', '--linksfile', default='', type=str, \
-#                         help='Specify a filename listing the molecule files that should be initialised as linked')
+graph_group.add_argument('-l', '--linksfile', type=str, default='', \
+                          help='Specify a filename listing the molecule files that should be initialised as linked')
 
 # ------------------------------------------------------------------
 
