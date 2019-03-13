@@ -49,6 +49,7 @@ from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
 from rdkit import DataStructs
 from rdkit.Chem.Fingerprints import FingerprintMols
+from rdkit.Geometry.rdGeometry import Point3D
 import sys
 import math
 from rdkit import RDLogger
@@ -71,7 +72,7 @@ class MCS(object):
     
     """
 
-    def __init__(self, moli, molj, options=argparse.Namespace(time=20, verbose='info', max3D=1000, threed=False)):
+    def __init__(self, moli, molj, options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=False)):
         """
         Initialization function
     
@@ -87,12 +88,30 @@ class MCS(object):
        
         """
 
+        def substructure_centre(mol, mol_sub):
+            """
+
+            This function takes a molecule and a list of atom indices
+            in that molecule and returns an RDKit Point3D representing
+            the geometric centre of the atoms in the list
+
+            """
+
+            sum = Point3D()
+            for i in mol_sub:
+                sum += mol.GetConformer().GetAtomPosition(i)
+            return sum / len(mol_sub)
+
+
         def best_substruct_match(moli,molj,by_rmsd=True):
             """
 
             This function looks over all of the substructure matches and returns the one
             with the best 3D correspondence (if by_rmsd is true), or the fewest number
             of atomic number mismatches (if by_rmsd is false)
+
+            Note that the 3D correspondence does a translational centreing (but
+            does not rotate).
 
             """
 
@@ -108,14 +127,18 @@ class MCS(object):
             best_rmsd=1e8
             for mapi in moli_sub:
                 for mapj in molj_sub:
+                    # Compute the translation to bring molj's centre over moli
+                    coord_delta = (substructure_centre(moli,mapi)
+                                 - substructure_centre(molj,mapj))
                     rmsd=0
                     for pair in zip(mapi,mapj):
                         if by_rmsd:
-                            rmsd += (moli.GetConformer().GetAtomPosition(pair[0]) -
-                                     molj.GetConformer().GetAtomPosition(pair[1])).LengthSq()
-                        else:
-                            if moli.GetAtomWithIdx(pair[0]).GetAtomicNum() != molj.GetAtomWithIdx(pair[1]).GetAtomicNum():
-                                rmsd+=1
+                            rmsd += (moli.GetConformer().GetAtomPosition(pair[0]) 
+                                   - molj.GetConformer().GetAtomPosition(pair[1])
+                                   - coord_delta).LengthSq()
+                        elif (moli.GetAtomWithIdx(pair[0]).GetAtomicNum() != 
+                              molj.GetAtomWithIdx(pair[1]).GetAtomicNum()):
+                            rmsd+=1
                     if rmsd < best_rmsd:
                         besti=mapi
                         bestj=mapj
@@ -128,6 +151,9 @@ class MCS(object):
 
             This function is used to trim the MCS molecule to remove mismatched atoms i.e atoms
             where the topological mapping does not work in 3D coordinates.
+
+            The sets of mapped atoms are translated to bring their geometric centres
+            into alignment before trimming
            
             Parameters
             ----------
@@ -139,12 +165,16 @@ class MCS(object):
             print("debug max_deviation=",max_deviation)
             while True:
                 (mapi,mapj) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=True)
+                # Compute the translation to bring molj's centre over moli
+                coord_delta = (substructure_centre(self.__moli_noh,mapi)
+                             - substructure_centre(self.__molj_noh,mapj))
                 worstatomidx=-1
                 worstdist=0
                 atomidx=0
                 for pair in zip(mapi,mapj):
-                    dist = (self.__moli_noh.GetConformer().GetAtomPosition(pair[0]) -
-                             self.__molj_noh.GetConformer().GetAtomPosition(pair[1])).Length()
+                    dist = (self.__moli_noh.GetConformer().GetAtomPosition(pair[0])
+                          - self.__molj_noh.GetConformer().GetAtomPosition(pair[1])
+                          - coord_delta).Length()
                     if dist > worstdist:
                         worstdist=dist
                         worstatomidx=atomidx
@@ -793,8 +823,8 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('/home/mark/lomap-test/max/cdk2_ds/lomap_sdf/cdk2_lig13.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('/home/mark/lomap-test/max/cdk2_ds/lomap_sdf/cdk2_lig14.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/cdk2_lig13.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/cdk2_lig14_translated.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
 
