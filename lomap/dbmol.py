@@ -73,7 +73,7 @@ class DBMolecules(object):
 
     # Initialization function
     def __init__(self, directory, parallel=1, verbose='off',
-                 time=20, ecrscore=0.0, output=False,
+                 time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', display=False,
                  max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, linksfile=None):
 
@@ -92,6 +92,11 @@ class DBMolecules(object):
            the maximum time in seconds used to perform the MCS search
         ecrscore: float
            the electrostatic score to be used (if != 0) if two molecule have diffrent charges
+        threed: bool
+           If true, symmetry-equivalent MCSes are filtered to prefer the one with the best real-space alignment
+        max3d: float
+           The MCS is filtered to remove atoms which are further apart than this threshold. The default of 1000 is 
+           effectively "no filter"
         output : bool
            a flag used to generate or not the output files
         name : str
@@ -136,12 +141,14 @@ class DBMolecules(object):
             radial_str = ''
             fingerprint_str = ''
             fast_str = ''
+            threed_str = ''
 
             parser.set_defaults(output=output)
             parser.set_defaults(display=display)
             parser.set_defaults(radial=radial)
             parser.set_defaults(fingerprint=fingerprint)
             parser.set_defaults(fast=fast)
+            parser.set_defaults(threed=threed)
             if output:
                 output_str = '--output'
 
@@ -157,11 +164,15 @@ class DBMolecules(object):
             if fast:
                 fast_str = '--fast'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s' \
-                        % (
-                        directory, parallel, verbose, time, ecrscore, name, max, cutoff, hub, output_str, display_str,
-                        radial_str, fingerprint_str, fast_str)
+            if threed:
+                threed_str = '--threed'
 
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s' \
+                        % (
+                        directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str,
+                        radial_str, fingerprint_str, fast_str, threed_str)
+
+            print(names_str)
             self.options = parser.parse_args(names_str.split().extend(['--linksfile',linksfile]))
 
         # Internal list container used to store the loaded molecule objects
@@ -494,7 +505,7 @@ class DBMolecules(object):
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
             if not fingerprint:
-                tmp_scr = ecr_score * MC.mncar() * MC.mcsr()
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() # * MC.atomic_number_rule()
                 strict_scr = tmp_scr * MC.tmcsr(strict_flag=True)
                 loose_scr = tmp_scr * MC.tmcsr(strict_flag=False)
                 strict_mtx[k] = strict_scr
@@ -947,7 +958,7 @@ def startup():
     ops = parser.parse_args()
 
     # Molecule DataBase initialized with the passed user options
-    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore,
+    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
                          ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
@@ -983,6 +994,10 @@ mcs_group.add_argument('-t', '--time', default=20, action=CheckPos, type=int, \
                        help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
 mcs_group.add_argument('-e', '--ecrscore', default=0.0, action=CheckEcrscore, type=float, \
                        help='If different from 0.0 the value is use to set the electrostatic score between two molecules with different charges')
+mcs_group.add_argument('-3', '--threed', default=False, action='store_true', \
+                       help='Use the input 3D coordinates to guide the preferred MCS mappings')
+mcs_group.add_argument('-x', '--max3d', default=1000, type=float, \
+                       help='The MCS is trimmed to remove atoms which are further apart than this distance')
 
 out_group = parser.add_argument_group('Output setting')
 out_group.add_argument('-o', '--output', default=True, action='store_true', \

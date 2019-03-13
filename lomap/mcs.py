@@ -71,7 +71,7 @@ class MCS(object):
     
     """
 
-    def __init__(self, moli, molj, options=argparse.Namespace(time=20, verbose='info')):
+    def __init__(self, moli, molj, options=argparse.Namespace(time=20, verbose='info', max3D=1000, threed=False)):
         """
         Initialization function
     
@@ -87,6 +87,81 @@ class MCS(object):
        
         """
 
+        def best_substruct_match(moli,molj,by_rmsd=True):
+            """
+
+            This function looks over all of the substructure matches and returns the one
+            with the best 3D correspondence (if by_rmsd is true), or the fewest number
+            of atomic number mismatches (if by_rmsd is false)
+
+            """
+
+            # Sanity checking
+            if not moli.HasSubstructMatch(self.mcs_mol):
+                raise ValueError('RDkit MCS Subgraph first molecule search failed')
+
+            if not molj.HasSubstructMatch(self.mcs_mol):
+                raise ValueError('RDkit MCS Subgraph second molecule search failed')
+
+            moli_sub = moli.GetSubstructMatches(self.mcs_mol,uniquify=False)
+            molj_sub = molj.GetSubstructMatches(self.mcs_mol,uniquify=False)
+            best_rmsd=1e8
+            for mapi in moli_sub:
+                for mapj in molj_sub:
+                    rmsd=0
+                    for pair in zip(mapi,mapj):
+                        if by_rmsd:
+                            rmsd += (moli.GetConformer().GetAtomPosition(pair[0]) -
+                                     molj.GetConformer().GetAtomPosition(pair[1])).LengthSq()
+                        else:
+                            if moli.GetAtomWithIdx(pair[0]).GetAtomicNum() != molj.GetAtomWithIdx(pair[1]).GetAtomicNum():
+                                rmsd+=1
+                    if rmsd < best_rmsd:
+                        besti=mapi
+                        bestj=mapj
+                        best_rmsd=rmsd
+
+            return (besti,bestj)
+
+        def trim_mcs_mol(max_deviation=2.0):
+            """
+
+            This function is used to trim the MCS molecule to remove mismatched atoms i.e atoms
+            where the topological mapping does not work in 3D coordinates.
+           
+            Parameters
+            ----------
+
+            max_deviation : the maximum difference in Angstroms between mapped atoms to allow
+
+            """
+
+            print("debug max_deviation=",max_deviation)
+            while True:
+                (mapi,mapj) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=True)
+                worstatomidx=-1
+                worstdist=0
+                atomidx=0
+                for pair in zip(mapi,mapj):
+                    dist = (self.__moli_noh.GetConformer().GetAtomPosition(pair[0]) -
+                             self.__molj_noh.GetConformer().GetAtomPosition(pair[1])).Length()
+                    if dist > worstdist:
+                        worstdist=dist
+                        worstatomidx=atomidx
+                    atomidx=atomidx+1
+
+                if worstdist > max_deviation:
+                    # Remove the furthest-away atom and try again
+                    rwm = Chem.RWMol(self.mcs_mol)
+                    print("REMOVING ATOM",worstatomidx," with distance", worstdist)
+                    rwm.RemoveAtom(worstatomidx)
+                    self.mcs_mol=Chem.Mol(rwm)
+                else:
+                    break
+
+
+
+
         def map_mcs_mol():
             """
 
@@ -97,18 +172,14 @@ class MCS(object):
 
             # mcs indexes mapped back to the first molecule moli
 
-            if self.__moli_noh.HasSubstructMatch(self.mcs_mol):
-                moli_sub = self.__moli_noh.GetSubstructMatch(self.mcs_mol)
-            else:
-                raise ValueError('RDkit MCS Subgraph first molecule search failed')
 
-            # GAC TEST 02/17/17
-            # mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
-
+            # This bit's a bit pointless - it will always map directly to itself?
             if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
                 mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
             else:
                 raise ValueError('RDkit MCS Subgraph search failed')
+
+            (moli_sub,molj_sub) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=self.options.threed)
 
             # mcs to moli
             map_mcs_mol_to_moli_sub = zip(mcsi_sub, moli_sub)
@@ -117,12 +188,6 @@ class MCS(object):
             for idx in map_mcs_mol_to_moli_sub:
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_moli', str(idx[1]))
 
-            # mcs indexes mapped back to the second molecule molj 
-
-            if self.__molj_noh.HasSubstructMatch(self.mcs_mol):
-                molj_sub = self.__molj_noh.GetSubstructMatch(self.mcs_mol)
-            else:
-                raise ValueError('RDkit MCS Subgraph second molecule search failed')
 
             if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
                 mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
@@ -204,6 +269,8 @@ class MCS(object):
         # Set logging level and format
         logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
 
+        self.options=options
+
         # Local pointers to the passed molecules
         self.moli = moli
         self.molj = molj
@@ -254,6 +321,12 @@ class MCS(object):
             if sanitFail:  # if not, the MCS is skipped
                 raise ValueError('Sanitization Failed...')
 
+        # Trim the MCS to remove atoms with too-large real-space deviations
+        try:
+            trim_mcs_mol(max_deviation=self.options.max3d)
+        except Exception as e:
+            raise ValueError(str(e))
+
         # Mapping between the found MCS molecule and moli,  molj
         try:
             map_mcs_mol()
@@ -288,6 +361,7 @@ class MCS(object):
 
         return self.__map_moli_molj
 
+    # Note - not used in the main LOMAP calculation - here primarily for testing?
     @staticmethod
     def getMapping(moli, molj, hydrogens=False, fname=None, time_out=150):
 
@@ -690,11 +764,37 @@ class MCS(object):
 
         return math.exp(-2 * beta * (orig_nha_mcs_mol - max_frag_num_heavy_atoms))
 
+    # AtomicNumber rule (Trim rule) 
+    def atomic_number_rule(self):
+
+        """
+        This rule checks how many elements have been changed in the MCS 
+        and returns the fraction of MCS matches that are the same atomicnumber
+             
+        """
+        natoms=0
+        nmatch=0
+        for at in self.mcs_mol.GetAtoms():
+            natoms=natoms+1
+            moli_idx = int(at.GetProp('to_moli'))
+            molj_idx = int(at.GetProp('to_molj'))
+            moli_a = self.moli.GetAtoms()[moli_idx]
+            molj_a = self.molj.GetAtoms()[molj_idx]
+
+            if moli_a.GetAtomicNum() == molj_a.GetAtomicNum():
+                nmatch=nmatch+1
+
+        return nmatch/natoms
+
 
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('/home/mark/lomap-test/max/cdk2_ds/lomap_sdf/cdk2_lig13.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('/home/mark/lomap-test/max/cdk2_ds/lomap_sdf/cdk2_lig14.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
 
@@ -709,6 +809,7 @@ if "__main__" == __name__:
     # # Rules calculations
     mcsr = MC.mcsr()
     mncar = MC.mncar()
+    atnum = MC.atomic_number_rule()
 
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
@@ -716,7 +817,16 @@ if "__main__" == __name__:
     print('TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose))
     print('MCSR = ', mcsr)
     print('MNCAR = ', mncar)
+    print('ATNUM = ', atnum)
 
     tmp = mcsr * mncar
 
     print('Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose))
+
+    for at in MC.mcs_mol.GetAtoms():
+        moli_idx = int(at.GetProp('to_moli'))
+        molj_idx = int(at.GetProp('to_molj'))
+        moli_a = mola.GetAtoms()[moli_idx]
+        molj_a = molb.GetAtoms()[molj_idx]
+        print("MCS match: ",moli_idx,moli_a.GetAtomicNum(),molj_idx,molj_a.GetAtomicNum())
+
