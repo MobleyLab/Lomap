@@ -506,7 +506,8 @@ class GraphGen(object):
         Checks if the subgraph has a cycle covering. Note that this has been extended from
         the original algorithm: we not only care if the number of acyclic nodes has
         increased, but we also care if the number of acyclic edges (bridges) has increased.
-        I think the node check is now redundant, but it's fast so...
+        Note that if the number of acyclic edges hasn't increased, then the number of
+        acyclic nodes hasn't either, so that test is included in the edges test.
         
         Parameters
         ---------
@@ -521,9 +522,6 @@ class GraphGen(object):
         """
 
         hasCovering = True
-
-        # Have we increased the number of non-cyclic nodes?
-        if self.find_non_cyclic_nodes(subgraph).difference(self.nonCycleNodesSet): hasCovering = False
 
         # Have we increased the number of non-cyclic edges?
         if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet): hasCovering = False
