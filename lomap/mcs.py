@@ -47,6 +47,7 @@ from rdkit.Chem import rdFMCS
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw.MolDrawing import DrawingOptions
 from rdkit.Chem import Draw
+from rdkit.Chem import rdmolops
 from rdkit import DataStructs
 from rdkit.Chem.Fingerprints import FingerprintMols
 from rdkit.Geometry.rdGeometry import Point3D
@@ -162,7 +163,6 @@ class MCS(object):
 
             """
 
-            print("debug max_deviation=",max_deviation)
             while True:
                 (mapi,mapj) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=True)
                 # Compute the translation to bring molj's centre over moli
@@ -794,12 +794,14 @@ class MCS(object):
 
         return math.exp(-2 * beta * (orig_nha_mcs_mol - max_frag_num_heavy_atoms))
 
-    # AtomicNumber rule (Trim rule) 
-    def atomic_number_rule(self):
+    # AtomicNumber rule 
+    def atomic_number_rule(self,beta=0.1):
 
         """
         This rule checks how many elements have been changed in the MCS 
-        and returns the fraction of MCS matches that are the same atomicnumber
+        and a score based on the fraction of MCS matches that are the same atomicnumber.
+        When used with beta=0.1 and multiplied by mcsr, this is equivalent to counting
+        mismatched atoms at only half weight.
              
         """
         natoms=0
@@ -814,7 +816,71 @@ class MCS(object):
             if moli_a.GetAtomicNum() == molj_a.GetAtomicNum():
                 nmatch=nmatch+1
 
-        return nmatch/natoms
+        return math.exp(-1 * beta * (natoms-nmatch))
+
+    # Sulfonamides rule
+    def sulfonamides_rule(self):
+
+        """
+        This rule checks to see if we are growing a complete sulfonamide, and 
+        returns 0 if we are. This means that if this rule is used we effectively disallow
+        this transition. Testing has shown that growing -SO2NH2 from scratch performs
+        very badly.
+             
+        """
+
+        def adds_sulfonamide(mol):
+            """
+            Returns true if the removal of the MCS from the provided molecule
+            leaves a sulfonamide
+            """
+
+            if not mol.HasSubstructMatch(self.mcs_mol):
+                raise ValueError('RDkit MCS Subgraph molecule search failed in sulfonamide check')
+
+            
+            rwm=rdmolops.DeleteSubstructs(mol, self.mcs_mol)
+            return rwm.HasSubstructMatch(Chem.MolFromSmarts('S(=O)(=O)N'))
+
+        retval = 0 if (adds_sulfonamide(self.__moli_noh)) else 1
+        retval = 0 if (adds_sulfonamide(self.__molj_noh)) else retval
+        return retval
+
+    # Heterocycles rule
+    def heterocycles_rule(self):
+
+        """
+        This rule checks to see if we are growing a heterocycle from a hydrogen, and 
+        returns 0 if we are. This means that if this rule is used we effectively disallow
+        this transition. Testing has shown that growing a pyridine or other heterocycle
+        is unlikely to work (better to grow phenyl then mutate)
+             
+        """
+
+        def adds_heterocycle(mol):
+            """
+            Returns true if the removal of the MCS from the provided molecule
+            leaves a sulfonamide
+            """
+
+            if not mol.HasSubstructMatch(self.mcs_mol):
+                raise ValueError('RDkit MCS Subgraph molecule search failed in sulfonamide check')
+
+            
+            rwm=rdmolops.DeleteSubstructs(mol, self.mcs_mol)
+            # Only picking up N/C containing heterocycles - odd cases like pyran derivatives are not caught
+            grow6mheterocycle =  rwm.HasSubstructMatch(Chem.MolFromSmarts('[n]1[c,n][c,n][c,n][c,n][c,n]1'))
+
+            # Note that growing pyrrole, furan or thiophene is allowed
+            grow5mheterocycle =  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n&X3,s]1[n][c,n][c,n][c,n]1'))
+            grow5mheterocycle |=  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n&X3,s]1[c,n][n][c,n][c,n]1'))
+            return (grow6mheterocycle | grow5mheterocycle)
+
+
+
+        retval = 0 if (adds_heterocycle(self.__moli_noh)) else 1
+        retval = 0 if (adds_heterocycle(self.__molj_noh)) else retval
+        return retval
 
 
 if "__main__" == __name__:
@@ -823,8 +889,8 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/cdk2_lig13.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/cdk2_lig14_translated.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/phenyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
 
@@ -859,4 +925,7 @@ if "__main__" == __name__:
         moli_a = mola.GetAtoms()[moli_idx]
         molj_a = molb.GetAtoms()[molj_idx]
         print("MCS match: ",moli_idx,moli_a.GetAtomicNum(),molj_idx,molj_a.GetAtomicNum())
+
+    print("sulfonamides:",MC.sulfonamides_rule())
+    print("heterocycles:",MC.heterocycles_rule())
 
