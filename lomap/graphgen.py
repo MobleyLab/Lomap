@@ -96,8 +96,12 @@ class GraphGen(object):
             self.lead_index = self.pick_lead()
         else:
             self.lead_index = None
+
         # A set of nodes that will be used to save nodes that are not a cycle cover for a given subgraph
         self.nonCycleNodesSet = set()
+
+        # A set of edges that will be used to save edges that are acyclic for given subgraph
+        self.nonCycleEdgesSet = set()
 
         # Draw Parameters
 
@@ -342,6 +346,7 @@ class GraphGen(object):
 
             # This part has been copied from the original code
             self.nonCycleNodesSet = self.find_non_cyclic_nodes(subgraph)
+            self.nonCycleEdgesSet = self.find_non_cyclic_edges(subgraph)
             numberOfComponents = nx.number_connected_components(subgraph)
 
             if len(subgraph.edges()) > 2:  # Graphs must have at least 3 edges to be minimzed
@@ -369,8 +374,9 @@ class GraphGen(object):
             if self.lead_index in subgraph_nodes:
                 # here we only consider the subgraph with lead compound
                 self.nonCycleNodesSet = self.find_non_cyclic_nodes(subgraph)
+                self.nonCycleEdgesSet = self.find_non_cyclic_edges(subgraph)
                 for node in self.nonCycleNodesSet:
-                    # for each node in the noncyclenodeset, find the fingerprint similarity compare to all other surrounding nodes and pick the one with the max score and connect them
+                    # for each node in the noncyclenodeset, find the similarity compare to all other surrounding nodes and pick the one with the max score and connect them
                     node_score_list = []
                     for i in range(0, self.dbase.nums()):
                         if i != node and i != self.lead_index:
@@ -412,6 +418,27 @@ class GraphGen(object):
         missingNodesSet = set([node for node in subgraph.nodes() if node not in cycleNodes])
 
         return missingNodesSet
+
+    def find_non_cyclic_edges(self, subgraph):
+        """
+        Generates a set of edges of the subgraph that are not in a cycle (called
+        "bridges" in networkX terminology).
+         
+        Parameters
+        ---------
+        subgraph : NetworkX subgraph obj
+            the subgraph to check for not cycle nodes
+
+        Returns
+        -------
+        missingEdgesSet : set of graph edges
+            the set of edges that are not in a cycle
+        
+        """
+
+        missingEdgesSet = set(nx.bridges(subgraph))
+
+        return missingEdgesSet
 
     def check_constraints(self, subgraph, numComp):
         """
@@ -476,7 +503,10 @@ class GraphGen(object):
 
     def check_cycle_covering(self, subgraph):
         """
-        Checks if the subgraph has a cycle covering 
+        Checks if the subgraph has a cycle covering. Note that this has been extended from
+        the original algorithm: we not only care if the number of acyclic nodes has
+        increased, but we also care if the number of acyclic edges (bridges) has increased.
+        I think the node check is now redundant, but it's fast so...
         
         Parameters
         ---------
@@ -490,10 +520,13 @@ class GraphGen(object):
 
         """
 
-        hasCovering = False
+        hasCovering = True
 
-        # if it is not the same set as before
-        if not self.find_non_cyclic_nodes(subgraph).difference(self.nonCycleNodesSet): hasCovering = True
+        # Have we increased the number of non-cyclic nodes?
+        if self.find_non_cyclic_nodes(subgraph).difference(self.nonCycleNodesSet): hasCovering = False
+
+        # Have we increased the number of non-cyclic edges?
+        if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet): hasCovering = False
 
         return hasCovering
 
