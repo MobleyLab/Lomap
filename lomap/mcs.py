@@ -882,6 +882,46 @@ class MCS(object):
         retval = 0 if (adds_heterocycle(self.__molj_noh)) else retval
         return retval
 
+    def transmuting_methyl_into_ring_rule(self):
+
+        """
+         Rule to prevent turning a methyl into a ring atom and similar transformations
+         (you can grow a ring, but you can't transmute into one)
+
+        """
+        moli=self.__moli_noh
+        molj=self.__molj_noh
+        
+        # Get list of bonds in mol i and j that go from the MCS to a non-MCS atom
+        moli_sub = set(moli.GetSubstructMatch(self.mcs_mol))
+        edge_bondsi = [ b for b in moli.GetBonds()
+                        if (b.GetBeginAtomIdx() in moli_sub) ^ (b.GetEndAtomIdx() in moli_sub)]
+
+        molj_sub = set(self.molj.GetSubstructMatch(self.mcs_mol))
+        edge_bondsj = [ b for b in self.molj.GetBonds()
+                        if (b.GetBeginAtomIdx() in molj_sub) ^ (b.GetEndAtomIdx() in molj_sub)]
+
+        # Collect a set of tuples: each tuple is the non-MCS end atom of a bond in mols i and j
+        # that both connect to the same MCS atom
+        mappedbonds = []
+        for bi in edge_bondsi:
+            for bj in edge_bondsj:
+                if (bi.GetBeginAtomIdx()==bj.GetBeginAtomIdx()):
+                    mappedbonds.insert((bi.getEndAtomIdx(),bj.getEndAtomIdx()))
+                if (bi.GetBeginAtomIdx()==bj.GetEndAtomIdx()):
+                    mappedbonds.insert((bi.getEndAtomIdx(),bj.getBeginAtomIdx()))
+                if (bi.GetEndAtomIdx()==bj.GetBeginAtomIdx()):
+                    mappedbonds.insert((bi.getBeginAtomIdx(),bj.getEndAtomIdx()))
+                if (bi.GetEndAtomIdx()==bj.GetEndAtomIdx()):
+                    mappedbonds.insert((bi.getBeginAtomIdx(),bj.getBeginAtomIdx()))
+
+        is_bad=False
+        for (ai,aj) in mappedbonds:
+            if (moli.GetAtomWithIdx(ai).IsInRing() ^ molj.GetAtomWithIdx(aj).IsInRing()):
+                is_bad=True
+
+        return 0 if is_bad else 1
+
 
 if "__main__" == __name__:
 
@@ -889,7 +929,7 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/phenyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/toluyl3.sdf', sanitize=False, removeHs=False)
     molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
@@ -928,4 +968,5 @@ if "__main__" == __name__:
 
     print("sulfonamides:",MC.sulfonamides_rule())
     print("heterocycles:",MC.heterocycles_rule())
+    print("growring:",MC.transmuting_methyl_into_ring_rule())
 
