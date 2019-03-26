@@ -871,7 +871,7 @@ class GraphGen(object):
         if self.lead_index is not None:
             morph_txt.write(morph_data)
 
-    def write_graph(self):
+    def write_graph(self, output_no_images):
         """
 
         This function writes to a file the final generated NetworkX graph as 
@@ -889,15 +889,20 @@ class GraphGen(object):
             raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
 
         try:
-            self.generate_depictions()
+            if not output_no_images:
+                self.generate_depictions()
             nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name + '.dot')
         except Exception as e:
             traceback.print_exc()
             raise IOError('Problems during the file generation: %s' % str(e))
 
         logging.info(30 * '-')
-        logging.info(
-            'The following files have been generated:\n%s.dot\tGraph file\n%s.png\tPng file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name, self.dbase.options.name))
+        if output_no_images:
+            logging.info(
+                'The following files have been generated:\n%s.dot\tGraph file\n%s.png\tPng file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name, self.dbase.options.name))
+        else:
+            logging.info(
+                'The following files have been generated:\n%s.dot\tGraph file\n%s.txt\tMapping Text file' % (self.dbase.options.name, self.dbase.options.name))
         logging.info(30 * '-')
 
         return
