@@ -176,13 +176,16 @@ class DBMolecules(object):
             if threed:
                 threed_str = '--threed'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s' \
+            if linksfile:
+                linksfile_str = f'--linksfile "{linksfile}"'
+
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str, output_no_images_str,
-                        radial_str, fingerprint_str, fast_str, threed_str)
+                        radial_str, fingerprint_str, fast_str, threed_str, linksfile)
 
             print(names_str)
-            self.options = parser.parse_args(names_str.split().extend(['--linksfile',linksfile]))
+            self.options = parser.parse_args(names_str.split())
 
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_molecule_files()
@@ -198,7 +201,7 @@ class DBMolecules(object):
             self.dic_mapping[mol.getID()] = mol.getName()
             self.inv_dic_mapping[mol.getName()] = mol.getID()
 
-        if len(self.options.linksfile)>0:
+        if self.options.linksfile and len(self.options.linksfile)>0:
             self.parse_links_file(self.options.linksfile)
 
         # Index used to perform index selection by using __iter__ function
