@@ -74,7 +74,7 @@ class DBMolecules(object):
     # Initialization function
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
-                 name='out', output_no_images=False, display=False,
+                 name='out', output_no_images=False, output_no_graph=False, display=False,
                  max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, linksfile=None):
 
         """
@@ -103,6 +103,8 @@ class DBMolecules(object):
            the file name prefix used to produce the output files
         output_no_images : bool
            a flag used to disable the generation of the output image files
+        output_no_graph : bool
+           a flag used to disable the generation of the output graph (.dot) file
         display : bool
            a flag used to display or not a network made by using matplotlib
         max : int
@@ -136,6 +138,9 @@ class DBMolecules(object):
             if not isinstance(output_no_images, bool):
                 raise TypeError('The output_no_images flag is not a bool type')
 
+            if not isinstance(output_no_graph, bool):
+                raise TypeError('The output_no_graph flag is not a bool type')
+
             if not isinstance(display, bool):
                 raise TypeError('The display flag is not a bool type')
 
@@ -150,6 +155,7 @@ class DBMolecules(object):
 
             parser.set_defaults(output=output)
             parser.set_defaults(output_no_images=output_no_images)
+            parser.set_defaults(output_no_graph=output_no_graph)
             parser.set_defaults(display=display)
             parser.set_defaults(radial=radial)
             parser.set_defaults(fingerprint=fingerprint)
@@ -160,6 +166,9 @@ class DBMolecules(object):
 
             if output_no_images:
                 output_no_images_str = '--output-no-images'
+
+            if output_no_graph:
+                output_no_graph_str = '--output-no-graph'
 
             if display:
                 display_str = '--display'
@@ -179,9 +188,9 @@ class DBMolecules(object):
             if linksfile:
                 linksfile_str = f'--linksfile "{linksfile}"'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s' \
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
                         % (
-                        directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str, output_no_images_str,
+                        directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
                         radial_str, fingerprint_str, fast_str, threed_str, linksfile)
 
             print(names_str)
@@ -622,7 +631,7 @@ class DBMolecules(object):
         # Writing the results is files
         if self.options.output:
             try:
-                Gr.write_graph(self.options.output_no_images)
+                Gr.write_graph(self.options.output_no_images, self.options.output_no_graph)
                 pickle_f = open(self.options.name + ".pickle", "wb")
                 pickle.dump(Gr, pickle_f)
             except Exception as e:
@@ -1018,6 +1027,8 @@ out_group.add_argument('-n', '--name', type=str, default='out', \
                        help='File name prefix used to generate the output files')
 out_group.add_argument('--output-no-images', default=False, action='store_true', \
                        help='Disable the generation on the image files, removed the dependency on Pillow')
+out_group.add_argument('--output-no-graph', default=False, action='store_true', \
+                       help='Disable the generation on the graph (.dot) file, removed the dependency on pygraphviz')
 
 parser.add_argument('-d', '--display', default=False, action='store_true', \
                     help='Display the generated graph by using Matplotlib')
