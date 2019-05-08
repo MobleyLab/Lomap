@@ -203,11 +203,8 @@ class MCS(object):
             # mcs indexes mapped back to the first molecule moli
 
 
-            # This bit's a bit pointless - it will always map directly to itself?
-            if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
-                mcsi_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
-            else:
-                raise ValueError('RDkit MCS Subgraph search failed')
+            # Get self-mapping
+            mcsi_sub = tuple(range(self.mcs_mol.GetNumAtoms()))
 
             (moli_sub,molj_sub) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=self.options.threed)
 
@@ -218,11 +215,7 @@ class MCS(object):
             for idx in map_mcs_mol_to_moli_sub:
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_moli', str(idx[1]))
 
-
-            if self.mcs_mol.HasSubstructMatch(self.mcs_mol):
-                mcsj_sub = self.mcs_mol.GetSubstructMatch(self.mcs_mol)
-            else:
-                raise ValueError('RDkit MCS Subgraph search failed')
+            mcsj_sub = tuple(range(self.mcs_mol.GetNumAtoms()))
 
             # mcs to molj
             map_mcs_mol_to_molj_sub = zip(mcsj_sub, molj_sub)
@@ -472,10 +465,7 @@ class MCS(object):
         else:
             raise ValueError('RDkit MCS Subgraph second molecule search failed')
 
-        if mcs_mol.HasSubstructMatch(mcs_mol):
-            mcs_sub = mcs_mol.GetSubstructMatch(mcs_mol)
-        else:
-            raise ValueError('RDkit MCS Subgraph search failed')
+        mcs_sub = tuple(range(mcs_mol.GetNumAtoms()))
 
         # Map between the two molecules
         map_moli_to_molj = zip(moli_sub, molj_sub)
@@ -891,34 +881,26 @@ class MCS(object):
         """
         moli=self.__moli_noh
         molj=self.__molj_noh
-        
-        # Get list of bonds in mol i and j that go from the MCS to a non-MCS atom
-        moli_sub = set(moli.GetSubstructMatch(self.mcs_mol))
-        edge_bondsi = [ b for b in moli.GetBonds()
-                        if (b.GetBeginAtomIdx() in moli_sub) ^ (b.GetEndAtomIdx() in moli_sub)]
 
-        molj_sub = set(self.molj.GetSubstructMatch(self.mcs_mol))
-        edge_bondsj = [ b for b in self.molj.GetBonds()
-                        if (b.GetBeginAtomIdx() in molj_sub) ^ (b.GetEndAtomIdx() in molj_sub)]
-
-        # Collect a set of tuples: each tuple is the non-MCS end atom of a bond in mols i and j
-        # that both connect to the same MCS atom
-        mappedbonds = []
-        for bi in edge_bondsi:
-            for bj in edge_bondsj:
-                if (bi.GetBeginAtomIdx()==bj.GetBeginAtomIdx()):
-                    mappedbonds.insert((bi.getEndAtomIdx(),bj.getEndAtomIdx()))
-                if (bi.GetBeginAtomIdx()==bj.GetEndAtomIdx()):
-                    mappedbonds.insert((bi.getEndAtomIdx(),bj.getBeginAtomIdx()))
-                if (bi.GetEndAtomIdx()==bj.GetBeginAtomIdx()):
-                    mappedbonds.insert((bi.getBeginAtomIdx(),bj.getEndAtomIdx()))
-                if (bi.GetEndAtomIdx()==bj.GetEndAtomIdx()):
-                    mappedbonds.insert((bi.getBeginAtomIdx(),bj.getBeginAtomIdx()))
+        # Get list of bonds in mol i and j that go from the MCS to a non-MCS atom,
+        # arranged in tuples with the index of the MCS atom
+        moli_sub = moli.GetSubstructMatch(self.mcs_mol)
+        molj_sub = molj.GetSubstructMatch(self.mcs_mol)
 
         is_bad=False
-        for (ai,aj) in mappedbonds:
-            if (moli.GetAtomWithIdx(ai).IsInRing() ^ molj.GetAtomWithIdx(aj).IsInRing()):
-                is_bad=True
+
+        for i in range(0,len(moli_sub)):
+            edge_bondsi = [ b.GetBeginAtomIdx() for b in moli.GetBonds() if (b.GetEndAtomIdx()==moli_sub[i] and not b.GetBeginAtomIdx() in moli_sub) ]
+            edge_bondsi += [ b.GetEndAtomIdx() for b in moli.GetBonds() if (b.GetBeginAtomIdx()==moli_sub[i] and not b.GetEndAtomIdx() in moli_sub) ]
+            edge_bondsj = [ b.GetBeginAtomIdx() for b in molj.GetBonds() if (b.GetEndAtomIdx()==molj_sub[i] and not b.GetBeginAtomIdx() in molj_sub) ]
+            edge_bondsj += [ b.GetEndAtomIdx() for b in molj.GetBonds() if (b.GetBeginAtomIdx()==molj_sub[i] and not b.GetEndAtomIdx() in molj_sub) ]
+            #print("Atom",i,"index",moli_sub[i],"edge atoms on mol 1 are",edge_bondsi);
+            #print("Atom",i,"index",molj_sub[i],"edge atoms on mol 2 are",edge_bondsj);
+
+            for edgeAtom_i in edge_bondsi:
+                for edgeAtom_j in edge_bondsj:
+                    if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
+                        is_bad=True
 
         return 0 if is_bad else 1
 
@@ -929,7 +911,8 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/toluyl3.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../test/transforms/toluyl3.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/chlorophenol.sdf', sanitize=False, removeHs=False)
     molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')

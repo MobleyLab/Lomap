@@ -505,12 +505,17 @@ class DBMolecules(object):
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
             if not fingerprint:
-                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() # * MC.atomic_number_rule()
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule()
+                tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
                 strict_scr = tmp_scr * MC.tmcsr(strict_flag=True)
                 loose_scr = tmp_scr * MC.tmcsr(strict_flag=False)
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = ecr_score
+                logging.info(
+                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s anum %s sulf %s het %s RingMe %s' % 
+                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),
+                        MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
             else:
                 # for the fingerprint option, currently just use the identical strict and loose mtx
                 strict_scr = fps_tan
@@ -518,9 +523,8 @@ class DBMolecules(object):
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = ecr_score
-
-            logging.info(
-                'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
+                logging.info(
+                    'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
 
         return
 
