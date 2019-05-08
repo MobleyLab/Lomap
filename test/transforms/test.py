@@ -101,6 +101,31 @@ class TestLomap(unittest.TestCase):
             MC=mcs.MCS(parent,comp)
             self.assertEqual(MC.transmuting_methyl_into_ring_rule(),d[2],'Fail on transmuting-methyl-to-ring check for '+d[0]+' '+d[1])
 
+    # Test getting the mapping string out of the MCS
+    def test_mapping_string_heavy(self):
+        testdata=[('phenyl.sdf','toluyl3.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7"),
+                 ('toluyl2.sdf','chlorotoluyl1.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,8:9,6:6,7:8"),
+                 ('toluyl3.sdf','phenylfuran.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7")
+                 ]
+        for d in testdata:
+            parent=Chem.MolFromMolFile(d[0],sanitize=False, removeHs=False)
+            comp=Chem.MolFromMolFile(d[1],sanitize=False, removeHs=False)
+            MC=mcs.MCS(parent,comp)
+            self.assertEqual(MC.heavy_atom_match_list(), d[2], 'Fail on heavy atom match list for '+d[0]+' '+d[1])
+
+    # Test getting the mapping string including hydrogens out of the MCS
+    def test_mapping_string_hydrogen(self):
+        testdata=[('phenyl.sdf','toluyl3.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7,8:9,9:10,10:8,12:17,11:11,13:12,14:13,15:14,16:15,17:16"),
+                 ('toluyl2.sdf','chlorotoluyl1.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,8:9,6:6,7:8,9:10,10:7,11:11,12:12,13:13,14:14,15:15,16:16,17:17,18:18,19:19,20:20"),
+                 ('toluyl3.sdf','phenylfuran.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7,9:13,10:14,17:16,11:15,12:17,13:18,14:19,15:20,16:21"),
+                 ('toluyl.sdf','phenylmethylamino.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,8:8,6:6,7:7,9:10,10:11,12:13,11:12,13:14,14:15,15:16,16:17,17:18,18:9,19:19,20:20")
+                 ]
+        for d in testdata:
+            parent=Chem.MolFromMolFile(d[0],sanitize=False, removeHs=False)
+            comp=Chem.MolFromMolFile(d[1],sanitize=False, removeHs=False)
+            MC=mcs.MCS(parent,comp)
+            self.assertEqual(MC.all_atom_match_list(), d[2], 'Fail on all-atom match list for '+d[0]+' '+d[1])
+
 if __name__ == '__main__':
     unittest.main()
             

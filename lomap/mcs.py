@@ -214,6 +214,7 @@ class MCS(object):
             # An RDkit atomic property is defined to store the mapping to moli
             for idx in map_mcs_mol_to_moli_sub:
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_moli', str(idx[1]))
+                self.moli.GetAtomWithIdx(idx[1]).SetProp('to_mcs', str(idx[0]))
 
             mcsj_sub = tuple(range(self.mcs_mol.GetNumAtoms()))
 
@@ -226,6 +227,7 @@ class MCS(object):
             # An RDkit atomic property is defined to store the mapping to molj
             for idx in map_mcs_mol_to_molj_sub:
                 self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_molj', str(idx[1]))
+                self.molj.GetAtomWithIdx(idx[1]).SetProp('to_mcs', str(idx[0]))
 
             # Chirality
 
@@ -928,6 +930,20 @@ class MCS(object):
             hydrogens += [ b.GetEndAtomIdx() for b in mol.GetBonds() if b.GetBeginAtomIdx()==i and mol.GetAtomWithIdx(b.GetEndAtomIdx()).GetAtomicNum()==1 ]
             return hydrogens
 
+        def get_attached_atoms_not_in_mcs(mol,i):
+            attached=[]
+            for b in mol.GetBonds():
+                if b.GetEndAtomIdx()==i or b.GetBeginAtomIdx()==i:
+                    j=b.GetEndAtomIdx()
+                    if (j==i):
+                        j=b.GetBeginAtomIdx()
+                    # OK, so j is the atom at the other end of the bond atom atom i. Is it in the MCS?
+                    inMCS = mol.GetAtomWithIdx(j).HasProp('to_mcs')
+                    if not inMCS:
+                        attached.append(j)
+            return attached
+
+
         moli=self.moli
         molj=self.molj
 
@@ -940,13 +956,12 @@ class MCS(object):
             mcslist = [ at for at in self.mcs_mol.GetAtoms() if int(at.GetProp('to_moli'))==i ]
             if (mcslist):
                 j=int(mcslist[0].GetProp('to_molj'))
-                maplist.append(str(i)+":"+str(j))
                 hydindexi = get_attached_hydrogens(moli,i)
-                hydindexj = get_attached_hydrogens(molj,j)
+                hydindexj = get_attached_atoms_not_in_mcs(molj,j)
                 for hmatch in zip(hydindexi,hydindexj):
                     maplist.append(str(hmatch[0])+":"+str(hmatch[1]))
 
-        return ",".join(maplist)
+        return self.heavy_atom_match_list()+","+",".join(maplist)
               
 if "__main__" == __name__:
 
@@ -954,9 +969,10 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    #mola = Chem.MolFromMolFile('../test/transforms/toluyl3.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/chlorophenol.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/phenylmethylamino.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../test/transforms/chlorophenol.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
 
     mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
 
