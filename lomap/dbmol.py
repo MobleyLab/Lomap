@@ -182,6 +182,9 @@ class DBMolecules(object):
         self.dic_mapping = {}
         self.inv_dic_mapping = {}
 
+        # Hold the MCS objects for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
+        self.mcs_store = {}
+
         # Pre-specified links between molecules - a list of molecule index tuples
         self.prespecified_links = []
 
@@ -359,6 +362,24 @@ class DBMolecules(object):
         except KeyError as e:
             raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
 
+    def set_MCS(self,i,j,MC):
+        if (i<j):
+            idx=(i,j)
+        else:
+            idx=(j,i)
+        print("Storing MCS for ",idx);
+        self.mcs_store[idx]=MC
+
+    def get_MCS(self,i,j):
+        if (i<j):
+            idx=(i,j)
+        else:
+            idx=(j,i)
+        print("Getting MCS for ",idx);
+        if idx in self.mcs_store:
+            return self.mcs_store[idx]
+        return None
+
     def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint=False):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
@@ -483,6 +504,7 @@ class DBMolecules(object):
                     logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
                     if not fingerprint:
                         MC = mcs.MCS(moli, molj, options=self.options)
+                        self.set_MCS(i,j,MC)
                     else:
                         # use the fingerprint as similarity calculation
                         fps_moli = FingerprintMols.FingerprintMol(moli)

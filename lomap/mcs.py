@@ -904,7 +904,50 @@ class MCS(object):
 
         return 0 if is_bad else 1
 
+    def heavy_atom_match_list(self):
+        '''
+        Returns a string listing the MCS match between the two molecules as 
+          atom_m1:atom_m2,atom_m1:atom_m2,...
+        Heavy atoms only
+        '''
+        maplist=[]
+        for at in self.mcs_mol.GetAtoms():
+            moli_idx = int(at.GetProp('to_moli'))
+            molj_idx = int(at.GetProp('to_molj'))
+            maplist.append(str(moli_idx)+":"+str(molj_idx))
+        return ",".join(maplist)
 
+    def all_atom_match_list(self):
+        '''
+        Returns a string listing the MCS match between the two molecules as 
+          atom_m1:atom_m2,atom_m1:atom_m2,...
+        All atoms including hydrogens
+        '''
+        def get_attached_hydrogens(mol,i):
+            hydrogens = [ b.GetBeginAtomIdx() for b in mol.GetBonds() if b.GetEndAtomIdx()==i and mol.GetAtomWithIdx(b.GetBeginAtomIdx()).GetAtomicNum()==1 ]
+            hydrogens += [ b.GetEndAtomIdx() for b in mol.GetBonds() if b.GetBeginAtomIdx()==i and mol.GetAtomWithIdx(b.GetEndAtomIdx()).GetAtomicNum()==1 ]
+            return hydrogens
+
+        moli=self.moli
+        molj=self.molj
+
+        maplist=[]
+
+        # OK, this is painful, as the MCS only includes heavies. We could do this eficiently,
+        # but the molecules are small so just brute force it
+        for i in range(moli.GetNumAtoms()):
+            # Is this atom in the MCS?
+            mcslist = [ at for at in self.mcs_mol.GetAtoms() if int(at.GetProp('to_moli'))==i ]
+            if (mcslist):
+                j=int(mcslist[0].GetProp('to_molj'))
+                maplist.append(str(i)+":"+str(j))
+                hydindexi = get_attached_hydrogens(moli,i)
+                hydindexj = get_attached_hydrogens(molj,j)
+                for hmatch in zip(hydindexi,hydindexj):
+                    maplist.append(str(hmatch[0])+":"+str(hmatch[1]))
+
+        return ",".join(maplist)
+              
 if "__main__" == __name__:
 
     #mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
@@ -952,4 +995,6 @@ if "__main__" == __name__:
     print("sulfonamides:",MC.sulfonamides_rule())
     print("heterocycles:",MC.heterocycles_rule())
     print("growring:",MC.transmuting_methyl_into_ring_rule())
+    print("Match list:",MC.heavy_atom_match_list())
+    print("Match list:",MC.all_atom_match_list())
 

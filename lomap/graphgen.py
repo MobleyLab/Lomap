@@ -838,13 +838,17 @@ class GraphGen(object):
                     pass
                 Filename_i = self.dbase.dic_mapping[i]
                 Filename_j = self.dbase.dic_mapping[j]
+                MC = self.dbase.get_MCS(i,j)
+                mapString=""
+                if MC is not None:
+                    mapString = MC.all_atom_match_list();
                 # print "Check the filename", Filename_i, Filename_j
                 strict_similarity = self.dbase.strict_mtx[i, j]
                 loose_similarity = self.dbase.loose_mtx[i, j]
                 ecr_similarity = self.dbase.ecr_mtx[i, j]
                 if connected:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n" % (
-                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes")
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s,%s\n" % (
+                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes",mapString)
                     # generate the morph type, and pick the start ligand based on the similarity
                     if self.lead_index is not None:
                         morph_i = Filename_i.split(".")[0]
@@ -864,8 +868,8 @@ class GraphGen(object):
                                 morph_string = "%s > %s, " % (morph_j, morph_i)
                         morph_data += morph_string
                 else:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s\n" % (
-                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No")
+                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.2f,%-15.5f,%-15.5f,%-10s,%s\n" % (
+                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No",mapString)
                 data.append(new_line)
         info_txt.writelines(data)
         if self.lead_index is not None:
