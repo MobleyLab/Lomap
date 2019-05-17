@@ -1,18 +1,18 @@
 import pytest
 from lomap.mcs import MCS
-from rdkit import RDLogger
-import pickle
+from rdkit import RDLogger,Chem
 from lomap.dbmol import DBMolecules
 import multiprocessing
-import networkx as nx
-import networkx.algorithms.isomorphism as iso
 import subprocess
+import math
 
 
 @pytest.fixture
 def executable():
-    return 'lomap'
+    return '/home/mark/gui/trunk/buildDependencies/Python/linux-x86_64/bin/lomap'
 
+def isclose(a,b):
+    return (abs(a-b)<1e-5)
 
 def test_insufficient_arguments(executable):
     cmd = [executable]
@@ -21,32 +21,26 @@ def test_insufficient_arguments(executable):
     stdout, stderr = p.communicate()
     assert(error_string in stderr)
 
-
 def test_mcs():
-    f = open('test/basic/MCS.pickle', 'rb')
-    data = pickle.load(f)
-    data_no_hydrogens = data[0]
-    data_hydrogens = data[1]
+    data=[ ('test/transforms/phenyl.sdf','test/transforms/toluyl.sdf', math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
+           ('test/transforms/phenyl.sdf','test/transforms/chlorophenyl.sdf', math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
+           ('test/transforms/toluyl.sdf','test/transforms/chlorophenyl.sdf', 1, math.exp(-0.05 * 1)) 
+        ]
 
-    db = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
-                     display=False, max=6, cutoff=0.4, radial=False, hub=None)
 
-    nohyds = {}
-    hyds = {}
+    for d in data:
+        mola = Chem.MolFromMolFile(d[0], sanitize=False, removeHs=False)
+        molb = Chem.MolFromMolFile(d[1], sanitize=False, removeHs=False)
+        MC = MCS(mola, molb)
+        mcsr = MC.mcsr()
+        mncar = MC.mncar()
+        atnum = MC.atomic_number_rule()
+        strict = MC.tmcsr(strict_flag=True)
+        loose = MC.tmcsr(strict_flag=False)
+        print(d[0],d[1],strict,mcsr,d[2])
 
-    lg = RDLogger.logger()
-    lg.setLevel(RDLogger.CRITICAL)
-
-    for i in range(0, db.nums()):
-        for j in range(i + 1, db.nums()):
-            MCS_no_hyds = MCS.getMapping(db[i].getMolecule(), db[j].getMolecule())
-            MCS_hyds = MCS.getMapping(db[i].getMolecule(), db[j].getMolecule(), hydrogens=True)
-
-            nohyds[(i, j)] = list(MCS_no_hyds)
-            hyds[(i, j)] = list(MCS_hyds)
-
-    assert(nohyds == data_no_hydrogens)
-    assert(hyds == data_hydrogens)
+        assert(isclose(mcsr,d[2]))
+        assert(isclose(atnum,d[3]))
 
 
 # Check iter and next
@@ -88,7 +82,7 @@ def test_read_mol2_files():
     db = DBMolecules('test/basic')
     db.options.directory = 'test/'
     with pytest.raises(IOError):
-        db.read_mol2_files()
+        db.read_molecule_files()
 
 
 def test_num():
