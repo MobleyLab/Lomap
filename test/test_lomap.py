@@ -41,6 +41,9 @@ class TestLomap(unittest.TestCase):
             ]
 
 
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
+
         for d in data:
             mola = Chem.MolFromMolFile(d[0], sanitize=False, removeHs=False)
             molb = Chem.MolFromMolFile(d[1], sanitize=False, removeHs=False)
@@ -111,6 +114,8 @@ class TestLomap(unittest.TestCase):
                  ('phenylpyrrole.sdf',1),
                  ('phenylphenyl.sdf',1)]
         parent=Chem.MolFromMolFile('test/transforms/phenyl.sdf',sanitize=False, removeHs=False)
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         for d in testdata:
             comp=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
@@ -126,6 +131,8 @@ class TestLomap(unittest.TestCase):
                  ('cdk2_lig14.sdf',1),
                  ('cdk2_lig15.sdf',1) ]
         parent=Chem.MolFromMolFile('test/transforms/cdk2_lig16.sdf',sanitize=False, removeHs=False)
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         for d in testdata:
             comp=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
@@ -136,6 +143,8 @@ class TestLomap(unittest.TestCase):
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenol.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol3 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         MCS1 = MCS(mol1,mol2)
         MCS2 = MCS(mol2,mol3)
         MCS3 = MCS(mol1,mol3)
@@ -153,6 +162,8 @@ class TestLomap(unittest.TestCase):
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenol.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol3 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         MCS1 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
         MCS2 = MCS(mol2,mol3,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
         MCS3 = MCS(mol1,mol3,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
@@ -169,6 +180,8 @@ class TestLomap(unittest.TestCase):
     def test_clip_on_3d(self):
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         MCS1 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
         MCS2 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
         self.assertEqual(MCS1.mcs_mol.GetNumHeavyAtoms(),9)
@@ -184,6 +197,8 @@ class TestLomap(unittest.TestCase):
                  ('phenyl.sdf','phenylpyridine1.sdf',1),
                  ('chlorophenol.sdf','phenylfuran.sdf',1)
                  ]
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         for d in testdata:
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
@@ -196,6 +211,8 @@ class TestLomap(unittest.TestCase):
                  ('toluyl2.sdf','chlorotoluyl1.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,8:9,6:6,7:8"),
                  ('toluyl3.sdf','phenylfuran.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7")
                  ]
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         for d in testdata:
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
@@ -209,6 +226,8 @@ class TestLomap(unittest.TestCase):
                  ('toluyl3.sdf','phenylfuran.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7,9:13,10:14,17:16,11:15,12:17,13:18,14:19,15:20,16:21"),
                  ('toluyl.sdf','phenylmethylamino.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,8:8,6:6,7:7,9:10,10:11,12:13,11:12,13:14,14:15,15:16,16:17,17:18,18:9,19:19,20:20")
                  ]
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
         for d in testdata:
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)

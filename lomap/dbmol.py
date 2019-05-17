@@ -369,7 +369,6 @@ class DBMolecules(object):
             idx=(i,j)
         else:
             idx=(j,i)
-        print("Storing MCS for ",idx);
         self.mcs_store[idx]=MC
 
     def get_MCS(self,i,j):
@@ -377,7 +376,6 @@ class DBMolecules(object):
             idx=(i,j)
         else:
             idx=(j,i)
-        print("Getting MCS for ",idx);
         if idx in self.mcs_store:
             return self.mcs_store[idx]
         return None
