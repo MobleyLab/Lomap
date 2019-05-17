@@ -23,7 +23,7 @@ class TestLomap(unittest.TestCase):
         stdout, stderr = p.communicate()
         assert(error_string in stderr)
 
-    def test_mcs(self):
+    def test_mcsr(self):
         # MolA, molB, 3D?, max3d, mcsr, atomic_number_rule
         data=[ ('test/transforms/phenyl.sdf','test/transforms/toluyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
                ('test/transforms/phenyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
@@ -50,9 +50,7 @@ class TestLomap(unittest.TestCase):
             atnum = MC.atomic_number_rule()
             strict = MC.tmcsr(strict_flag=True)
             loose = MC.tmcsr(strict_flag=False)
-            print(d[0],d[1],strict,mcsr,d[4])
 
-            print("mcsr",mcsr, d[4], "atnum",atnum, d[5])
             assert(isclose(mcsr,d[4]))
             assert(isclose(atnum,d[5]))
 
