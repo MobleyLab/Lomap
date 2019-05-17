@@ -386,114 +386,7 @@ class MCS(object):
 
         return self.__map_moli_molj
 
-    # Note - not used in the main LOMAP calculation - here primarily for testing?
-    @staticmethod
-    def getMapping(moli, molj, hydrogens=False, fname=None, time_out=150):
-
-        """
-        Compute the MCS between two passed molecules
-    
-        Parameters
-        ----------
-
-        moli : RDKit molecule object 
-            the first molecule used to perform the MCS calculation
-        molj : RDKit molecule object 
-            the second molecule used to perform the MCS calculation
-        hydrogens : bool 
-            incluse or not the hydrogens in the MCS calculation
-
-        fname : string 
-            the filename used to output a png file depicting the MCS mapping 
-
-        time_out: int
-            the max time in seconds used to compute the MCS
-
-        Returns:
-        --------
-        map_moli_molj: python list of tuple [...(i,j)...]
-            the list of tuple which contains the atom mapping indexes between 
-            the two molecules. The indexes (i,j) are resplectively related to 
-            the first (moli) and the second (molj) passed molecules 
-                 
-        """
-
-        # Molecule copies
-        moli_c = Chem.Mol(moli)
-        molj_c = Chem.Mol(molj)
-
-        if not hydrogens:
-            moli_c = AllChem.RemoveHs(moli_c)
-            molj_c = AllChem.RemoveHs(molj_c)
-
-            # MCS calculaton. In RDKit the MCS is a smart string. Ring atoms are
-        # always mapped in ring atoms. 
-        mcs = rdFMCS.FindMCS([moli_c, molj_c],
-                             timeout=time_out,
-                             atomCompare=rdFMCS.AtomCompare.CompareAny,
-                             bondCompare=rdFMCS.BondCompare.CompareAny,
-                             matchValences=False,
-                             ringMatchesRingOnly=True,
-                             completeRingsOnly=False,
-                             matchChiralTag=False)
-
-        # Checking
-        if mcs.canceled:
-            raise ValueError('Timeout! No MCS found between passed molecules')
-
-        if mcs.numAtoms == 0:
-            raise ValueError('No MCS was found between the molecules')
-
-        # The found MCS pattern (smart strings) is converted to a RDKit molecule
-        mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
-
-        try:
-            Chem.SanitizeMol(mcs_mol)
-        except Exception:  # if not try to recover the atom aromaticity wich is
-            # important for the ring counter
-            sanitFail = Chem.SanitizeMol(mcs_mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY,
-                                         catchErrors=True)
-            if sanitFail:  # if not the MCS is skipped
-                raise ValueError('Sanitization Failed...')
-
-        # mcs indexes mapped back to the first molecule moli
-        if moli_c.HasSubstructMatch(mcs_mol):
-            moli_sub = moli_c.GetSubstructMatch(mcs_mol)
-        else:
-            raise ValueError('RDkit MCS Subgraph first molecule search failed')
-        # mcs indexes mapped back to the second molecule molj
-        if molj_c.HasSubstructMatch(mcs_mol):
-            molj_sub = molj_c.GetSubstructMatch(mcs_mol)
-        else:
-            raise ValueError('RDkit MCS Subgraph second molecule search failed')
-
-        mcs_sub = tuple(range(mcs_mol.GetNumAtoms()))
-
-        # Map between the two molecules
-        map_moli_to_molj = zip(moli_sub, molj_sub)
-
-        # depict the mapping by using a .png file
-        if fname:
-            AllChem.Compute2DCoords(moli_c)
-            AllChem.Compute2DCoords(molj_c)
-            AllChem.Compute2DCoords(mcs_mol)
-            DrawingOptions.includeAtomNumbers = True
-            moli_fname = 'Moli'
-            molj_fname = 'Molj'
-            mcs_fname = 'Mcs'
-
-            img = Draw.MolsToGridImage([moli_c, molj_c, mcs_mol],
-                                       molsPerRow=3, subImgSize=(400, 400),
-                                       legends=[moli_fname, molj_fname, mcs_fname],
-                                       highlightAtomLists=[moli_sub, molj_sub, mcs_sub])
-
-            img.save(fname)
-
-            DrawingOptions.includeAtomNumbers = False
-
-        return map_moli_to_molj
-
-        ############ MCS BASED RULES ############
+    ############ MCS BASED RULES ############
 
     # MCSR Rule
     # the mtansr method is not used but be retained here in case need to use in the future.
@@ -534,7 +427,9 @@ class MCS(object):
         # The number of heavy atoms in each molecule
         nha_moli = self.moli.GetNumHeavyAtoms()
         nha_molj = self.molj.GetNumHeavyAtoms()
-        nha_mcs_mol = self.mcs_mol.GetNumHeavyAtoms()
+        # Note that the mcs_mol (a) doesn't contain hydrogens, and (b) does contain
+        # wildcard atoms, which don't count as 'heavy'. Use the total atom count instead.
+        nha_mcs_mol = self.mcs_mol.GetNumAtoms()
 
         # score
         scr_mcsr = math.exp(-beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
@@ -579,6 +474,9 @@ class MCS(object):
         and if chiral atoms are presents. If rings are broken all the 
         remaining ring atoms are deleted. Atoms connected to chiral centers
         are deleted as well
+
+        Note that if no rings or broken of chiral centres need to be removed this
+        will return 1.0
 
  
         Parameters
@@ -784,15 +682,16 @@ class MCS(object):
             if at.GetAtomicNum() > 1:
                 max_frag_num_heavy_atoms += 1
 
-        return math.exp(-2 * beta * (orig_nha_mcs_mol - max_frag_num_heavy_atoms))
+        scr_tmcsr =  math.exp(-2 * beta * (orig_nha_mcs_mol - max_frag_num_heavy_atoms))
+        return scr_tmcsr
 
     # AtomicNumber rule 
-    def atomic_number_rule(self,beta=0.1):
+    def atomic_number_rule(self,beta=0.05):
 
         """
         This rule checks how many elements have been changed in the MCS 
         and a score based on the fraction of MCS matches that are the same atomicnumber.
-        When used with beta=0.1 and multiplied by mcsr, this is equivalent to counting
+        When used with beta=0.05 and multiplied by mcsr, this is equivalent to counting
         mismatched atoms at only half weight.
              
         """
@@ -802,13 +701,14 @@ class MCS(object):
             natoms=natoms+1
             moli_idx = int(at.GetProp('to_moli'))
             molj_idx = int(at.GetProp('to_molj'))
-            moli_a = self.moli.GetAtoms()[moli_idx]
-            molj_a = self.molj.GetAtoms()[molj_idx]
+            moli_a = self.__moli_noh.GetAtoms()[moli_idx]
+            molj_a = self.__molj_noh.GetAtoms()[molj_idx]
 
             if moli_a.GetAtomicNum() == molj_a.GetAtomicNum():
                 nmatch=nmatch+1
 
-        return math.exp(-1 * beta * (natoms-nmatch))
+        an_score =  math.exp(-1 * beta * (natoms-nmatch))
+        return an_score
 
     # Sulfonamides rule
     def sulfonamides_rule(self):
@@ -973,10 +873,6 @@ if "__main__" == __name__:
     molb = Chem.MolFromMolFile('../test/transforms/phenylmethylamino.sdf', sanitize=False, removeHs=False)
     #mola = Chem.MolFromMolFile('../test/transforms/chlorophenol.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
-
-    mp = MCS.getMapping(mola, molb, hydrogens=False, fname='mcs.png')
-
-    print(mp)
 
     # MCS calculation
     try:
