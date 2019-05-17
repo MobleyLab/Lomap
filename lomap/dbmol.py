@@ -171,9 +171,11 @@ class DBMolecules(object):
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str,
                         radial_str, fingerprint_str, fast_str, threed_str)
+            names=names_str.split()
+            if (linksfile):
+                names.extend(['--linksfile',linksfile])
 
-            print(names_str)
-            self.options = parser.parse_args(names_str.split().extend(['--linksfile',linksfile]))
+            self.options = parser.parse_args(names)
 
         # Internal list container used to store the loaded molecule objects
         self.__list = self.read_molecule_files()
