@@ -27,9 +27,12 @@ class TestLomap(unittest.TestCase):
         # MolA, molB, 3D?, max3d, mcsr, atomic_number_rule
         data=[ ('test/transforms/phenyl.sdf','test/transforms/toluyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
                ('test/transforms/phenyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
-               ('test/transforms/toluyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, 1, math.exp(-0.05 * 1)) ,
-               ('test/transforms/toluyl.sdf','test/transforms/chlorophenol.sdf', False, 1000, math.exp(-0.1 * (7 + 8 - 2*7)), math.exp(-0.05 * 1)),
+               ('test/transforms/toluyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, 1, math.exp(-0.1 * 0.5)) ,
+               ('test/transforms/toluyl.sdf','test/transforms/chlorophenol.sdf', False, 1000, math.exp(-0.1 * (7 + 8 - 2*7)), math.exp(-0.1 * 0.5)),
                ('test/transforms/phenyl.sdf','test/transforms/napthyl.sdf', False, 1000, math.exp(-0.1 * (8 + 12 - 2*8)), 1),
+               ('test/transforms/chlorophenyl.sdf','test/transforms/fluorophenyl.sdf', False, 1000, 1, math.exp(-0.1 * 0.5 )),
+               ('test/transforms/chlorophenyl.sdf','test/transforms/bromophenyl.sdf', False, 1000, 1, math.exp(-0.1 * 0.15)),
+               ('test/transforms/chlorophenyl.sdf','test/transforms/iodophenyl.sdf', False, 1000, 1, math.exp(-0.1 * 0.35)),
 
                # Compare with and without 3D pruning
                ('test/transforms/chlorophenyl.sdf','test/transforms/chlorophenyl2.sdf', False, 1000, 1, 1),

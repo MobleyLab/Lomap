@@ -686,28 +686,49 @@ class MCS(object):
         return scr_tmcsr
 
     # AtomicNumber rule 
-    def atomic_number_rule(self,beta=0.05):
+    def atomic_number_rule(self,beta=0.1):
 
         """
         This rule checks how many elements have been changed in the MCS 
-        and a score based on the fraction of MCS matches that are the same atomicnumber.
-        When used with beta=0.05 and multiplied by mcsr, this is equivalent to counting
+        and a score based on the fraction of MCS matches that are the same atomic number.
+        When used with beta=0.1 and multiplied by mcsr, this is equivalent to counting
         mismatched atoms at only half weight.
+
+        This has been extended to modify the amount of mismatch according to the 
+        atoms being mapped. 
              
         """
-        natoms=0
-        nmatch=0
+
+        # A value of 0.5 is the same behaviour as before, a value of 1 means that the 
+        # atoms are perfectly equivalent, a value of 0 means that the atoms are perfectly
+        # non-equivalent (i.e the penalty should basically remove this atom pair from the
+        # MCS). The default for pairs not in this data structure is 0.5
+        transform_difficulty={ 
+          # H to element - not sure this has any effect currently
+          1: { 9: 0.5, 17: 0.25, 35: 0, 53: -0.5 },
+          # F to element 
+          9: { 17: 0.5, 35: 0.25, 53: 0 },
+          # Cl to element 
+          17: { 9: 0.5, 35: 0.85, 53: 0.65 },
+          # Br to element
+          35: { 9: 0.25, 17: 0.85, 53: 0.85 },
+          # I to element
+          53: { 9: 0, 17: 0.65, 35: 0.85 }
+        }
+        nmismatch=0
         for at in self.mcs_mol.GetAtoms():
-            natoms=natoms+1
             moli_idx = int(at.GetProp('to_moli'))
             molj_idx = int(at.GetProp('to_molj'))
             moli_a = self.__moli_noh.GetAtoms()[moli_idx]
             molj_a = self.__molj_noh.GetAtoms()[molj_idx]
 
-            if moli_a.GetAtomicNum() == molj_a.GetAtomicNum():
-                nmatch=nmatch+1
+            if moli_a.GetAtomicNum() != molj_a.GetAtomicNum():
+                try:
+                    nmismatch+=(1-transform_difficulty[moli_a.GetAtomicNum()][molj_a.GetAtomicNum()]);
+                except KeyError:
+                    nmismatch=nmismatch+0.5
 
-        an_score =  math.exp(-1 * beta * (natoms-nmatch))
+        an_score =  math.exp(-1 * beta * nmismatch)
         return an_score
 
     # Sulfonamides rule
