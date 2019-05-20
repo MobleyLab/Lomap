@@ -291,6 +291,15 @@ class MCS(object):
                         mol.GetAtomWithIdx(idx).SetProp('rc', str(val))
             return
 
+        def sanity_check_on_molecule(mol):
+            # Sanity check: we require all heavies to be before all hydrogens in the input
+            lasta=mol.GetAtomWithIdx(0)
+            for a in mol.GetAtoms():
+                if (a.GetAtomicNum()>1 and lasta.GetAtomicNum()==1):
+                    raise ValueError('Hydrogens not after all heavy atoms in molecule')
+                lasta=a
+
+        # START of __init__ function
         # Set logging level and format
         logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.INFO)
 
@@ -298,7 +307,9 @@ class MCS(object):
 
         # Local pointers to the passed molecules
         self.moli = moli
+        sanity_check_on_molecule(self.moli)
         self.molj = molj
+        sanity_check_on_molecule(self.molj)
 
         if not options.verbose == 'pedantic':
             lg = RDLogger.logger()
@@ -324,7 +335,7 @@ class MCS(object):
                                     bondCompare=rdFMCS.BondCompare.CompareAny,
                                     matchValences=False,
                                     ringMatchesRingOnly=True,
-                                    completeRingsOnly=False,
+                                    completeRingsOnly=True,
                                     matchChiralTag=False)
 
         # Checking
@@ -432,6 +443,7 @@ class MCS(object):
         nha_mcs_mol = self.mcs_mol.GetNumAtoms()
 
         # score
+        #print("MCSR from",nha_moli,nha_molj,' common',nha_mcs_mol)
         scr_mcsr = math.exp(-beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
 
         return scr_mcsr
@@ -827,6 +839,43 @@ class MCS(object):
 
         return 0 if is_bad else 1
 
+    def transmuting_ring_sizes_rule(self):
+
+        """
+         Rule to prevent turning a ring atom into a ring atom with a different ring size
+         (you can grow a ring, but you can't turn a cyclopentyl into a cyclohexyl)
+
+        """
+        moli=self.__moli_noh
+        molj=self.__molj_noh
+
+        # Get list of bonds in mol i and j that go from the MCS to a non-MCS atom,
+        # arranged in tuples with the index of the MCS atom
+        moli_sub = moli.GetSubstructMatch(self.mcs_mol)
+        molj_sub = molj.GetSubstructMatch(self.mcs_mol)
+
+        is_bad=False
+
+        for i in range(0,len(moli_sub)):
+            edge_bondsi = [ b.GetBeginAtomIdx() for b in moli.GetBonds() if (b.GetEndAtomIdx()==moli_sub[i] and not b.GetBeginAtomIdx() in moli_sub) ]
+            edge_bondsi += [ b.GetEndAtomIdx() for b in moli.GetBonds() if (b.GetBeginAtomIdx()==moli_sub[i] and not b.GetEndAtomIdx() in moli_sub) ]
+            edge_bondsj = [ b.GetBeginAtomIdx() for b in molj.GetBonds() if (b.GetEndAtomIdx()==molj_sub[i] and not b.GetBeginAtomIdx() in molj_sub) ]
+            edge_bondsj += [ b.GetEndAtomIdx() for b in molj.GetBonds() if (b.GetBeginAtomIdx()==molj_sub[i] and not b.GetEndAtomIdx() in molj_sub) ]
+            #print("Atom",i,"index",moli_sub[i],"edge atoms on mol 1 are",edge_bondsi);
+            #print("Atom",i,"index",molj_sub[i],"edge atoms on mol 2 are",edge_bondsj);
+
+            for edgeAtom_i in edge_bondsi:
+                for edgeAtom_j in edge_bondsj:
+                    print("Checking ring for atom",edgeAtom_i,edgeAtom_j,moli.GetAtomWithIdx(edgeAtom_i).IsInRing(),molj.GetAtomWithIdx(edgeAtom_j).IsInRing())
+                    if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() and molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
+                        for ring_size in range(3,8):
+                            if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
+                                is_bad=True
+                            if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) or molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
+                                break
+
+        return 0 if is_bad else 1
+
     def heavy_atom_match_list(self):
         '''
         Returns a string listing the MCS match between the two molecules as 
@@ -886,18 +935,12 @@ class MCS(object):
               
 if "__main__" == __name__:
 
-    #mola = Chem.MolFromMol2File('../test/basic/2-methylnaphthalene.mol2', sanitize=False, removeHs=False)
-    #molb = Chem.MolFromMol2File('../test/basic/2-naftanol.mol2', sanitize=False, removeHs=False)
-    #mola = Chem.MolFromMolFile('../test/transforms/chlorotoluyl1.sdf', sanitize=False, removeHs=False)
-    #molb = Chem.MolFromMolFile('../test/transforms/chlorotoluyl2.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylmethylamino.sdf', sanitize=False, removeHs=False)
-    #mola = Chem.MolFromMolFile('../test/transforms/chlorophenol.sdf', sanitize=False, removeHs=False)
-    #molb = Chem.MolFromMolFile('../test/transforms/phenylfuran.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/phenylamide.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/phenylsulfonamide.sdf', sanitize=False, removeHs=False)
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb)
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
     except Exception:
         raise ValueError('NO MCS FOUND......')
 
@@ -928,6 +971,7 @@ if "__main__" == __name__:
     print("sulfonamides:",MC.sulfonamides_rule())
     print("heterocycles:",MC.heterocycles_rule())
     print("growring:",MC.transmuting_methyl_into_ring_rule())
+    print("changering:",MC.transmuting_ring_sizes_rule())
     print("Match list:",MC.heavy_atom_match_list())
     print("Match list:",MC.all_atom_match_list())
 

@@ -208,6 +208,25 @@ class TestLomap(unittest.TestCase):
             MC=MCS(parent,comp)
             self.assertEqual(MC.transmuting_methyl_into_ring_rule(),d[2],'Fail on transmuting-methyl-to-ring check for '+d[0]+' '+d[1])
 
+    # Test disallowing turning a ring into an incompatible ring
+    def test_transmuting_ring_sizes_rule(self):
+        testdata=[('phenyl.sdf','phenylcyclopropyl.sdf',1),
+                 ('toluyl.sdf','phenylcyclopropyl.sdf',1),  # Disallowed by test_transmuting_methyl_into_ring_rule instead
+                 ('phenylcyclopropyl.sdf','phenylcyclobutyl.sdf',0),
+                 ('phenylcyclopropyl.sdf','phenylcyclopentyl.sdf',0),
+                 ('phenylcyclopropyl.sdf','phenylcyclononyl.sdf',0),
+                 ('phenylcyclobutyl.sdf','phenylcyclopentyl.sdf',0),
+                 ('phenylcyclobutyl.sdf','phenylcyclononyl.sdf',0),
+                 ('phenylcyclopentyl.sdf','phenylcyclononyl.sdf',1)
+                 ]
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
+        for d in testdata:
+            parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
+            comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
+            MC=MCS(parent,comp)
+            self.assertEqual(MC.transmuting_ring_sizes_rule(),d[2],'Fail on transmuting-ring-size check for '+d[0]+' '+d[1])
+
     # Test getting the mapping string out of the MCS
     def test_mapping_string_heavy(self):
         testdata=[('phenyl.sdf','toluyl3.sdf',"0:0,5:5,4:4,3:3,2:2,1:1,6:6,7:7"),
