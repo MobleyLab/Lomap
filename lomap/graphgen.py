@@ -116,7 +116,7 @@ class GraphGen(object):
         # The maximum threshold distance in angstroms unit used to select if a molecule is depicted
         self.max_mol_size = 50.0
 
-        self.edge_labels = False
+        self.edge_labels = True
 
         # The following Section has been strongly copied/adapted from the original implementation
 
@@ -793,11 +793,13 @@ class GraphGen(object):
                     # self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
         for u, v, d in temp_graph.edges(data=True):
             if d['strict_flag'] == True:
-                temp_graph[u][v]['color'] = 'cyan'
+                temp_graph[u][v]['color'] = 'blue'
                 temp_graph[u][v]['penwidth'] = 2.5
             else:
                 temp_graph[u][v]['color'] = 'red'
                 temp_graph[u][v]['penwidth'] = 2.5
+            if self.edge_labels:
+                temp_graph[u][v]['label'] = round(d['similarity'],2)
 
         nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name + '_tmp.dot')
 
