@@ -512,10 +512,9 @@ class DBMolecules(object):
                         fps_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
 
                 except Exception as e:
-                    if self.options.verbose == 'pedantic':
-                        logging.warning(
-                            'Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
-                        logging.info(50 * '-')
+                    logging.warning(
+                        'Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                    logging.info(50 * '-')
                     continue
             else:
                 continue
