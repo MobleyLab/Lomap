@@ -147,11 +147,14 @@ class DBMolecules(object):
             if not isinstance(radial, bool):
                 raise TypeError('The radial flag is not a bool type')
             output_str = ''
+            output_no_images_str = ''
+            output_no_graph_str = ''
             display_str = ''
             radial_str = ''
             fingerprint_str = ''
             fast_str = ''
             threed_str = ''
+            linksfile_str = ''
 
             parser.set_defaults(output=output)
             parser.set_defaults(output_no_images=output_no_images)
@@ -191,9 +194,9 @@ class DBMolecules(object):
             names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fingerprint_str, fast_str, threed_str, linksfile)
+                        radial_str, fingerprint_str, fast_str, threed_str, linksfile_str)
 
-            print(names_str)
+            #print("ARGS:",names_str)
             self.options = parser.parse_args(names_str.split())
 
         # Internal list container used to store the loaded molecule objects
