@@ -329,7 +329,8 @@ class MCS(object):
 
         # MCS calculaton. In RDKit the MCS is a smart string. Ring atoms are 
         # always mapped in ring atoms. 
-        self.__mcs = rdFMCS.FindMCS([self.__moli_noh, self.__molj_noh],
+        # Don't add the mcs result as a member variable as it can't be pickled
+        __mcs = rdFMCS.FindMCS([self.__moli_noh, self.__molj_noh],
                                     timeout=options.time,
                                     atomCompare=rdFMCS.AtomCompare.CompareAny,
                                     bondCompare=rdFMCS.BondCompare.CompareAny,
@@ -339,14 +340,14 @@ class MCS(object):
                                     matchChiralTag=False)
 
         # Checking
-        if self.__mcs.canceled:
+        if __mcs.canceled:
             logging.warning('Timeout reached to find the MCS between the molecules')
 
-        if self.__mcs.numAtoms == 0:
+        if __mcs.numAtoms == 0:
             raise ValueError('No MCS was found between the molecules')
 
         # The found MCS pattern (smart strings) is converted to a RDKit molecule
-        self.mcs_mol = Chem.MolFromSmarts(self.__mcs.smartsString)
+        self.mcs_mol = Chem.MolFromSmarts(__mcs.smartsString)
 
         try:  # Try to sanitize the MCS molecule
             Chem.SanitizeMol(self.mcs_mol)
