@@ -203,6 +203,9 @@ class DBMolecules(object):
         self.dic_mapping = {}
         self.inv_dic_mapping = {}
 
+        # Hold the MCS objects for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
+        self.mcs_store = {}
+
         # Pre-specified links between molecules - a list of molecule index tuples
         self.prespecified_links = []
 
@@ -380,6 +383,22 @@ class DBMolecules(object):
         except KeyError as e:
             raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
 
+    def set_MCS(self,i,j,MC):
+        if (i<j):
+            idx=(i,j)
+        else:
+            idx=(j,i)
+        self.mcs_store[idx]=MC
+
+    def get_MCS(self,i,j):
+        if (i<j):
+            idx=(i,j)
+        else:
+            idx=(j,i)
+        if idx in self.mcs_store:
+            return self.mcs_store[idx]
+        return None
+
     def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint=False):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
@@ -504,6 +523,7 @@ class DBMolecules(object):
                     logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
                     if not fingerprint:
                         MC = mcs.MCS(moli, molj, options=self.options)
+                        self.set_MCS(i,j,MC)
                     else:
                         # use the fingerprint as similarity calculation
                         fps_moli = FingerprintMols.FingerprintMol(moli)
@@ -511,10 +531,9 @@ class DBMolecules(object):
                         fps_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
 
                 except Exception as e:
-                    if self.options.verbose == 'pedantic':
-                        logging.warning(
-                            'Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
-                        logging.info(50 * '-')
+                    logging.warning(
+                        'Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                    logging.info(50 * '-')
                     continue
             else:
                 continue
@@ -526,12 +545,18 @@ class DBMolecules(object):
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
             if not fingerprint:
-                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() # * MC.atomic_number_rule()
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule()
+                tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
+                tmp_scr *= MC.transmuting_ring_sizes_rule()
                 strict_scr = tmp_scr * MC.tmcsr(strict_flag=True)
                 loose_scr = tmp_scr * MC.tmcsr(strict_flag=False)
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = ecr_score
+                logging.info(
+                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s anum %s sulf %s het %s RingMe %s' % 
+                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),
+                        MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
             else:
                 # for the fingerprint option, currently just use the identical strict and loose mtx
                 strict_scr = fps_tan
@@ -539,9 +564,8 @@ class DBMolecules(object):
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = ecr_score
-
-            logging.info(
-                'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
+                logging.info(
+                    'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
 
         return
 
