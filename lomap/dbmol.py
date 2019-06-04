@@ -189,7 +189,7 @@ class DBMolecules(object):
                 threed_str = '--threed'
 
             if linksfile:
-                linksfile_str = f'--linksfile "{linksfile}"'
+                linksfile_str = f'--linksfile {linksfile}'
 
             names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
                         % (
@@ -506,14 +506,9 @@ class DBMolecules(object):
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
 
-            if (i,j) in self.prespecified_links:
-                print("Molecule pair",i,j,"prespecified - score set to 1")
-                strict_scr = 1.0
-                loose_scr = 1.0
-                strict_mtx[k] = strict_scr
-                loose_mtx[k] = loose_scr
-                ecr_mtx[k] = ecr_score
-                continue
+            # Change - if a link was prespecified we would just assign it a good score and
+            # continue for efficiency. However, we now want the atom mapping in the output,
+            # so move that check to later
 
             # The MCS is computed just if the passed molecules have the same charges 
             if ecr_score or self.options.ecrscore:
@@ -569,6 +564,16 @@ class DBMolecules(object):
                 ecr_mtx[k] = ecr_score
                 logging.info(
                     'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
+
+            # process prespecified links now and overwrite the existing info
+            if (i,j) in self.prespecified_links:
+                print("Molecule pair",i,j,"prespecified - score set to 1")
+                strict_scr = 1.0
+                loose_scr = 1.0
+                strict_mtx[k] = strict_scr
+                loose_mtx[k] = loose_scr
+                ecr_mtx[k] = ecr_score
+                continue
 
         return
 
@@ -1007,7 +1012,8 @@ def startup():
 
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
-                         ops.output, ops.name, ops.display, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile)
+                         ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display, 
+                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
 
