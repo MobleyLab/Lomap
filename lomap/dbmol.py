@@ -426,9 +426,9 @@ class DBMolecules(object):
            operates on a separate chunk selected by the indexes a and b
 
         ecr_mtx: python multiprocessing array
-           EleCtrostatic Rule (ECR) score matrix. This array is used as shared memory 
-           array managed by the different allocated processes. Each process 
-           operates on a separate chunk selected by the indexes a and b
+           Originally held the ECR score (charge rule score), but that's useless.
+           Repurposed to hold the strict score *before* that is potentially
+           modified by the prespecified link function.
 
         fingerprint: boolean
            using the structural fingerprint as the similarity matrix, 
@@ -550,7 +550,7 @@ class DBMolecules(object):
                 loose_scr = tmp_scr * MC.tmcsr(strict_flag=False)
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
-                ecr_mtx[k] = ecr_score
+                ecr_mtx[k] = strict_scr
                 logging.info(
                     'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s anum %s sulf %s het %s RingMe %s' % 
                       (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),
@@ -561,18 +561,16 @@ class DBMolecules(object):
                 loose_scr = fps_tan
                 strict_mtx[k] = strict_scr
                 loose_mtx[k] = loose_scr
-                ecr_mtx[k] = ecr_score
+                ecr_mtx[k] = strict_scr
                 logging.info(
                     'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
 
             # process prespecified links now and overwrite the existing info
             if (i,j) in self.prespecified_links:
                 print("Molecule pair",i,j,"prespecified - score set to 1")
-                strict_scr = 1.0
-                loose_scr = 1.0
-                strict_mtx[k] = strict_scr
-                loose_mtx[k] = loose_scr
-                ecr_mtx[k] = ecr_score
+                strict_mtx[k] = 1.0
+                loose_mtx[k] = 1.0
+                # Note that ecr_mtx holds the original strict_scr value
                 continue
 
         return
