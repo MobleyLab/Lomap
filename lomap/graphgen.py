@@ -840,10 +840,10 @@ class GraphGen(object):
                     pass
                 Filename_i = self.dbase.dic_mapping[i]
                 Filename_j = self.dbase.dic_mapping[j]
-                MC = self.dbase.get_MCS(i,j)
+                MCmap = self.dbase.get_MCSmap(i,j)
                 mapString="NO_MAP_IN_PARALLEL_MODE"
-                if MC is not None:
-                    mapString = MC.all_atom_match_list();
+                if MCmap is not None:
+                    mapString = MCmap
                 # print "Check the filename", Filename_i, Filename_j
                 strict_similarity = self.dbase.strict_mtx[i, j]
                 loose_similarity = self.dbase.loose_mtx[i, j]

@@ -206,8 +206,8 @@ class DBMolecules(object):
         self.dic_mapping = {}
         self.inv_dic_mapping = {}
 
-        # Hold the MCS objects for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
-        self.mcs_store = {}
+        # Hold the MCS index map strings for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
+        self.mcs_map_store = {}
 
         # Pre-specified links between molecules - a list of molecule index tuples
         self.prespecified_links = []
@@ -386,23 +386,23 @@ class DBMolecules(object):
         except KeyError as e:
             raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
 
-    def set_MCS(self,i,j,MC):
+    def set_MCSmap(self,i,j,MCmap):
         if (i<j):
             idx=(i,j)
         else:
             idx=(j,i)
-        self.mcs_store[idx]=MC
+        self.mcs_map_store[idx]=MCmap
 
-    def get_MCS(self,i,j):
+    def get_MCSmap(self,i,j):
         if (i<j):
             idx=(i,j)
         else:
             idx=(j,i)
-        if idx in self.mcs_store:
-            return self.mcs_store[idx]
+        if idx in self.mcs_map_store:
+            return self.mcs_map_store[idx]
         return None
 
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, fingerprint=False):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, MCS_map, fingerprint=False):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
         by the start index a and the final index b. The matrices are indeed 
@@ -430,6 +430,10 @@ class DBMolecules(object):
            Repurposed to hold the strict score *before* that is potentially
            modified by the prespecified link function.
 
+        MCS_map: dict (multiprocessing)
+            Holds a dict of (index tuple) -> string with the strings being the 
+            MCS atom index map between the two molecules
+
         fingerprint: boolean
            using the structural fingerprint as the similarity matrix, 
            not suggested option but currently runs faster than mcss based similarity
@@ -437,9 +441,10 @@ class DBMolecules(object):
         """
 
         # name = multiprocessing.current_process().name
-        # print name
-        # print 'a = %d, b = %d' % (a,b)
-        # print '\n'  
+        # print(name)
+        # print('a = %d, b = %d' % (a,b))
+        # print('fingerprint=',fingerprint)
+        # print('\n') 
 
         def formal_charge(mol):
             total_charge_mol = 0.0
@@ -517,11 +522,12 @@ class DBMolecules(object):
                         logging.info(50 * '-')
                         logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
 
-                        # Maximum Common Subgraph (MCS) calculation
-                    logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
                     if not fingerprint:
+                        # Maximum Common Subgraph (MCS) calculation
                         MC = mcs.MCS(moli, molj, options=self.options)
-                        self.set_MCS(i,j,MC)
+                        ml=MC.all_atom_match_list()
+                        self.set_MCSmap(i,j,ml)
+                        MCS_map[(i,j)]=ml
                     else:
                         # use the fingerprint as similarity calculation
                         fps_moli = FingerprintMols.FingerprintMol(moli)
@@ -530,7 +536,7 @@ class DBMolecules(object):
 
                 except Exception as e:
                     logging.warning(
-                        'Skipping MCS molecules: %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                        'Skipping MCS molecules (exception): %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
                     logging.info(50 * '-')
                     continue
             else:
@@ -593,7 +599,10 @@ class DBMolecules(object):
         l = int(self.nums() * (self.nums() - 1) / 2)
 
         if self.options.parallel == 1:  # Serial execution
-            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, self.options.fingerprint)
+            MCS_map = {}
+            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, MCS_map, self.options.fingerprint)
+            for idx in MCS_map:
+              self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
         else:
             # Parallel execution
             # add the fingerprint option
@@ -612,39 +621,47 @@ class DBMolecules(object):
             else:
                 kmax = num_proc
             proc = []
-            # Shared memory array used by the different allocated processes
-            strict_mtx = multiprocessing.Array('d', self.strict_mtx)
-            loose_mtx = multiprocessing.Array('d', self.loose_mtx)
-            ecr_mtx = multiprocessing.Array('d', self.ecr_mtx)
 
-            # Chopping the indexes redistributing the remainder
-            for k in range(0, kmax):
+            with multiprocessing.Manager() as manager:
 
-                spc = delta + int(int(rem / (k + 1)) > 0)
+              # Shared memory array used by the different allocated processes
+              # At the moment we're using a combination of Array and Manager, which is nasty
+              strict_mtx = multiprocessing.Array('d', self.strict_mtx)
+              loose_mtx = multiprocessing.Array('d', self.loose_mtx)
+              ecr_mtx = multiprocessing.Array('d', self.ecr_mtx)
+              MCS_map = manager.dict()
+  
+              # Chopping the indexes redistributing the remainder
+              for k in range(0, kmax):
+  
+                  spc = delta + int(int(rem / (k + 1)) > 0)
+  
+                  if k == 0:
+                      i = 0
+                  else:
+                      i = j + 1
+  
+                  if k != kmax - 1:
+                      j = i + spc - 1
+                  else:
+                      j = l - 1
+  
+                  # Python multiprocessing allocation
+                  p = multiprocessing.Process(target=self.compute_mtx,
+                                              args=(i, j, strict_mtx, loose_mtx, ecr_mtx, MCS_map, fingerprint,))
+                  p.start()
+                  proc.append(p)
+              # End parallel execution
+              for p in proc:
+                  p.join()
 
-                if k == 0:
-                    i = 0
-                else:
-                    i = j + 1
+              # Copying back the results
+              self.strict_mtx[:] = strict_mtx[:]
+              self.loose_mtx[:] = loose_mtx[:]
+              self.ecr_mtx[:] = ecr_mtx[:]
+              for idx in MCS_map.keys():
+                self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
 
-                if k != kmax - 1:
-                    j = i + spc - 1
-                else:
-                    j = l - 1
-
-                # Python multiprocessing allocation
-                p = multiprocessing.Process(target=self.compute_mtx,
-                                            args=(i, j, strict_mtx, loose_mtx, ecr_mtx, fingerprint,))
-                p.start()
-                proc.append(p)
-            # End parallel execution
-            for p in proc:
-                p.join()
-
-            # Copying back the results
-            self.strict_mtx[:] = strict_mtx[:]
-            self.loose_mtx[:] = loose_mtx[:]
-            self.ecr_mtx[:] = ecr_mtx[:]
         return self.strict_mtx, self.loose_mtx
 
     def build_graph(self):
