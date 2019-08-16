@@ -558,8 +558,8 @@ class DBMolecules(object):
                 loose_mtx[k] = loose_scr
                 ecr_mtx[k] = strict_scr
                 logging.info(
-                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s anum %s sulf %s het %s RingMe %s' % 
-                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),
+                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
+                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
                         MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
             else:
                 # for the fingerprint option, currently just use the identical strict and loose mtx
