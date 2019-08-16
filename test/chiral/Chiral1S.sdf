@@ -1,4 +1,4 @@
-Untitled (1)
+Chiral1S
   xed2sdf_05210316543D
  
  17 16  0  0  1  0  0  0  0  0999 V2000
@@ -65,6 +65,9 @@ false
 
 >  <Rof5_cresset>
 0
+
+>  <Filename_cresset>
+chiral2.sdf
 
 >  <_cresset_fieldpoints>
     -5       5.308778       1.134607       0.677239     -1.8290
