@@ -209,7 +209,7 @@ class MCS(object):
             (moli_sub,molj_sub) = best_substruct_match(self.__moli_noh,self.__molj_noh,by_rmsd=self.options.threed)
 
             # mcs to moli
-            map_mcs_mol_to_moli_sub = zip(mcsi_sub, moli_sub)
+            map_mcs_mol_to_moli_sub = list(zip(mcsi_sub, moli_sub))
 
             # An RDkit atomic property is defined to store the mapping to moli
             for idx in map_mcs_mol_to_moli_sub:
@@ -219,10 +219,10 @@ class MCS(object):
             mcsj_sub = tuple(range(self.mcs_mol.GetNumAtoms()))
 
             # mcs to molj
-            map_mcs_mol_to_molj_sub = zip(mcsj_sub, molj_sub)
+            map_mcs_mol_to_molj_sub = list(zip(mcsj_sub, molj_sub))
 
             # Map between the two molecules
-            self.__map_moli_molj = zip(moli_sub, molj_sub)
+            self.__map_moli_molj = list(zip(moli_sub, molj_sub))
 
             # An RDkit atomic property is defined to store the mapping to molj
             for idx in map_mcs_mol_to_molj_sub:
@@ -232,6 +232,7 @@ class MCS(object):
             # Chirality
 
             # moli chiral atoms
+
             chiral_at_moli_noh = [seq[0] for seq in Chem.FindMolChiralCenters(self.__moli_noh)]
             # molj chiral atoms
             chiral_at_molj_noh = [seq[0] for seq in Chem.FindMolChiralCenters(self.__molj_noh)]
@@ -242,6 +243,8 @@ class MCS(object):
             # mcs chiral atoms
             chiral_at_mcs = chiral_at_mcs_moli_noh | chiral_at_mcs_molj_noh
 
+            # Flag all atoms in the MCS which are chiral in both input molecules
+            # with CHI_TETRAHEDRAL_CW
             for i in chiral_at_mcs:
                 at = self.mcs_mol.GetAtomWithIdx(i)
                 at.SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
@@ -310,6 +313,13 @@ class MCS(object):
         sanity_check_on_molecule(self.moli)
         self.molj = molj
         sanity_check_on_molecule(self.molj)
+
+        # Set chirality flags from 3D coords if working in 3D
+        if self.options.threed:
+            Chem.SanitizeMol(self.moli, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
+            Chem.rdmolops.AssignAtomChiralTagsFromStructure(self.moli,replaceExistingTags=True)
+            Chem.SanitizeMol(self.molj, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
+            Chem.rdmolops.AssignAtomChiralTagsFromStructure(self.molj,replaceExistingTags=True)
 
         if not options.verbose == 'pedantic':
             lg = RDLogger.logger()
@@ -444,8 +454,8 @@ class MCS(object):
         nha_mcs_mol = self.mcs_mol.GetNumAtoms()
 
         # score
-        #print("MCSR from",nha_moli,nha_molj,' common',nha_mcs_mol)
         scr_mcsr = math.exp(-beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
+        #print("MCSR from",nha_moli,nha_molj,' common',nha_mcs_mol,"is",scr_mcsr)
 
         return scr_mcsr
 
@@ -638,12 +648,26 @@ class MCS(object):
         for atom in mcs_mol_copy.GetAtoms():
             if atom.IsInRing():
                 mcs_ring_set.add(atom.GetIdx())
-            if atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW:
+            # Note that any atom in the MCS which is chiral in either input mol is
+            # flagged with CHI_TETRAHEDRAL_CW
+            if (atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW):
                 mcs_chiral_set.add(atom.GetIdx())
 
         # Loop over the mcs chiral atoms to check if they are also ring atoms
         delete_atoms = set()
 
+        # MDM The algorithm looks to be:
+        #  - delete the single chiral centre atom if it is acyclic
+        #  - delete the acyclic neighbour atoms of the chiral atom if it's in a ring
+        #
+        #  Now find the largest fragment in the remaining disconnected molecule
+        #
+        #  I think this is wrong - if you have an MCS like
+        #    CCCC(C)CCCC
+        #  then this blows away the chiral atom and leaves only CCCC as the MCS.
+        #  In practise, you only have to blow away the chiral methyl atom, and
+        #  even then only if the chirality doesn't match between the two molecules.
+        #
         for atom_idx in mcs_chiral_set:
 
             if atom_idx in mcs_ring_set:
@@ -696,6 +720,7 @@ class MCS(object):
                 max_frag_num_heavy_atoms += 1
 
         scr_tmcsr =  math.exp(-2 * beta * (orig_nha_mcs_mol - max_frag_num_heavy_atoms))
+        print("tmcsr rule: orig nha is ",orig_nha_mcs_mol," new frag is",max_frag_num_heavy_atoms,"delta",(orig_nha_mcs_mol - max_frag_num_heavy_atoms),"score",scr_tmcsr)
         return scr_tmcsr
 
     # AtomicNumber rule 
@@ -936,12 +961,12 @@ class MCS(object):
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/phenylamide.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylsulfonamide.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/chiral/chiral1.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/chiral/chiral2.sdf', sanitize=False, removeHs=False)
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
     except Exception:
         raise ValueError('NO MCS FOUND......')
 
