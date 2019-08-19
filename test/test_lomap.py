@@ -256,6 +256,27 @@ class TestLomap(unittest.TestCase):
             MC=MCS(parent,comp)
             self.assertEqual(MC.all_atom_match_list(), d[2], 'Fail on all-atom match list for '+d[0]+' '+d[1])
 
+    # Test to check correct handling of chirality
+    def test_chirality_handling(self):
+        testdata=[('Chiral1R.sdf','Chiral1S.sdf',6),
+                  ('Chiral1R.sdf','Chiral2R.sdf',7),
+                  ('Chiral1S.sdf','Chiral2R.sdf',6),
+                  ('Chiral3RS.sdf','Chiral3SS.sdf',11),
+                  ('Chiral3SR.sdf','Chiral3SS.sdf',10),
+                  ('Chiral3SR.sdf','Chiral3RS.sdf',9),
+                  ('Chiral4RR.sdf','Chiral4RS.sdf',5),
+                  ('RingChiralR.sdf','RingChiralS.sdf',6),
+                  ('SpiroR.sdf','SpiroS.sdf',6)
+                ]
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.INFO)
+        for d in testdata:
+            parent=Chem.MolFromMolFile('test/chiral/'+d[0],sanitize=False, removeHs=False)
+            comp=Chem.MolFromMolFile('test/chiral/'+d[1],sanitize=False, removeHs=False)
+            MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
+            self.assertEqual(MC.mcs_mol.GetNumHeavyAtoms(), d[2], 'Fail on chiral MCS size for '+d[0]+' '+d[1])
+
+
 if __name__ == '__main__':
     unittest.main()
             
