@@ -222,7 +222,6 @@ class TestLomap(unittest.TestCase):
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            print("ARSE DEBIG",d[0],d[1],MC.transmuting_halogen_into_alkyl_rule(),d[2])
             assert(isclose(MC.transmuting_halogen_into_alkyl_rule(),d[2]))
 
     # Test disallowing turning a ring into an incompatible ring

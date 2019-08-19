@@ -490,7 +490,19 @@ class MCS(object):
             raise ValueError('No MCS was found between the molecules')
 
         # The found MCS pattern (smart strings) is converted to a RDKit molecule
+        self.mcs_mol_smarts = __mcs.smartsString
         self.mcs_mol = Chem.MolFromSmarts(__mcs.smartsString)
+
+        # There's a symmetry-related bug here: if there was more than one MCS
+        # of the same size and score, we'll get only one at random. We then try
+        # to choose the mapping that matches 3D coords the best, but one of the 
+        # not-considered MCSes that we never saw may give a better mapping. 
+        # We can rescue some of this by converting all partial-query atoms to 
+        # full query atoms
+        testmol = Chem.MolFromSmarts("*")   # Create a "match anything" query atom for us to copy
+        for a in self.mcs_mol.GetAtoms():
+            if a.DescribeQuery().startswith("AtomOr"):  # Matches more than one element
+                a.SetQuery(testmol.GetAtoms()[0])   # Set this atom to a copy of the "match anything" atom
 
         try:  # Try to sanitize the MCS molecule
             Chem.SanitizeMol(self.mcs_mol)
@@ -798,18 +810,21 @@ class MCS(object):
         # A value of 0.5 is the same behaviour as before, a value of 1 means that the 
         # atoms are perfectly equivalent, a value of 0 means that the atoms are perfectly
         # non-equivalent (i.e the penalty should basically remove this atom pair from the
-        # MCS). The default for pairs not in this data structure is 0.5
+        # MCS). The default for pairs not in this data structure is 0.5. 
+        # 
+        # Note that we don't need the symmetry equivalent values: we will use the large of 
+        # [i][j] and [j][i]
         transform_difficulty={ 
           # H to element - not sure this has any effect currently
           1: { 9: 0.5, 17: 0.25, 35: 0, 53: -0.5 },
+          # O to element - methoxy to Cl/Br is easier than expected
+          8: { 17: 0.85, 35: 0.85 },
           # F to element 
           9: { 17: 0.5, 35: 0.25, 53: 0 },
           # Cl to element 
-          17: { 9: 0.5, 35: 0.85, 53: 0.65 },
+          17: { 35: 0.85, 53: 0.65 },
           # Br to element
-          35: { 9: 0.25, 17: 0.85, 53: 0.85 },
-          # I to element
-          53: { 9: 0, 17: 0.65, 35: 0.85 }
+          35: { 53: 0.85 },
         }
         nmismatch=0
         for at in self.mcs_mol.GetAtoms():
@@ -819,10 +834,21 @@ class MCS(object):
             molj_a = self.__molj_noh.GetAtoms()[molj_idx]
 
             if moli_a.GetAtomicNum() != molj_a.GetAtomicNum():
+                ij=-1
+                ji=-1
                 try:
-                    nmismatch+=(1-transform_difficulty[moli_a.GetAtomicNum()][molj_a.GetAtomicNum()]);
+                    ij=transform_difficulty[moli_a.GetAtomicNum()][molj_a.GetAtomicNum()]
                 except KeyError:
-                    nmismatch=nmismatch+0.5
+                    pass
+                try:
+                    ji=transform_difficulty[molj_a.GetAtomicNum()][moli_a.GetAtomicNum()]
+                except KeyError:
+                    pass
+                diff = max(ij,ji)
+                if (diff==-1):
+                    diff=0.5    # default for elements not found
+                    
+                nmismatch+=(1-diff)
 
         an_score =  math.exp(-1 * beta * nmismatch)
         return an_score
@@ -975,7 +1001,7 @@ class MCS(object):
 
             for edgeAtom_i in edge_bondsi:
                 for edgeAtom_j in edge_bondsj:
-                    print("Checking ring for atom",edgeAtom_i,edgeAtom_j,moli.GetAtomWithIdx(edgeAtom_i).IsInRing(),molj.GetAtomWithIdx(edgeAtom_j).IsInRing())
+                    #print("Checking ring for atom",edgeAtom_i,edgeAtom_j,moli.GetAtomWithIdx(edgeAtom_i).IsInRing(),molj.GetAtomWithIdx(edgeAtom_j).IsInRing())
                     if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() and molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
                         for ring_size in range(3,8):
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
@@ -1045,15 +1071,15 @@ class MCS(object):
 if "__main__" == __name__:
 
     mola = Chem.MolFromMolFile('../test/transforms/chlorophenyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/chiral/Chiral1R.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/chiral/Chiral1S.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/methoxyphenyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('/home/mark/lomap-test/max/fxa/fxa_lig1.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('/home/mark/lomap-test/max/fxa/fxa_lig4.sdf', sanitize=False, removeHs=False)
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=15, threed=True))
         #MC = MCS(mola, molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
@@ -1088,6 +1114,7 @@ if "__main__" == __name__:
     print("growring:",MC.transmuting_methyl_into_ring_rule())
     print("changering:",MC.transmuting_ring_sizes_rule())
     print("transmuting_halogen_into_alkyl_rule:",MC.transmuting_halogen_into_alkyl_rule())
+    print("transmuting_ring_sizes_rule:",MC.transmuting_ring_sizes_rule())
     print("Match list:",MC.heavy_atom_match_list())
     print("Match list:",MC.all_atom_match_list())
 
