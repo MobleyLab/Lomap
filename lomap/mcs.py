@@ -1067,6 +1067,28 @@ class MCS(object):
                     maplist.append(str(hmatch[0])+":"+str(hmatch[1]))
 
         return self.heavy_atom_match_list()+","+",".join(maplist)
+
+"""
+Table of #atoms-changed to score for beta=0.1
+
+0   1.0
+1   0.905
+2   0.819
+3   0.741
+4   0.670
+5   0.607
+6   0.549
+7   0.500
+8   0.449
+9   0.407
+10  0.369
+11  0.333
+12  0.301
+13  0.273
+14  0.247
+15  0.223
+16  0.202
+"""
               
 if "__main__" == __name__:
 
