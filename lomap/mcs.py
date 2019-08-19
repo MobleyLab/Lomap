@@ -629,7 +629,7 @@ class MCS(object):
     # TMCRS rule (Trim rule) 
     # MDM Note: we don't use this as we don't have the same limitation on partial ring
     # deletion as Schrodinger
-    # NB split out the chirality check to chirality_rule
+    # NB removed the chirality check - the MCS is now trimmed to remive chirality
     def tmcsr(self, beta=0.1, strict_flag=True):
 
         """
@@ -781,90 +781,6 @@ class MCS(object):
         print("tmcsr rule: orig nha is ",orig_nha_mcs_mol," new frag is",new_nha_mcs_mol,"delta",(orig_nha_mcs_mol - new_nha_mcs_mol),"score",scr_tmcsr)
         return scr_tmcsr
 
-    # Trim the MCS to make it achiral
-    def chirality_rule(self, beta=0.1):
-
-        """
-        This rule effectively deletes the smallest number of atoms connected to
-        chiral centres to make the MCS achiral.
-
-        The effect is the
-
-        Note that if no chiral centres need to be removed this
-        will return 1.0
-
- 
-        Parameters
-        ----------
-        beta : float
-            a parameter used to refine the exponential function used 
-            in the scoring
-            
-        """
-
-        mcs_mol_copy = Chem.Mol(self.mcs_mol)
-        orig_nha_mcs_mol = mcs_mol_copy.GetNumHeavyAtoms()
-
-        # Trim Chiral Atoms. The algorithm is to delete the chiral centre,
-        # fragment the molecule, and remove the largesty fragment. Rinse and
-        # repeat.
-
-        while True:
-            mcs_chiral_set = set()
-            atom_idx = -1;
-
-            for atom in mcs_mol_copy.GetAtoms():
-                # Note that any atom in the MCS which is chiral in either input mol is
-                # flagged with CHI_TETRAHEDRAL_CW
-                if (atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW):
-                    atom_idx=atom.GetIdx()
-                    atom.SetChiralTag(Chem.rdchem.ChiralType.CHI_UNSPECIFIED)
-                    break
-
-            if atom_idx == -1:  # Not found any more chiral atoms
-                break
-
-            # Move the chiral atom to the end (avoids indexing problems)
-            newindexes = list(range(mcs_mol_copy.GetNumAtoms()))
-            newindexes.remove(atom_idx)
-            newindexes.append(atom_idx)
-            mcs_mol_copy = Chem.RenumberAtoms(mcs_mol_copy,newindexes)
-
-            # Delete the chiral atom in a temporary molecule, and fragment. Since the
-            # chiral atom was the last one, the indexes in the temporary molecule are the
-            # same as in mcs_mol_copy
-            edit_mol = Chem.EditableMol(mcs_mol_copy)
-            edit_mol.RemoveAtom(mcs_mol_copy.GetNumAtoms()-1)
-            tmp_mol = edit_mol.GetMol()
-            fragments = Chem.rdmolops.GetMolFrags(tmp_mol)
-            print("Fragments are" ,fragments)
-            min_idx = 0
-            lgt_min = 10000
-
-            for idx in range(0, len(fragments)):
-                lgt = len(fragments[idx])
-                if lgt < lgt_min:
-                    lgt_min = lgt
-                    min_idx = idx
-
-            min_frag = list(fragments[min_idx])
-            min_frag.sort(reverse=True)
-
-            # WARNING atom indexes have changed
-            edit_mol = Chem.EditableMol(mcs_mol_copy)
-            for idx in min_frag:
-                edit_mol.RemoveAtom(idx)
-            mcs_mol_copy = edit_mol.GetMol()
-
-        # OK, at this point we have deleted all of the atoms necessary to make the MCS achiral.
-        # Return a score based on the count of heavy atoms remaining
-        num_heavy_atoms_left = mcs_mol_copy.GetNumHeavyAtoms()
-
-        scr_chiral =  math.exp(-2 * beta * (orig_nha_mcs_mol - num_heavy_atoms_left))
-        print("chiral rule: orig nha is ",orig_nha_mcs_mol," new frag is",num_heavy_atoms_left,"delta",(orig_nha_mcs_mol - num_heavy_atoms_left),"score",scr_chiral)
-        return scr_chiral
-
-
     # AtomicNumber rule 
     def atomic_number_rule(self,beta=0.1):
 
@@ -1007,6 +923,31 @@ class MCS(object):
 
         return 0 if is_bad else 1
 
+    def transmuting_halogen_into_alkyl_rule(self, beta=0.1):
+
+        """
+         Rule to prevent turning a halogen into an alkane chain: this seems to behave badly
+         but it's not clear why
+
+         Penalise by the equivalent of 2 atoms in the MCS for each mismatch
+
+        """
+
+        nmismatch = 0
+        for at in self.mcs_mol.GetAtoms():
+            moli_idx = int(at.GetProp('to_moli'))
+            molj_idx = int(at.GetProp('to_molj'))
+            moli_a = self.__moli_noh.GetAtoms()[moli_idx]
+            molj_a = self.__molj_noh.GetAtoms()[molj_idx]
+
+            if moli_a.GetAtomicNum() in [17,35,53] and molj_a.GetAtomicNum() == 6 and molj_a.GetDegree()>1:
+                    nmismatch+=1
+            if molj_a.GetAtomicNum() in [17,35,53] and moli_a.GetAtomicNum() == 6 and moli_a.GetDegree()>1:
+                    nmismatch+=1
+
+        hal_alk_score =  math.exp(-1 * beta * nmismatch * 2)
+        return hal_alk_score
+
     def transmuting_ring_sizes_rule(self):
 
         """
@@ -1103,13 +1044,17 @@ class MCS(object):
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/phenyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/napthyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/chlorophenyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/chiral/Chiral1R.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/chiral/Chiral1S.sdf', sanitize=False, removeHs=False)
+    print("Mola: ",Chem.MolToSmiles(mola))
+    print("Molb: ",Chem.MolToSmiles(molb))
 
     # MCS calculation
     try:
-        #MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
-        MC = MCS(mola, molb)
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
+        #MC = MCS(mola, molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
 
@@ -1130,6 +1075,7 @@ if "__main__" == __name__:
 
     print('Total Strict = %f , Total Loose = %f' % (tmp * strict, tmp * loose))
 
+    print('MCS is ',MC.mcs_mol.GetNumHeavyAtoms(),' ',Chem.MolToSmiles(MC.mcs_mol))
     for at in MC.mcs_mol.GetAtoms():
         moli_idx = int(at.GetProp('to_moli'))
         molj_idx = int(at.GetProp('to_molj'))
@@ -1141,7 +1087,7 @@ if "__main__" == __name__:
     print("heterocycles:",MC.heterocycles_rule())
     print("growring:",MC.transmuting_methyl_into_ring_rule())
     print("changering:",MC.transmuting_ring_sizes_rule())
-    print("chirality:",MC.chirality_rule())
+    print("transmuting_halogen_into_alkyl_rule:",MC.transmuting_halogen_into_alkyl_rule())
     print("Match list:",MC.heavy_atom_match_list())
     print("Match list:",MC.all_atom_match_list())
 
