@@ -433,6 +433,9 @@ class MCS(object):
 
         self.options=options
 
+        # Global beta setting for atom penalties
+        self.beta = 0.1
+
         # Local pointers to the passed molecules
         self.moli = moli
         sanity_check_on_molecule(self.moli)
@@ -575,18 +578,12 @@ class MCS(object):
         scr_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
         return scr_tan
 
-    def mcsr(self, beta=0.1):
+    def mcsr(self):
 
         """
         This rule computes the similarity between the two passed molecules 
         used to compute the MCS
         
-        Parameters
-        ----------
-        beta : float
-            a parameter used to refine the exponential function used in the
-            scoring
-
         Returns
         -------
         scr_mcsr : float
@@ -603,7 +600,7 @@ class MCS(object):
         nha_mcs_mol = self.mcs_mol.GetNumAtoms()
 
         # score
-        scr_mcsr = math.exp(-beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
+        scr_mcsr = math.exp(-self.beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
         print("MCSR from",nha_moli,nha_molj,' common',nha_mcs_mol,"is",scr_mcsr)
 
         return scr_mcsr
@@ -642,7 +639,7 @@ class MCS(object):
     # MDM Note: we don't use this as we don't have the same limitation on partial ring
     # deletion as Schrodinger
     # NB removed the chirality check - the MCS is now trimmed to remive chirality
-    def tmcsr(self, beta=0.1, strict_flag=True):
+    def tmcsr(self, strict_flag=True):
 
         """
         This rule check if rings have been broken during the MCS mapping 
@@ -656,10 +653,6 @@ class MCS(object):
  
         Parameters
         ----------
-        beta : float
-            a parameter used to refine the exponential function used 
-            in the scoring
-            
         stric_flag : bool
             a flag used to select the scrict or loose mode
              
@@ -789,12 +782,12 @@ class MCS(object):
 
         new_nha_mcs_mol = mcs_mol_copy.GetNumHeavyAtoms()
 
-        scr_tmcsr =  math.exp(-2 * beta * (orig_nha_mcs_mol - new_nha_mcs_mol))
+        scr_tmcsr =  math.exp(-2 * self.beta * (orig_nha_mcs_mol - new_nha_mcs_mol))
         print("tmcsr rule: orig nha is ",orig_nha_mcs_mol," new frag is",new_nha_mcs_mol,"delta",(orig_nha_mcs_mol - new_nha_mcs_mol),"score",scr_tmcsr)
         return scr_tmcsr
 
     # AtomicNumber rule 
-    def atomic_number_rule(self,beta=0.1):
+    def atomic_number_rule(self):
 
         """
         This rule checks how many elements have been changed in the MCS 
@@ -850,17 +843,21 @@ class MCS(object):
                     
                 nmismatch+=(1-diff)
 
-        an_score =  math.exp(-1 * beta * nmismatch)
+        an_score =  math.exp(-1 * self.beta * nmismatch)
         return an_score
 
     # Sulfonamides rule
-    def sulfonamides_rule(self):
+    def sulfonamides_rule(self, penalty=4):
 
         """
         This rule checks to see if we are growing a complete sulfonamide, and 
         returns 0 if we are. This means that if this rule is used we effectively disallow
         this transition. Testing has shown that growing -SO2NH2 from scratch performs
         very badly.
+
+        Parameters
+        ----------
+        penalty : the number of atom mismatches that failing this rule will lower the score by
              
         """
 
@@ -877,18 +874,23 @@ class MCS(object):
             rwm=rdmolops.DeleteSubstructs(mol, self.mcs_mol)
             return rwm.HasSubstructMatch(Chem.MolFromSmarts('S(=O)(=O)N'))
 
-        retval = 0 if (adds_sulfonamide(self.__moli_noh)) else 1
-        retval = 0 if (adds_sulfonamide(self.__molj_noh)) else retval
-        return retval
+        fail = 1 if (adds_sulfonamide(self.__moli_noh)) else 0
+        fail = 1 if (adds_sulfonamide(self.__molj_noh)) else fail
+        return  math.exp(-1 * self.beta * fail * penalty)
 
     # Heterocycles rule
-    def heterocycles_rule(self):
+    def heterocycles_rule(self, penalty=4):
 
         """
         This rule checks to see if we are growing a heterocycle from a hydrogen, and 
         returns 0 if we are. This means that if this rule is used we effectively disallow
         this transition. Testing has shown that growing a pyridine or other heterocycle
         is unlikely to work (better to grow phenyl then mutate)
+
+        Parameters
+        ----------
+        penalty : the number of atom mismatches that failing this rule will lower the score by
+             
              
         """
 
@@ -912,16 +914,20 @@ class MCS(object):
             return (grow6mheterocycle | grow5mheterocycle)
 
 
+        fail = 1 if (adds_heterocycle(self.__moli_noh)) else 0
+        fail = 1 if (adds_heterocycle(self.__molj_noh)) else fail
+        return  math.exp(-1 * self.beta * fail * penalty)
 
-        retval = 0 if (adds_heterocycle(self.__moli_noh)) else 1
-        retval = 0 if (adds_heterocycle(self.__molj_noh)) else retval
-        return retval
-
-    def transmuting_methyl_into_ring_rule(self):
+    def transmuting_methyl_into_ring_rule(self, penalty=3):
 
         """
          Rule to prevent turning a methyl into a ring atom and similar transformations
          (you can grow a ring, but you can't transmute into one)
+
+        Parameters
+        ----------
+        penalty : the number of atom mismatches that failing this rule will lower the score by
+             
 
         """
         moli=self.__moli_noh
@@ -947,15 +953,18 @@ class MCS(object):
                     if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
                         is_bad=True
 
-        return 0 if is_bad else 1
+        return  math.exp(-1 * self.beta * penalty) if is_bad else 1
 
-    def transmuting_halogen_into_alkyl_rule(self, beta=0.1):
+    def transmuting_halogen_into_alkyl_rule(self, penalty=2):
 
         """
          Rule to prevent turning a halogen into an alkane chain: this seems to behave badly
          but it's not clear why
 
-         Penalise by the equivalent of 2 atoms in the MCS for each mismatch
+        Parameters
+        ----------
+        penalty : the number of atom mismatches that failing this rule will lower the score by
+             
 
         """
 
@@ -971,7 +980,7 @@ class MCS(object):
             if molj_a.GetAtomicNum() in [17,35,53] and moli_a.GetAtomicNum() == 6 and moli_a.GetDegree()>1:
                     nmismatch+=1
 
-        hal_alk_score =  math.exp(-1 * beta * nmismatch * 2)
+        hal_alk_score =  math.exp(-1 * self.beta * nmismatch * penalty)
         return hal_alk_score
 
     def transmuting_ring_sizes_rule(self):
@@ -979,6 +988,8 @@ class MCS(object):
         """
          Rule to prevent turning a ring atom into a ring atom with a different ring size
          (you can grow a ring, but you can't turn a cyclopentyl into a cyclohexyl)
+
+         Hard rule: sets score to zero if violated
 
         """
         moli=self.__moli_noh

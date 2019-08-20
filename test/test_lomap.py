@@ -107,13 +107,13 @@ class TestLomap(unittest.TestCase):
     # to fail, so only allow growing phenyl, furan and pyrrole
     def test_heterocycle_scores(self):
         testdata=[('phenylfuran.sdf',1),
-                 ('phenylimidazole.sdf',0),
-                 ('phenylisoxazole.sdf',0),
-                 ('phenyloxazole.sdf',0),
-                 ('phenylpyrazole.sdf',0),
-                 ('phenylpyridine1.sdf',0),
-                 ('phenylpyridine2.sdf',0),
-                 ('phenylpyrimidine.sdf',0),
+                 ('phenylimidazole.sdf',math.exp(-0.1*4)),
+                 ('phenylisoxazole.sdf',math.exp(-0.1*4)),
+                 ('phenyloxazole.sdf',math.exp(-0.1*4)),
+                 ('phenylpyrazole.sdf',math.exp(-0.1*4)),
+                 ('phenylpyridine1.sdf',math.exp(-0.1*4)),
+                 ('phenylpyridine2.sdf',math.exp(-0.1*4)),
+                 ('phenylpyrimidine.sdf',math.exp(-0.1*4)),
                  ('phenylpyrrole.sdf',1),
                  ('phenylphenyl.sdf',1)]
         parent=Chem.MolFromMolFile('test/transforms/phenyl.sdf',sanitize=False, removeHs=False)
@@ -122,14 +122,14 @@ class TestLomap(unittest.TestCase):
         for d in testdata:
             comp=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            self.assertEqual(MC.heterocycles_rule(),d[1],'Fail on heterocycle check for '+d[0])
+            self.assertEqual(MC.heterocycles_rule(penalty=4),d[1],'Fail on heterocycle check for '+d[0])
 
     # Tests by Max indicate that growing a sulfonamide all in one go is 
     # dodgy, so disallow it
     def test_sulfonamide_scores(self):
-        testdata=[('cdk2_lig11.sdf',0),
+        testdata=[('cdk2_lig11.sdf',math.exp(-0.1*4)),
                  ('cdk2_lig1.sdf',1),
-                 ('cdk2_lig2.sdf',0),
+                 ('cdk2_lig2.sdf',math.exp(-0.1*4)),
                  ('cdk2_lig13.sdf',1),
                  ('cdk2_lig14.sdf',1),
                  ('cdk2_lig15.sdf',1) ]
@@ -139,7 +139,7 @@ class TestLomap(unittest.TestCase):
         for d in testdata:
             comp=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            self.assertEqual(MC.sulfonamides_rule(),d[1],'Fail on sulfonamide check for '+d[0])
+            self.assertEqual(MC.sulfonamides_rule(penalty=4),d[1],'Fail on sulfonamide check for '+d[0])
 
     # Test to check symmetry equivalence by matching atomic numbers where possible
     def test_symmetry_matchheavies(self):
@@ -194,8 +194,8 @@ class TestLomap(unittest.TestCase):
     def test_transmuting_methyl_into_ring_rule(self):
         testdata=[('phenyl.sdf','toluyl3.sdf',1),
                  ('toluyl3.sdf','chlorotoluyl1.sdf',1),
-                 ('toluyl3.sdf','phenylfuran.sdf',0),
-                 ('toluyl3.sdf','phenylpyridine1.sdf',0),
+                 ('toluyl3.sdf','phenylfuran.sdf',math.exp(-0.1*4)),
+                 ('toluyl3.sdf','phenylpyridine1.sdf',math.exp(-0.1*4)),
                  ('phenyl.sdf','phenylfuran.sdf',1),
                  ('phenyl.sdf','phenylpyridine1.sdf',1),
                  ('chlorophenol.sdf','phenylfuran.sdf',1)
@@ -206,7 +206,7 @@ class TestLomap(unittest.TestCase):
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            self.assertEqual(MC.transmuting_methyl_into_ring_rule(),d[2],'Fail on transmuting-methyl-to-ring check for '+d[0]+' '+d[1])
+            self.assertEqual(MC.transmuting_methyl_into_ring_rule(penalty=4),d[2],'Fail on transmuting-methyl-to-ring check for '+d[0]+' '+d[1])
 
     # Test penalising turning a halogen into an ethyl group (or larger)
     def test_transmuting_halogen_into_alkyl_rule(self):
