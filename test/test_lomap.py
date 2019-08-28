@@ -292,6 +292,12 @@ class TestLomap(unittest.TestCase):
             MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
             self.assertEqual(MC.mcs_mol.GetNumHeavyAtoms(), d[2], 'Fail on chiral MCS size for '+d[0]+' '+d[1])
 
+    # Test to check correct trimming of rings when 3D coordinate matching is used
+    def test_ring_trimming_on_3d_match(self):
+        parent=Chem.MolFromMolFile('test/transforms/phenylcyclopentylmethyl1.sdf',sanitize=False, removeHs=False)
+        comp=Chem.MolFromMolFile('test/transforms/phenylcyclopentylmethyl2.sdf',sanitize=False, removeHs=False)
+        MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
+        self.assertEqual(MC.mcs_mol.GetNumHeavyAtoms(), 9, 'Fail on ring trim on 3D match')
 
 if __name__ == '__main__':
     unittest.main()
