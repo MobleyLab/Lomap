@@ -921,8 +921,9 @@ class MCS(object):
         for at in self.mcs_mol.GetAtoms():
             moli_idx = int(at.GetProp('to_moli'))
             molj_idx = int(at.GetProp('to_molj'))
-            maplist.append(str(moli_idx)+":"+str(molj_idx))
-        return ",".join(maplist)
+            maplist.append((moli_idx,molj_idx))
+        maplist.sort()
+        return ",".join([str(i)+":"+str(j) for (i,j) in maplist])
 
     def all_atom_match_list(self):
         '''
@@ -964,9 +965,10 @@ class MCS(object):
                 hydindexi = get_attached_hydrogens(moli,i)
                 hydindexj = get_attached_atoms_not_in_mcs(molj,j)
                 for hmatch in zip(hydindexi,hydindexj):
-                    maplist.append(str(hmatch[0])+":"+str(hmatch[1]))
+                    maplist.append((hmatch[0],hmatch[1]))
 
-        return self.heavy_atom_match_list()+","+",".join(maplist)
+        maplist.sort()
+        return self.heavy_atom_match_list() + "," + ",".join([str(i)+":"+str(j) for (i,j) in maplist])
 
 """
 Table of #atoms-changed to score for beta=0.1
@@ -992,8 +994,8 @@ Table of #atoms-changed to score for beta=0.1
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/phenylcyclopentylmethyl1.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylcyclopentylmethyl2.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/phenylphenyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/phenylpyridine1.sdf', sanitize=False, removeHs=False)
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
