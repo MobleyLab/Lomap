@@ -911,11 +911,10 @@ class MCS(object):
 
         return 0 if is_bad else 1
 
-    def heavy_atom_match_list(self):
+    def heavy_atom_mcs_map(self):
         '''
-        Returns a string listing the MCS match between the two molecules as 
-          atom_m1:atom_m2,atom_m1:atom_m2,...
-        Heavy atoms only
+        Returns a list of tuples mapping atoms from moli to molj
+        Heavy atoms only, returned sorted by first index
         '''
         maplist=[]
         for at in self.mcs_mol.GetAtoms():
@@ -923,20 +922,27 @@ class MCS(object):
             molj_idx = int(at.GetProp('to_molj'))
             maplist.append((moli_idx,molj_idx))
         maplist.sort()
-        return ",".join([str(i)+":"+str(j) for (i,j) in maplist])
+        return maplist
+
+    def heavy_atom_match_list(self):
+        '''
+        Returns a string listing the MCS match between the two molecules as 
+          atom_m1:atom_m2,atom_m1:atom_m2,...
+        Heavy atoms only
+        '''
+        return ",".join([str(i)+":"+str(j) for (i,j) in self.heavy_atom_mcs_map()])
 
     def all_atom_match_list(self):
         '''
         Returns a string listing the MCS match between the two molecules as 
           atom_m1:atom_m2,atom_m1:atom_m2,...
-        All atoms including hydrogens
+        All atoms including hydrogens. The string is sorted by first index.
+        We need to be careful that this function is symmetric, and that hydrogens
+        are mapped correctly.
         '''
-        def get_attached_hydrogens(mol,i):
-            hydrogens = [ b.GetBeginAtomIdx() for b in mol.GetBonds() if b.GetEndAtomIdx()==i and mol.GetAtomWithIdx(b.GetBeginAtomIdx()).GetAtomicNum()==1 ]
-            hydrogens += [ b.GetEndAtomIdx() for b in mol.GetBonds() if b.GetBeginAtomIdx()==i and mol.GetAtomWithIdx(b.GetEndAtomIdx()).GetAtomicNum()==1 ]
-            return hydrogens
 
         def get_attached_atoms_not_in_mcs(mol,i):
+            ''' Get atoms attached to atom i which are not in the MCS '''
             attached=[]
             for b in mol.GetBonds():
                 if b.GetEndAtomIdx()==i or b.GetBeginAtomIdx()==i:
@@ -953,22 +959,50 @@ class MCS(object):
         moli=self.moli
         molj=self.molj
 
-        maplist=[]
+        maplist=self.heavy_atom_mcs_map()
 
-        # OK, this is painful, as the MCS only includes heavies. We could do this eficiently,
-        # but the molecules are small so just brute force it
-        for i in range(moli.GetNumAtoms()):
-            # Is this atom in the MCS?
-            mcslist = [ at for at in self.mcs_mol.GetAtoms() if int(at.GetProp('to_moli'))==i ]
-            if (mcslist):
-                j=int(mcslist[0].GetProp('to_molj'))
-                hydindexi = get_attached_hydrogens(moli,i)
-                hydindexj = get_attached_atoms_not_in_mcs(molj,j)
-                for hmatch in zip(hydindexi,hydindexj):
-                    maplist.append((hmatch[0],hmatch[1]))
+        # OK, this is painful, as the MCS only includes heavies. We now need to match up
+        # hydrogens hanging off the MCS
+
+        # Iterate over all atoms in the MCS
+        for at in self.mcs_mol.GetAtoms():
+            moli_idx = int(at.GetProp('to_moli'))
+            molj_idx = int(at.GetProp('to_molj'))
+            attached_i = get_attached_atoms_not_in_mcs(moli,moli_idx)
+            attached_j = get_attached_atoms_not_in_mcs(molj,molj_idx)
+
+            # Now, we need to match these up, with the caveat that we *must* not match
+            # a heavy to a heavy (as if we were allowed to match these, then they would be
+            # in the MCS! 
+
+            # Match H to H first
+            while attached_i and attached_j:
+                hidx_i=-1
+                hidx_j=-1
+                for ai in attached_i:
+                    if moli.GetAtomWithIdx(ai).GetAtomicNum()==1:
+                        for aj in attached_j:
+                            if molj.GetAtomWithIdx(aj).GetAtomicNum()==1:
+                                hidx_i=ai
+                                hidx_j=aj
+                if (hidx_i<0):
+                    # OK, no hydrogen-hydrogen matches left. Try to match a hydrogen to a non-hydrogen
+                    for ai in attached_i:
+                        for aj in attached_j:
+                            if moli.GetAtomWithIdx(ai).GetAtomicNum()==1 or molj.GetAtomWithIdx(aj).GetAtomicNum()==1:
+                                hidx_i=ai
+                                hidx_j=aj
+
+                if (hidx_i>=0):
+                    # Found a mappable pair: add and try again
+                    maplist.append((hidx_i,hidx_j))
+                    attached_i.remove(hidx_i)
+                    attached_j.remove(hidx_j)
+                else:
+                    break   # No mappable pairs left
 
         maplist.sort()
-        return self.heavy_atom_match_list() + "," + ",".join([str(i)+":"+str(j) for (i,j) in maplist])
+        return ",".join([str(i)+":"+str(j) for (i,j) in maplist])
 
 """
 Table of #atoms-changed to score for beta=0.1
@@ -994,8 +1028,9 @@ Table of #atoms-changed to score for beta=0.1
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/phenylphenyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylpyridine1.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/phenylethyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/phenylethyl.sdf', sanitize=False, removeHs=False)
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
