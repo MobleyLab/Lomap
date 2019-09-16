@@ -470,7 +470,7 @@ class GraphGen(object):
 
         if constraintsMet:
             if not self.check_max_distance(subgraph):
-                constaintsMet = False
+                constraintsMet = False
 
         return constraintsMet
 
@@ -548,9 +548,7 @@ class GraphGen(object):
         withinMaxDistance = True
 
         for node in subgraph:
-
             eccentricity = nx.eccentricity(subgraph, node)
-
             if eccentricity > self.maxPathLength: withinMaxDistance = False
 
         return withinMaxDistance
