@@ -208,13 +208,9 @@ class TestLomap(unittest.TestCase):
             MC=MCS(parent,comp)
             self.assertEqual(MC.transmuting_methyl_into_ring_rule(penalty=4),d[2],'Fail on transmuting-methyl-to-ring check for '+d[0]+' '+d[1])
 
-    # Test penalising turning a halogen into an ethyl group (or larger)
-    def test_transmuting_halogen_into_alkyl_rule(self):
-        testdata=[('chlorophenyl.sdf','phenylethyl.sdf',math.exp(-0.1 * 2)),
-                 ('chlorophenyl.sdf','toluyl.sdf',1),
-                 ('chlorophenyl.sdf','toluyl2.sdf',1),
-                 ('chlorophenyl.sdf','toluyl3.sdf',1),
-                 ('chlorophenol.sdf','phenylfuran.sdf',1)
+    # Test penalising hybridization changes
+    def test_hybridization_rule(self):
+        testdata=[('napthyl.sdf','tetrahydronaphthyl.sdf',math.exp(-0.1 * 4))
                  ]
         lg = RDLogger.logger()
         lg.setLevel(RDLogger.CRITICAL)
@@ -222,7 +218,7 @@ class TestLomap(unittest.TestCase):
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            assert(isclose(MC.transmuting_halogen_into_alkyl_rule(),d[2]))
+            assert(isclose(MC.hybridization_rule(),d[2]))
 
     # Test disallowing turning a ring into an incompatible ring
     def test_transmuting_ring_sizes_rule(self):
