@@ -549,9 +549,9 @@ class DBMolecules(object):
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
             if not fingerprint:
-                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule()
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule() * MC.hybridization_rule()
                 tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
-                tmp_scr *= MC.transmuting_ring_sizes_rule() * MC.transmuting_halogen_into_alkyl_rule()
+                tmp_scr *= MC.transmuting_ring_sizes_rule()
                 # Note - no longer using tmcsr rule!
                 strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
                 loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)

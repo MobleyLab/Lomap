@@ -735,6 +735,33 @@ class MCS(object):
         an_score =  math.exp(-1 * self.beta * nmismatch)
         return an_score
 
+    # Hybridization rule 
+    def hybridization_rule(self, penalty_weight = 1.0):
+
+        """
+        This rule checks how many atoms have changed hybridization state.
+        The penalty weight means how many "atoms" different a hybridization state change
+        is: 1 means that the atom is effectively removed from the MCS for scoring purposes,
+        0 means that hybridization changes are free.
+        When used with beta=0.1 and multiplied by mcsr, this is equivalent to counting
+        mismatched atoms at a weight of (1-penalty_weight)
+
+        """
+
+        nmismatch=0
+        for at in self.mcs_mol.GetAtoms():
+            moli_idx = int(at.GetProp('to_moli'))
+            molj_idx = int(at.GetProp('to_molj'))
+            moli_a = self.__moli_noh.GetAtoms()[moli_idx]
+            molj_a = self.__molj_noh.GetAtoms()[molj_idx]
+
+            if moli_a.GetHybridization() != molj_a.GetHybridization():
+                nmismatch+=1
+
+        hyb_score =  math.exp(-1 * self.beta * nmismatch * penalty_weight)
+        return hyb_score
+
+
     # Sulfonamides rule
     def sulfonamides_rule(self, penalty=4):
 
@@ -843,34 +870,6 @@ class MCS(object):
                         is_bad=True
 
         return  math.exp(-1 * self.beta * penalty) if is_bad else 1
-
-    def transmuting_halogen_into_alkyl_rule(self, penalty=2):
-
-        """
-         Rule to prevent turning a halogen into an alkane chain: this seems to behave badly
-         but it's not clear why
-
-        Parameters
-        ----------
-        penalty : the number of atom mismatches that failing this rule will lower the score by
-             
-
-        """
-
-        nmismatch = 0
-        for at in self.mcs_mol.GetAtoms():
-            moli_idx = int(at.GetProp('to_moli'))
-            molj_idx = int(at.GetProp('to_molj'))
-            moli_a = self.__moli_noh.GetAtoms()[moli_idx]
-            molj_a = self.__molj_noh.GetAtoms()[molj_idx]
-
-            if moli_a.GetAtomicNum() in [17,35,53] and molj_a.GetAtomicNum() == 6 and molj_a.GetDegree()>1:
-                    nmismatch+=1
-            if molj_a.GetAtomicNum() in [17,35,53] and moli_a.GetAtomicNum() == 6 and moli_a.GetDegree()>1:
-                    nmismatch+=1
-
-        hal_alk_score =  math.exp(-1 * self.beta * nmismatch * penalty)
-        return hal_alk_score
 
     def transmuting_ring_sizes_rule(self):
 
@@ -1028,9 +1027,8 @@ Table of #atoms-changed to score for beta=0.1
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/phenylethyl.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('../test/transforms/toluyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/phenylethyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/transforms/napthyl.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/transforms/tetrahydronaphthyl.sdf', sanitize=False, removeHs=False)
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
@@ -1066,11 +1064,11 @@ if "__main__" == __name__:
         molj_a = molb.GetAtoms()[molj_idx]
         print("MCS match: ",moli_idx,moli_a.GetAtomicNum(),molj_idx,molj_a.GetAtomicNum())
 
+    print("hybridization change:",MC.hybridization_rule())
     print("sulfonamides:",MC.sulfonamides_rule())
     print("heterocycles:",MC.heterocycles_rule())
     print("growring:",MC.transmuting_methyl_into_ring_rule())
     print("changering:",MC.transmuting_ring_sizes_rule())
-    print("transmuting_halogen_into_alkyl_rule:",MC.transmuting_halogen_into_alkyl_rule())
     print("transmuting_ring_sizes_rule:",MC.transmuting_ring_sizes_rule())
     print("Match list:",MC.heavy_atom_match_list())
     print("Match list:",MC.all_atom_match_list())
