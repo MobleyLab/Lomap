@@ -834,7 +834,7 @@ class MCS(object):
         fail = 1 if (adds_heterocycle(self.__molj_noh)) else fail
         return  math.exp(-1 * self.beta * fail * penalty)
 
-    def transmuting_methyl_into_ring_rule(self, penalty=3):
+    def transmuting_methyl_into_ring_rule(self, penalty=6):
 
         """
          Rule to prevent turning a methyl into a ring atom and similar transformations
@@ -1029,12 +1029,14 @@ if "__main__" == __name__:
 
     mola = Chem.MolFromMolFile('../test/transforms/napthyl.sdf', sanitize=False, removeHs=False)
     molb = Chem.MolFromMolFile('../test/transforms/tetrahydronaphthyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('/tmp/23475.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('/tmp/MK1.sdf', sanitize=False, removeHs=False)
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
         #MC = MCS(mola, molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
