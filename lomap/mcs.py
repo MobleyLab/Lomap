@@ -129,7 +129,9 @@ class MCS(object):
             for mapi in moli_sub:
                 for mapj in molj_sub:
                     # Compute the translation to bring molj's centre over moli
-                    coord_delta = (substructure_centre(moli,mapi)
+                    coord_delta = 0
+                    if by_rmsd:
+                        coord_delta = (substructure_centre(moli,mapi)
                                  - substructure_centre(molj,mapj))
                     rmsd=0
                     for pair in zip(mapi,mapj):
@@ -183,7 +185,6 @@ class MCS(object):
                 if worstdist > max_deviation:
                     # Remove the furthest-away atom and try again
                     rwm = Chem.RWMol(self.mcs_mol)
-                    #print("REMOVING ATOM",worstatomidx," with distance", worstdist)
                     rwm.RemoveAtom(worstatomidx)
                     self.mcs_mol=Chem.Mol(rwm)
                 else:
@@ -233,6 +234,15 @@ class MCS(object):
                 # molj chiral atoms
                 rmolj = reorder_mol_to_mcs(self.molj)
                 chiral_at_molj = [seq[0] for seq in Chem.FindMolChiralCenters(rmolj)]
+                #print("DEBUG CHIRAL ATOMS i",chiral_at_moli)
+                #print("DEBUG CHIRAL ATOMS j",chiral_at_molj)
+                #print("DEBUG RMOLI")
+                #for a in rmoli.GetAtoms():
+                #    print(a.GetAtomicNum())
+                #print("DEBUG RMOLJ")
+                #for a in rmolj.GetAtoms():
+                #    print(a.GetAtomicNum())
+
 
                 invertedatoms = []
 
@@ -249,10 +259,14 @@ class MCS(object):
                                 # Are they the same atom?
                                 if (ai.GetProp('to_mcs') == aj.GetProp('to_mcs')):
                                     #print("Matched mcs atom ",aj.GetProp('to_mcs'),"inverted?",ai.GetChiralTag()!=aj.GetChiralTag())
+                                    #print("Chiral tags are", ai.GetChiralTag(), aj.GetChiralTag())
 
                                     # OK, atoms are both chiral, and match the same MCS atom
                                     # Check if the parities are the same. If not, flag with the
-                                    # CHI_TETRAHEDRAL_CW property
+                                    # CHI_TETRAHEDRAL_CW property. No, this doesn't work, as if
+                                    # one molecule has 4 heavy atoms connected to the chiral centre
+                                    # and the other has 3 and a hydrogen then as the hydrogen is at 
+                                    # the end you get an erroneous inversion signal.
                                     if (ai.GetChiralTag()!=aj.GetChiralTag()):
                                         invertedatoms.append(int(aj.GetProp('to_mcs')))
 
@@ -262,7 +276,7 @@ class MCS(object):
                     if options.verbose == 'pedantic':
                        logging.info('Chiral atom detected: %d' %(i))
 
-            #print("MCS before chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
+            #print("DEBUG E MCS before chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
 
             # Flag inverted atoms
             flag_inverted_atoms_in_mcs()
@@ -300,7 +314,7 @@ class MCS(object):
                 # don't convert it to a list. Grr.
                 while list(self.mcs_mol.GetAtoms())[-1].GetDegree() > 2 :
 
-                    #print("MCS mol is",Chem.MolToSmiles(self.mcs_mol),self.mcs_mol.GetNumHeavyAtoms())
+                    #print("DEBUG F MCS mol is",Chem.MolToSmiles(self.mcs_mol),self.mcs_mol.GetNumHeavyAtoms())
 
                     # Delete the chiral atom in a temporary molecule, and fragment. Since the
                     # chiral atom was the last one, the indexes in the temporary molecule are the
@@ -309,7 +323,7 @@ class MCS(object):
                     edit_mol.RemoveAtom(self.mcs_mol.GetNumAtoms()-1)
                     tmp_mol = edit_mol.GetMol()
                     fragments = Chem.rdmolops.GetMolFrags(tmp_mol)
-                    #print("Fragments are" ,fragments)
+                    #print("DEBUG G Fragments are" ,fragments)
 
                     # Get index of smallest fragments
                     min_idx = 0
@@ -332,7 +346,7 @@ class MCS(object):
                     self.mcs_mol = edit_mol.GetMol()
 
             # Done!
-            #print("Reduced MCS after chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
+            #print("DEBUG H Reduced MCS after chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
 
         def delete_broken_ring():
             """
@@ -748,6 +762,22 @@ class MCS(object):
 
         """
 
+        def atom_hybridization(a):
+            """
+            RDKit has an un-useful hybridization definition. Instead, just look at the number
+            of multiple bonds from an atom
+            """
+            if a.GetIsAromatic(): return 2
+            xs=0
+            for b in a.GetBonds():
+                if b.GetBondType()==Chem.rdchem.BondType.AROMATIC: return 2
+                if b.GetBondType()==Chem.rdchem.BondType.DOUBLE: xs += 1
+                if b.GetBondType()==Chem.rdchem.BondType.TRIPLE: xs += 2
+                if b.GetBondType()==Chem.rdchem.BondType.ONEANDAHALF: xs += 0.5
+            if xs==0: return 3 # sp3
+            if xs>1.1: return 1 # sp
+            return 2  # sp2
+
         nmismatch=0
         for at in self.mcs_mol.GetAtoms():
             moli_idx = int(at.GetProp('to_moli'))
@@ -755,8 +785,9 @@ class MCS(object):
             moli_a = self.__moli_noh.GetAtoms()[moli_idx]
             molj_a = self.__molj_noh.GetAtoms()[molj_idx]
 
-            if moli_a.GetHybridization() != molj_a.GetHybridization():
+            if atom_hybridization(moli_a) != atom_hybridization(molj_a):
                 nmismatch+=1
+                # print("Hybridization mismatch",moli_a.GetAtomicNum(),atom_hybridization(moli_a),molj_a.GetAtomicNum(),atom_hybridization(molj_a))
 
         hyb_score =  math.exp(-1 * self.beta * nmismatch * penalty_weight)
         return hyb_score
@@ -1029,25 +1060,54 @@ if "__main__" == __name__:
 
     mola = Chem.MolFromMolFile('../test/transforms/napthyl.sdf', sanitize=False, removeHs=False)
     molb = Chem.MolFromMolFile('../test/transforms/tetrahydronaphthyl.sdf', sanitize=False, removeHs=False)
-    mola = Chem.MolFromMolFile('/tmp/23475.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('/tmp/MK1.sdf', sanitize=False, removeHs=False)
+
+    # MCS is wrong unless you convert down to SMILES and back up
+    mola = Chem.MolFromMolFile('../p38_3flz.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../p38_2i.sdf', sanitize=False, removeHs=False)
+
+    # Chirality problem with 4- vs 3-heavy atom attachment chiral centres
+    mola = Chem.MolFromMolFile('../bace_mk1.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../bace_cat_13d.sdf', sanitize=False, removeHs=False)
+
+    # Me -> OMe wrong as O is labeled SP2
+    mola = Chem.MolFromMolFile('../jnk_18630.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../jnk_18633.sdf', sanitize=False, removeHs=False)
+    # Cl -> OMe wrong as O is labelled SP2
+    #mola = Chem.MolFromMolFile('../jnk_18626.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../jnk_18632.sdf', sanitize=False, removeHs=False)
+
+    # These two have an alpha/beta ring attachment change but get an MCS that includes all atoms
+    #mola = Chem.MolFromMolFile('../mcl_46.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../mcl_48.sdf', sanitize=False, removeHs=False)
+    
+    # Hybridization issues with amide N being labeled SP2
+    mola = Chem.MolFromMolFile('../tyk_42.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../tyk_54.sdf', sanitize=False, removeHs=False)
+
+    #mola = Chem.MolFromSmiles(Chem.MolToSmiles(mola))
+    #molb = Chem.MolFromSmiles(Chem.MolToSmiles(molb))
     print("Mola: ",Chem.MolToSmiles(mola))
     print("Molb: ",Chem.MolToSmiles(molb))
 
     # MCS calculation
     try:
         MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+        #MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
         #MC = MCS(mola, molb)
     except Exception:
         raise ValueError('NO MCS FOUND......')
 
     # # Rules calculations
     mcsr = MC.mcsr()
-    mncar = MC.mncar()
-    atnum = MC.atomic_number_rule()
-
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
+    mncar = MC.mncar()
+    atnum = MC.atomic_number_rule()
+    hybrid = MC.hybridization_rule()
+    sulf = MC.sulfonamides_rule()
+    het = MC.heterocycles_rule()
+    growring = MC.transmuting_methyl_into_ring_rule()
+    changering = MC.transmuting_ring_sizes_rule()
 
     print('TMCRS STRICT = %f , TMCRS LOOSE = %f' % (strict, loose))
     print('MCSR = ', mcsr)
@@ -1066,12 +1126,15 @@ if "__main__" == __name__:
         molj_a = molb.GetAtoms()[molj_idx]
         print("MCS match: ",moli_idx,moli_a.GetAtomicNum(),molj_idx,molj_a.GetAtomicNum())
 
-    print("hybridization change:",MC.hybridization_rule())
-    print("sulfonamides:",MC.sulfonamides_rule())
-    print("heterocycles:",MC.heterocycles_rule())
-    print("growring:",MC.transmuting_methyl_into_ring_rule())
-    print("changering:",MC.transmuting_ring_sizes_rule())
-    print("transmuting_ring_sizes_rule:",MC.transmuting_ring_sizes_rule())
+    print("hybridization change:",hybrid)
+    print("sulfonamides:",sulf)
+    print("heterocycles:",het)
+    print("growring:",growring)
+    print("transmuting_ring_sizes_rule:",changering)
+    score = mncar * mcsr * atnum * hybrid
+    score *= sulf * het * growring
+    score *= changering
+    print("FINAL SCORE:",score)
     print("Match list:",MC.heavy_atom_match_list())
     print("Match list:",MC.all_atom_match_list())
 
