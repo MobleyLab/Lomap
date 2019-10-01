@@ -750,7 +750,7 @@ class MCS(object):
         return an_score
 
     # Hybridization rule 
-    def hybridization_rule(self, penalty_weight = 1.0):
+    def hybridization_rule(self, penalty_weight = 1.5):
 
         """
         This rule checks how many atoms have changed hybridization state.
