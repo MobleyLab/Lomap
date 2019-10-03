@@ -218,7 +218,7 @@ class TestLomap(unittest.TestCase):
             parent=Chem.MolFromMolFile('test/transforms/'+d[0],sanitize=False, removeHs=False)
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
-            assert(isclose(MC.hybridization_rule(),d[2]))
+            assert(isclose(MC.hybridization_rule(1.0),d[2]))
 
     # Test disallowing turning a ring into an incompatible ring
     def test_transmuting_ring_sizes_rule(self):
@@ -267,7 +267,7 @@ class TestLomap(unittest.TestCase):
             comp=Chem.MolFromMolFile('test/transforms/'+d[1],sanitize=False, removeHs=False)
             MC=MCS(parent,comp)
             self.assertEqual(MC.all_atom_match_list(), d[2], 'Fail on all-atom match list for '+d[0]+' '+d[1])
-
+    
     # Test to check correct handling of chirality
     def test_chirality_handling(self):
         testdata=[('Chiral1R.sdf','Chiral1S.sdf',6),
@@ -278,7 +278,16 @@ class TestLomap(unittest.TestCase):
                   ('Chiral3SR.sdf','Chiral3RS.sdf',9),
                   ('Chiral4RR.sdf','Chiral4RS.sdf',5),
                   ('RingChiralR.sdf','RingChiralS.sdf',6),
-                  ('SpiroR.sdf','SpiroS.sdf',6)
+                  ('SpiroR.sdf','SpiroS.sdf',6),
+                  ('bace_mk1.sdf','bace_cat_13d.sdf',21),   # Bug found in BACE data set
+                  ('bace_cat_13d.sdf','bace_mk1.sdf',21),   # check both ways round
+                  ('bace_mk1.sdf','bace_cat_13d_perm1.sdf',21), # Check unaffected by atom order
+                  ('bace_mk1.sdf','bace_cat_13d_perm2.sdf',21),
+                  ('bace_mk1.sdf','bace_cat_13d_perm3.sdf',21),
+                  ('bace_mk1.sdf','bace_cat_13d_perm4.sdf',21),
+                  ('bace_mk1.sdf','bace_cat_13d_perm5.sdf',21),
+                  ('bace_cat_13d_inverted.sdf','bace_mk1.sdf',13),  # Check that we do pick up the inverted case OK
+                  ('bace_cat_13d.sdf','bace_cat_13d_inverted.sdf',13) # Check normal vs inverted
                 ]
         lg = RDLogger.logger()
         lg.setLevel(RDLogger.INFO)

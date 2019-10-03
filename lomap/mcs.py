@@ -201,102 +201,99 @@ class MCS(object):
 
             """
 
-            def reorder_mol_to_mcs(mol):
+            def permutation_parity(perm):
                 """ 
-                    Reorder a molecule so that its atoms are in the same order as the MCS,
-                    using the 'to_mcs' property. Return the reordered molecule (as a copy).
+                    Returns the parity of the provided permutation tuple/array: even parity
+                    is True, odd parity is False.
                 """
-                newindexes = list(range(mol.GetNumAtoms()))
+                parity = True
+                for i in range(len(perm)-1):
+                    for j in range(i+1,len(perm)):
+                        if (perm[i]<perm[j]): parity = not parity
 
-                # Find the atom mapping to atom 0 in the MCS, and swap
-                # it with position 0. Rinse and repeat
-                for i in range(mol.GetNumAtoms()):
-                    for j in range(i+1,mol.GetNumAtoms()):
-                        if (mol.GetAtomWithIdx(j).HasProp('to_mcs')):
-                            if int(mol.GetAtomWithIdx(j).GetProp('to_mcs'))==i :
-                                newindexes[i],newindexes[j] = newindexes[j],newindexes[i]
+                return parity
 
-                reordered_mol_copy = Chem.RenumberAtoms(mol,newindexes)
-                return reordered_mol_copy
+            def atom_mcs_chiral_parity(a):
+                """
+                    Take the neighbours of chiral atom a. Get the index of each of these atoms
+                    in the MCS. Combine the parity of this list with the chirality flag for
+                    a to determine the "MCS parity".
+                """
+                nbrs=[]
+                for aj in a.GetNeighbors():
+                    try:
+                        nbrs.append(int(aj.GetProp('to_mcs')))
+                    except Exception:
+                        nbrs.append(1000)   # should not be more than one!
 
+                print("Test: neighbours in MCS are",nbrs,permutation_parity(nbrs))
+                if not permutation_parity(nbrs):
+                    if a.GetChiralTag()==Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW: return Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW
+                    if a.GetChiralTag()==Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW: return Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW
+                return a.GetChiralTag()
+
+                
+                        
             def flag_inverted_atoms_in_mcs():
                 """
                     Flag all atoms in the MCS where the chirality is inverted between
-                    moli and molj with CHI_TETRAHEDRAL_CW)
+                    moli and molj. Atoms are flagged with CHI_TETRAHEDRAL_CW
                 """
+
                 # Generate atommappings as they are useful below
                 map_mcs_mol()
 
-                # moli chiral atoms
-                rmoli = reorder_mol_to_mcs(self.moli)
-                chiral_at_moli = [seq[0] for seq in Chem.FindMolChiralCenters(rmoli)]
-
-                # molj chiral atoms
-                rmolj = reorder_mol_to_mcs(self.molj)
-                chiral_at_molj = [seq[0] for seq in Chem.FindMolChiralCenters(rmolj)]
-                #print("DEBUG CHIRAL ATOMS i",chiral_at_moli)
-                #print("DEBUG CHIRAL ATOMS j",chiral_at_molj)
-                #print("DEBUG RMOLI")
-                #for a in rmoli.GetAtoms():
-                #    print(a.GetAtomicNum())
-                #print("DEBUG RMOLJ")
-                #for a in rmolj.GetAtoms():
-                #    print(a.GetAtomicNum())
-
+                chiral_at_moli = [seq[0] for seq in Chem.FindMolChiralCenters(moli)]
+                chiral_at_molj = [seq[0] for seq in Chem.FindMolChiralCenters(molj)]
 
                 invertedatoms = []
 
                 for i in chiral_at_moli:
                     # Is atom i in the MCS?
-                    ai = rmoli.GetAtomWithIdx(i)
+                    ai = moli.GetAtomWithIdx(i)
                     if (ai.HasProp('to_mcs')):
-                        #print("Checking mol i chiral atom",i,ai.GetProp('to_mcs'))
                         for j in chiral_at_molj:
                             # Is atom j in the MCS?
-                            aj = rmolj.GetAtomWithIdx(j)
+                            aj = molj.GetAtomWithIdx(j)
                             if (aj.HasProp('to_mcs')):
-                                #print("Matching mol j chiral atom",j,aj.GetProp('to_mcs'))
                                 # Are they the same atom?
                                 if (ai.GetProp('to_mcs') == aj.GetProp('to_mcs')):
-                                    #print("Matched mcs atom ",aj.GetProp('to_mcs'),"inverted?",ai.GetChiralTag()!=aj.GetChiralTag())
-                                    #print("Chiral tags are", ai.GetChiralTag(), aj.GetChiralTag())
-
-                                    # OK, atoms are both chiral, and match the same MCS atom
-                                    # Check if the parities are the same. If not, flag with the
-                                    # CHI_TETRAHEDRAL_CW property. No, this doesn't work, as if
-                                    # one molecule has 4 heavy atoms connected to the chiral centre
-                                    # and the other has 3 and a hydrogen then as the hydrogen is at 
-                                    # the end you get an erroneous inversion signal.
-                                    if (ai.GetChiralTag()!=aj.GetChiralTag()):
+                                    # OK, atoms are both chiral, and match the same MCS atom.
+                                    # Take the list of neighbours for ai, and get their indices in 
+                                    # the MCS. Use the parity of this index list together with the
+                                    # chiral parity of ai to work out the "MCS parity". Do the same
+                                    # for aj and check if the two are the same.
+                                    # 
+                                    # If not, flag with the CHI_TETRAHEDRAL_CW property.
+                                    pi = atom_mcs_chiral_parity(ai)
+                                    pj = atom_mcs_chiral_parity(aj)
+                                    if (pi!=pj):
                                         invertedatoms.append(int(aj.GetProp('to_mcs')))
 
                 for i in invertedatoms:
                     mcsat = self.mcs_mol.GetAtomWithIdx(i)
                     mcsat.SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
                     if options.verbose == 'pedantic':
-                       logging.info('Chiral atom detected: %d' %(i))
+                       logging.info('Inverted chiral atom detected: %d' %(i))
 
-            #print("DEBUG E MCS before chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
 
             # Flag inverted atoms
             flag_inverted_atoms_in_mcs()
 
             # Trim inverted chiral Atoms. The algorithm is to delete the chiral centre,
             # fragment the molecule, and keep only the two largest fragments. Rinse and
-            # repeat until no more flagged chiral centres remain
-            # 
-            # Keep
+            # repeat until no more flagged chiral centres remain.
 
             while True:
                 mcs_chiral_set = set()
                 atom_idx = -1;
 
                 for atom in self.mcs_mol.GetAtoms():
-                    # Note that any atom in the MCS which is chiral in either input mol is
+                    # Note that any atom in the MCS which has inverted chirality between the input mols is
                     # flagged with CHI_TETRAHEDRAL_CW
                     if (atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW):
                         atom_idx=atom.GetIdx()
-                        atom.SetChiralTag(Chem.rdchem.ChiralType.CHI_UNSPECIFIED)
+                        atom.SetChiralTag(Chem.rdchem.ChiralType.CHI_UNSPECIFIED)  # Remove from consideration for the next loop
                         break
 
                 if atom_idx == -1:  # Not found any more chiral atoms, so done
@@ -314,8 +311,6 @@ class MCS(object):
                 # don't convert it to a list. Grr.
                 while list(self.mcs_mol.GetAtoms())[-1].GetDegree() > 2 :
 
-                    #print("DEBUG F MCS mol is",Chem.MolToSmiles(self.mcs_mol),self.mcs_mol.GetNumHeavyAtoms())
-
                     # Delete the chiral atom in a temporary molecule, and fragment. Since the
                     # chiral atom was the last one, the indexes in the temporary molecule are the
                     # same as in self.mcs_mol
@@ -323,7 +318,6 @@ class MCS(object):
                     edit_mol.RemoveAtom(self.mcs_mol.GetNumAtoms()-1)
                     tmp_mol = edit_mol.GetMol()
                     fragments = Chem.rdmolops.GetMolFrags(tmp_mol)
-                    #print("DEBUG G Fragments are" ,fragments)
 
                     # Get index of smallest fragments
                     min_idx = 0
@@ -346,7 +340,6 @@ class MCS(object):
                     self.mcs_mol = edit_mol.GetMol()
 
             # Done!
-            #print("DEBUG H Reduced MCS after chiral trimming: ",Chem.MolToSmiles(self.mcs_mol))
 
         def delete_broken_ring():
             """
@@ -363,6 +356,7 @@ class MCS(object):
                 moli_at = self.__moli_noh.GetAtomWithIdx(moli_idx)
                 molj_idx = int(at.GetProp('to_molj'))
                 molj_at = self.__moli_noh.GetAtomWithIdx(moli_idx)
+
                 # Testing moli and molj is redundant due to the way that the
                 # MCS is calculated, but I'd rather be paranoid here
                 if (moli_at.IsInRing() and molj_at.IsInRing() and not at.IsInRing()):
@@ -370,7 +364,6 @@ class MCS(object):
 
             # Delete atoms from the MCS, highest index first
             to_remove.sort(reverse=True)
-            #print("RING TRIM: removing atoms",to_remove)
             edit_mcs_mol = Chem.EditableMol(self.mcs_mol)
             for i in to_remove:
                 edit_mcs_mol.RemoveAtom(i)
@@ -1070,8 +1063,8 @@ if "__main__" == __name__:
     molb = Chem.MolFromMolFile('../bace_cat_13d.sdf', sanitize=False, removeHs=False)
 
     # Me -> OMe wrong as O is labeled SP2
-    mola = Chem.MolFromMolFile('../jnk_18630.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../jnk_18633.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../jnk_18630.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../jnk_18633.sdf', sanitize=False, removeHs=False)
     # Cl -> OMe wrong as O is labelled SP2
     #mola = Chem.MolFromMolFile('../jnk_18626.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../jnk_18632.sdf', sanitize=False, removeHs=False)
@@ -1081,8 +1074,8 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMolFile('../mcl_48.sdf', sanitize=False, removeHs=False)
     
     # Hybridization issues with amide N being labeled SP2
-    mola = Chem.MolFromMolFile('../tyk_42.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../tyk_54.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../tyk_42.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../tyk_54.sdf', sanitize=False, removeHs=False)
 
     #mola = Chem.MolFromSmiles(Chem.MolToSmiles(mola))
     #molb = Chem.MolFromSmiles(Chem.MolToSmiles(molb))
@@ -1091,7 +1084,7 @@ if "__main__" == __name__:
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
         #MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
         #MC = MCS(mola, molb)
     except Exception:
