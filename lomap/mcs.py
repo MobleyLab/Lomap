@@ -226,7 +226,6 @@ class MCS(object):
                     except Exception:
                         nbrs.append(1000)   # should not be more than one!
 
-                print("Test: neighbours in MCS are",nbrs,permutation_parity(nbrs))
                 if not permutation_parity(nbrs):
                     if a.GetChiralTag()==Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW: return Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW
                     if a.GetChiralTag()==Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW: return Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW
