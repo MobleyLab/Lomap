@@ -186,10 +186,54 @@ class MCS(object):
                     # Remove the furthest-away atom and try again
                     rwm = Chem.RWMol(self.mcs_mol)
                     rwm.RemoveAtom(worstatomidx)
+                    if options.verbose == 'pedantic':
+                       logging.info('Removing atom %d from MCS based on distance %f' %(worstatomidx,worstdist))
                     self.mcs_mol=Chem.Mol(rwm)
                 else:
                     break
 
+        def trim_mcs_fix_broken_rdkit_code():
+            """
+
+            Detect cases where the RDKit has generated an incorrect MCS (for alpha vs beta naphthyl, for
+            instance), and delete some atoms to break the ring. The excess atoms will then be
+            removed later by delete_broken_ring()
+            
+            Can be removed once RDKit is fixed
+
+            Algorithm: find a bond in moli where the atoms are both in the MCS, they are bonded in
+            moli, but are not bonded in the MCS.
+
+            """
+
+            to_remove = []
+            for ai in self.moli.GetAtoms():
+                if ai.HasProp('to_mcs'):    # is ai in the MCS?
+                    aimcs = int(ai.GetProp('to_mcs'))
+                    for bai in ai.GetNeighbors():
+                        if bai.HasProp('to_mcs'):  # Atom bonded to ai is also in the MCS
+                            baimcs = int(bai.GetProp('to_mcs'))
+                            if (aimcs<baimcs):  # only do each bond once!
+                                # Check if the corresponding MCS atoms are bonded
+                                if not self.mcs_mol.GetBondBetweenAtoms(aimcs,baimcs):
+                                    to_remove.append(aimcs)
+                                    if options.verbose == 'pedantic':
+                                       logging.info('Bond in first mol between atoms %d and %d not matched in MCS' %(ai.GetIdx(),bai.GetIdx()))
+                                    
+
+            if to_remove:
+                # Delete atoms from the MCS, highest index first
+                to_remove.sort(reverse=True)
+
+                if options.verbose == 'pedantic':
+                   logging.info('Removing %d atoms from MCS based on detection of broken RDKit ring bond matching' %(len(to_remove)))
+
+                edit_mcs_mol = Chem.EditableMol(self.mcs_mol)
+                for i in to_remove:
+                    edit_mcs_mol.RemoveAtom(i)
+
+                self.mcs_mol = edit_mcs_mol.GetMol()
+                map_mcs_mol()   # Regenerate mappings
 
         def trim_mcs_chiral_atoms():
             """
@@ -333,11 +377,14 @@ class MCS(object):
                     min_frag = list(fragments[min_idx])
                     min_frag.sort(reverse=True)
 
+                    if options.verbose == 'pedantic':
+                       logging.info('Removing %d atoms to remove chiral inversion' %(len(min_frag)))
                     edit_mol = Chem.EditableMol(self.mcs_mol)
                     for idx in min_frag:
                         edit_mol.RemoveAtom(idx)
                     self.mcs_mol = edit_mol.GetMol()
 
+            map_mcs_mol()   # Regenerate mappings after deletion
             # Done!
 
         def delete_broken_ring():
@@ -361,13 +408,20 @@ class MCS(object):
                 if (moli_at.IsInRing() and molj_at.IsInRing() and not at.IsInRing()):
                     to_remove.append(at.GetIdx())
 
-            # Delete atoms from the MCS, highest index first
-            to_remove.sort(reverse=True)
-            edit_mcs_mol = Chem.EditableMol(self.mcs_mol)
-            for i in to_remove:
-                edit_mcs_mol.RemoveAtom(i)
+            if to_remove:
+                # Delete atoms from the MCS, highest index first
+                to_remove.sort(reverse=True)
 
-            self.mcs_mol = edit_mcs_mol.GetMol()
+                if options.verbose == 'pedantic':
+                   logging.info('Removing %d atoms from MCS to clear up partial rings' %(len(to_remove)))
+
+                edit_mcs_mol = Chem.EditableMol(self.mcs_mol)
+                for i in to_remove:
+                    edit_mcs_mol.RemoveAtom(i)
+
+                self.mcs_mol = edit_mcs_mol.GetMol()
+
+                map_mcs_mol()   # Regenerate mappings after deletion
 
 
         def map_mcs_mol():
@@ -562,6 +616,9 @@ class MCS(object):
         # Trim the MCS further to remove chirality mismatches
         trim_mcs_chiral_atoms()
 
+        # Check to see if we've hit the RDKit incorrect-MCS bug
+        trim_mcs_fix_broken_rdkit_code()
+
         # Cleanup any partial rings remaining
         delete_broken_ring()
 
@@ -640,7 +697,8 @@ class MCS(object):
 
         # score
         scr_mcsr = math.exp(-self.beta * (nha_moli + nha_molj - 2 * nha_mcs_mol))
-        #print("MCSR from",nha_moli,nha_molj,' common',nha_mcs_mol,"is",scr_mcsr)
+
+        logging.info('MCSR from MCS size %d, molecule sizes %d,%d is %f' %(nha_mcs_mol,nha_moli,nha_molj,scr_mcsr))
 
         return scr_mcsr
 
@@ -739,6 +797,7 @@ class MCS(object):
                 nmismatch+=(1-diff)
 
         an_score =  math.exp(-1 * self.beta * nmismatch)
+        logging.info('atomic number score from %d mismatches is %f' %(nmismatch,an_score))
         return an_score
 
     # Hybridization rule 
@@ -766,6 +825,10 @@ class MCS(object):
                 if b.GetBondType()==Chem.rdchem.BondType.DOUBLE: xs += 1
                 if b.GetBondType()==Chem.rdchem.BondType.TRIPLE: xs += 2
                 if b.GetBondType()==Chem.rdchem.BondType.ONEANDAHALF: xs += 0.5
+
+            # O- is sp2 to avoid problems with carboxylate etc
+            if a.GetAtomicNum()==8 and a.GetFormalCharge()<0: return 2 # sp2
+
             if xs==0: return 3 # sp3
             if xs>1.1: return 1 # sp
             return 2  # sp2
@@ -777,11 +840,19 @@ class MCS(object):
             moli_a = self.__moli_noh.GetAtoms()[moli_idx]
             molj_a = self.__molj_noh.GetAtoms()[molj_idx]
 
-            if atom_hybridization(moli_a) != atom_hybridization(molj_a):
+            hybi = atom_hybridization(moli_a) 
+            hybj = atom_hybridization(molj_a) 
+            mismatch= hybi != hybj
+
+            # Allow Nsp3 to match Nsp2, otherwise guanidines etc become painful
+            if moli_a.GetAtomicNum()==7 and molj_a.GetAtomicNum()==7 and (hybi in [2,3]) and hybj in [2,3]: mismatch=False
+
+            if mismatch:
                 nmismatch+=1
-                # print("Hybridization mismatch",moli_a.GetAtomicNum(),atom_hybridization(moli_a),molj_a.GetAtomicNum(),atom_hybridization(molj_a))
+                print("Hybridization mismatch",moli_a.GetIdx(),moli_a.GetSymbol(),hybi,molj_a.GetIdx(),molj_a.GetSymbol(),hybj)
 
         hyb_score =  math.exp(-1 * self.beta * nmismatch * penalty_weight)
+        logging.info('hybridization score from %d mismatches is %f' %(nmismatch,hyb_score))
         return hyb_score
 
 
@@ -815,14 +886,16 @@ class MCS(object):
 
         fail = 1 if (adds_sulfonamide(self.__moli_noh)) else 0
         fail = 1 if (adds_sulfonamide(self.__molj_noh)) else fail
-        return  math.exp(-1 * self.beta * fail * penalty)
+        sulf_score =  math.exp(-1 * self.beta * fail * penalty)
+        logging.info('sulfonamide score is %f' %(sulf_score))
+        return sulf_score
 
     # Heterocycles rule
     def heterocycles_rule(self, penalty=4):
 
         """
         This rule checks to see if we are growing a heterocycle from a hydrogen, and 
-        returns 0 if we are. This means that if this rule is used we effectively disallow
+        returns <1 if we are. This means that if this rule is used we penalise
         this transition. Testing has shown that growing a pyridine or other heterocycle
         is unlikely to work (better to grow phenyl then mutate)
 
@@ -855,7 +928,9 @@ class MCS(object):
 
         fail = 1 if (adds_heterocycle(self.__moli_noh)) else 0
         fail = 1 if (adds_heterocycle(self.__molj_noh)) else fail
-        return  math.exp(-1 * self.beta * fail * penalty)
+        het_score = math.exp(-1 * self.beta * fail * penalty)
+        logging.info('heterocycle score is %f' %(het_score))
+        return het_score
 
     def transmuting_methyl_into_ring_rule(self, penalty=6):
 
@@ -892,7 +967,9 @@ class MCS(object):
                     if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
                         is_bad=True
 
-        return  math.exp(-1 * self.beta * penalty) if is_bad else 1
+        mescore = math.exp(-1 * self.beta * penalty) if is_bad else 1
+        logging.info('methyl-to-ring transformation score is %f' %(mescore))
+        return mescore
 
     def transmuting_ring_sizes_rule(self):
 
@@ -927,6 +1004,7 @@ class MCS(object):
                     if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() and molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
                         for ring_size in range(3,8):
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
+                                logging.info('transforming ring sizes score is 0 based on atom %d in moli and %d in molj' %(edgeAtom_i,edgeAtom_j))
                                 is_bad=True
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) or molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
                                 break
@@ -1050,16 +1128,16 @@ Table of #atoms-changed to score for beta=0.1
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/transforms/napthyl.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/transforms/tetrahydronaphthyl.sdf', sanitize=False, removeHs=False)
+    mola = Chem.MolFromMolFile('../test/chiral/ChiralRingCheck1.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/chiral/ChiralRingCheck2.sdf', sanitize=False, removeHs=False)
 
     # MCS is wrong unless you convert down to SMILES and back up
-    mola = Chem.MolFromMolFile('../p38_3flz.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../p38_2i.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../p38_3flz.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../p38_2i.sdf', sanitize=False, removeHs=False)
 
     # Chirality problem with 4- vs 3-heavy atom attachment chiral centres
-    mola = Chem.MolFromMolFile('../bace_mk1.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../bace_cat_13d.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../bace_mk1.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../bace_cat_13d.sdf', sanitize=False, removeHs=False)
 
     # Me -> OMe wrong as O is labeled SP2
     #mola = Chem.MolFromMolFile('../jnk_18630.sdf', sanitize=False, removeHs=False)
@@ -1076,6 +1154,10 @@ if "__main__" == __name__:
     #mola = Chem.MolFromMolFile('../tyk_42.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../tyk_54.sdf', sanitize=False, removeHs=False)
 
+    # Chirality testing
+    mola = Chem.MolFromMolFile('../test/chiral/bace_cat_13d.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/chiral/bace_cat_13d_perm2.sdf', sanitize=False, removeHs=False)
+
     #mola = Chem.MolFromSmiles(Chem.MolToSmiles(mola))
     #molb = Chem.MolFromSmiles(Chem.MolToSmiles(molb))
     print("Mola: ",Chem.MolToSmiles(mola))
@@ -1083,7 +1165,7 @@ if "__main__" == __name__:
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
+        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='pedantic', max3d=5, threed=True))
         #MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
         #MC = MCS(mola, molb)
     except Exception:

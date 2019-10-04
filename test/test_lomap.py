@@ -304,6 +304,13 @@ class TestLomap(unittest.TestCase):
         MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
         self.assertEqual(MC.mcs_mol.GetNumHeavyAtoms(), 9, 'Fail on ring trim on 3D match')
 
+    # Test to check handling of the alpha- vs beta-naphthyl bug
+    def test_rdkit_broken_mcs_fix(self):
+        parent=Chem.MolFromMolFile('test/transforms/napthyl2.sdf',sanitize=False, removeHs=False)
+        comp=Chem.MolFromMolFile('test/transforms/napthyl3.sdf',sanitize=False, removeHs=False)
+        MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
+        self.assertLess(MC.mcs_mol.GetNumHeavyAtoms(), 25, 'Fail on detecting broken RDkit MCS on fused ring')
+
 if __name__ == '__main__':
     unittest.main()
             
