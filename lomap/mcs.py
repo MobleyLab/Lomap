@@ -129,7 +129,9 @@ class MCS(object):
             for mapi in moli_sub:
                 for mapj in molj_sub:
                     # Compute the translation to bring molj's centre over moli
-                    coord_delta = (substructure_centre(moli,mapi)
+                    coord_delta = 0
+                    if by_rmsd:
+                        coord_delta = (substructure_centre(moli,mapi)
                                  - substructure_centre(molj,mapj))
                     rmsd=0
                     for pair in zip(mapi,mapj):
