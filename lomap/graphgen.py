@@ -839,7 +839,7 @@ class GraphGen(object):
                 Filename_i = self.dbase.dic_mapping[i]
                 Filename_j = self.dbase.dic_mapping[j]
                 MCmap = self.dbase.get_MCSmap(i,j)
-                mapString="NO_MAP_IN_PARALLEL_MODE"
+                mapString=""
                 if MCmap is not None:
                     mapString = MCmap
                 # print "Check the filename", Filename_i, Filename_j
