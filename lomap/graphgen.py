@@ -244,7 +244,7 @@ class GraphGen(object):
                     if wgt > 0:
                         compound_graph.add_edge(i, self.lead_index, similarity=wgt, strict_flag=True)
 
-        initialSubgraphGen = nx.connected_component_subgraphs(compound_graph)
+        initialSubgraphGen = [compound_graph.subgraph(c).copy() for c in nx.connected_components(compound_graph)]
         initialSubgraphList = [x for x in initialSubgraphGen]
 
         return initialSubgraphList
@@ -325,7 +325,7 @@ class GraphGen(object):
 
         for subgraph in self.initialSubgraphList:
 
-            newSubgraphList = nx.connected_component_subgraphs(subgraph)
+            newSubgraphList = [subgraph.subgraph(c).copy() for c in nx.connected_components(subgraph)]
 
             for newSubgraph in newSubgraphList:
                 workingSubgraphsList.append(newSubgraph)
@@ -606,7 +606,7 @@ class GraphGen(object):
 
         """
 
-        generator_graph = nx.connected_component_subgraphs(self.resultGraph)
+        generator_graph = [self.resultGraph.subgraph(c).copy() for c in nx.connected_components(self.resultGraph)]
 
         self.workingSubgraphsList = [x for x in generator_graph]
 
@@ -653,7 +653,7 @@ class GraphGen(object):
             self.edgesAddedInFirstTreePass.append(edgeToAdd)
             self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag=False)
 
-            generator_graph = nx.connected_component_subgraphs(self.resultGraph)
+            generator_graph = [self.resultGraph.subgraph(c).copy() for c in nx.connected_components(self.resultGraph)]
             self.workingSubgraphsList = [x for x in generator_graph]
 
             return True
@@ -711,7 +711,7 @@ class GraphGen(object):
             self.resultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag=False)
             self.copyResultGraph.add_edge(edgeToAdd[0], edgeToAdd[1], similarity=edgeToAdd[2], strict_flag=False)
 
-            generator_graph = nx.connected_component_subgraphs(self.copyResultGraph)
+            generator_graph = [self.copyResultGraph.subgraph(c).copy() for c in nx.connected_components(self.copyResultGraph)]
             self.resultingSubgraphsList = [x for x in generator_graph]
 
             return True
