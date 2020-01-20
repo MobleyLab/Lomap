@@ -1004,7 +1004,7 @@ class MCS(object):
                     if (moli.GetAtomWithIdx(edgeAtom_i).IsInRing() and molj.GetAtomWithIdx(edgeAtom_j).IsInRing()):
                         for ring_size in range(3,8):
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) ^ molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
-                                logging.info('transforming ring sizes score is 0 based on atom %d in moli and %d in molj' %(edgeAtom_i,edgeAtom_j))
+                                logging.info('tRansforming ring sizes score is 0 based on atom %d in moli and %d in molj' %(edgeAtom_i,edgeAtom_j))
                                 is_bad=True
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) or molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
                                 break
@@ -1074,24 +1074,37 @@ class MCS(object):
             # Now, we need to match these up, with the caveat that we *must* not match
             # a heavy to a heavy (as if we were allowed to match these, then they would be
             # in the MCS! 
+            #
+            # In 3D mode, ensure that maps happen tothe closest atom in 3D coordinates - 
+            # this gets mappings to prochiral hydrogens correct (SFT-15791)
 
             # Match H to H first
             while attached_i and attached_j:
+                
                 hidx_i=-1
                 hidx_j=-1
+                best_dist=10000
                 for ai in attached_i:
                     if moli.GetAtomWithIdx(ai).GetAtomicNum()==1:
                         for aj in attached_j:
                             if molj.GetAtomWithIdx(aj).GetAtomicNum()==1:
-                                hidx_i=ai
-                                hidx_j=aj
+                                dist = (moli.GetConformer().GetAtomPosition(ai)
+                                      - molj.GetConformer().GetAtomPosition(aj)).Length()
+                                if (dist < best_dist or not self.options.threed):
+                                    hidx_i=ai
+                                    hidx_j=aj
+                                    best_dist=dist
                 if (hidx_i<0):
                     # OK, no hydrogen-hydrogen matches left. Try to match a hydrogen to a non-hydrogen
                     for ai in attached_i:
                         for aj in attached_j:
                             if moli.GetAtomWithIdx(ai).GetAtomicNum()==1 or molj.GetAtomWithIdx(aj).GetAtomicNum()==1:
-                                hidx_i=ai
-                                hidx_j=aj
+                                dist = (moli.GetConformer().GetAtomPosition(ai)
+                                      - molj.GetConformer().GetAtomPosition(aj)).Length()
+                                if (dist < best_dist or not self.options.threed):
+                                    hidx_i=ai
+                                    hidx_j=aj
+                                    best_dist=dist
 
                 if (hidx_i>=0):
                     # Found a mappable pair: add and try again
@@ -1128,9 +1141,6 @@ Table of #atoms-changed to score for beta=0.1
               
 if "__main__" == __name__:
 
-    mola = Chem.MolFromMolFile('../test/chiral/ChiralRingCheck1.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/chiral/ChiralRingCheck2.sdf', sanitize=False, removeHs=False)
-
     # MCS is wrong unless you convert down to SMILES and back up
     #mola = Chem.MolFromMolFile('../p38_3flz.sdf', sanitize=False, removeHs=False)
     #molb = Chem.MolFromMolFile('../p38_2i.sdf', sanitize=False, removeHs=False)
@@ -1155,8 +1165,12 @@ if "__main__" == __name__:
     #molb = Chem.MolFromMolFile('../tyk_54.sdf', sanitize=False, removeHs=False)
 
     # Chirality testing
-    mola = Chem.MolFromMolFile('../test/chiral/bace_cat_13d.sdf', sanitize=False, removeHs=False)
-    molb = Chem.MolFromMolFile('../test/chiral/bace_cat_13d_perm2.sdf', sanitize=False, removeHs=False)
+    #mola = Chem.MolFromMolFile('../test/chiral/bace_cat_13d.sdf', sanitize=False, removeHs=False)
+    #molb = Chem.MolFromMolFile('../test/chiral/bace_cat_13d_perm2.sdf', sanitize=False, removeHs=False)
+
+    # Testing bridge addition: need to map heavy atoms to the correct prochiral hydrogen
+    mola = Chem.MolFromMolFile('../test/chiral/tpbs2_lig1.sdf', sanitize=False, removeHs=False)
+    molb = Chem.MolFromMolFile('../test/chiral/tpbs2_lig2.sdf', sanitize=False, removeHs=False)
 
     #mola = Chem.MolFromSmiles(Chem.MolToSmiles(mola))
     #molb = Chem.MolFromSmiles(Chem.MolToSmiles(molb))

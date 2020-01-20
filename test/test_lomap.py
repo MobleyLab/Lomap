@@ -311,6 +311,21 @@ class TestLomap(unittest.TestCase):
         MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
         self.assertLess(MC.mcs_mol.GetNumHeavyAtoms(), 25, 'Fail on detecting broken RDkit MCS on fused ring')
 
+    # Test to check handling of mapping to prochiral hydrogens
+    def test_mapping_prochiral_hydrogen(self):
+        parent=Chem.MolFromMolFile('test/chiral/tpbs2_lig1.sdf',sanitize=False, removeHs=False)
+        parent2=Chem.MolFromMolFile('test/chiral/tpbs2_lig1a.sdf',sanitize=False, removeHs=False)   # Atom ordering changed
+        comp=Chem.MolFromMolFile('test/chiral/tpbs2_lig2.sdf',sanitize=False, removeHs=False)
+        MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+        # Check that the correct prochiral hydrogen matches the bridging carbons
+        assert("51:12" in MC.all_atom_match_list())
+        assert("35:11" in MC.all_atom_match_list())
+        MC=MCS(parent2,comp, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+        # parent2 is the same mol as parent1, except that atoms 34 and 35 were swapped
+        assert("51:12" in MC.all_atom_match_list())
+        assert("34:11" in MC.all_atom_match_list())
+
+
 if __name__ == '__main__':
     unittest.main()
             
