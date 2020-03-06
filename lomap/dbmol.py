@@ -75,7 +75,8 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', output_no_images=False, output_no_graph=False, display=False,
-                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, linksfile=None):
+                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, 
+                 linksfile=None, known_actives_file=None, max_dist_from_actives=2):
 
         """
         Initialization of  the Molecule Database Class
@@ -108,11 +109,16 @@ class DBMolecules(object):
         display : bool
            a flag used to display or not a network made by using matplotlib
         max : int
-           the maximum distance used to cluster the graph nodes
+           the maximum diameter of the resulting graph 
         cutoff : float
            the Minimum Similarity Score (MSS) used to build the graph
         linksfile : str
            the name of a file containing links to seed the graph with
+        known_actives_file : str
+           the name of a file containing mols whose activity is known
+        max_dist_from_actives : int
+            The maximum number of links from any molecule to an active
+            
 
         """
 
@@ -155,6 +161,7 @@ class DBMolecules(object):
             fast_str = ''
             threed_str = ''
             linksfile_str = ''
+            known_actives_file_str = ''
 
             parser.set_defaults(output=output)
             parser.set_defaults(output_no_images=output_no_images)
@@ -191,10 +198,13 @@ class DBMolecules(object):
             if linksfile:
                 linksfile_str = f'--linksfile {linksfile}'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
+            if known_actives_file:
+                known_actives_file_str = f'--known-actives-file {known_actives_file}'
+
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s %s' \
                         % (
-                        directory, parallel, verbose, time, ecrscore, max3d, name, max, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fingerprint_str, fast_str, threed_str, linksfile_str)
+                        directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
+                        radial_str, fingerprint_str, fast_str, threed_str, linksfile_str, known_actives_file_str)
 
             #print("ARGS:",names_str)
             self.options = parser.parse_args(names_str.split())
@@ -209,8 +219,12 @@ class DBMolecules(object):
         # Hold the MCS index map strings for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
         self.mcs_map_store = {}
 
-        # Pre-specified links between molecules - a list of molecule index tuples
-        self.prespecified_links = []
+        # Pre-specified links between molecules - a set of molecule index tuples
+        self.prespecified_links = set() 
+
+        # List of which molecules are "known actives". Note that all pairs of known actives 
+        # are automatically added as prespecified links
+        self.known_actives = []
 
         for mol in self.__list:
             self.dic_mapping[mol.getID()] = mol.getName()
@@ -218,6 +232,9 @@ class DBMolecules(object):
 
         if self.options.linksfile and len(self.options.linksfile)>0:
             self.parse_links_file(self.options.linksfile)
+
+        if self.options.known_actives_file and len(self.options.known_actives_file)>0:
+            self.parse_known_actives_file(self.options.known_actives_file)
 
         # Index used to perform index selection by using __iter__ function
         self.__ci = 0
@@ -380,11 +397,27 @@ class DBMolecules(object):
                     mols = line.split();
                     indexa = self.inv_dic_mapping[mols[0]]
                     indexb = self.inv_dic_mapping[mols[1]]
-                    self.prespecified_links.append((indexa,indexb))
-                    self.prespecified_links.append((indexb,indexa))
+                    self.prespecified_links.add((indexa,indexb))
+                    self.prespecified_links.add((indexb,indexa))
                     print("Added prespecified link for mols",mols,"->",(indexa,indexb))
         except KeyError as e:
             raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
+
+    def parse_known_actives_file(self, actives_file):
+        try:
+            with open(actives_file,"r") as lf:
+                for line in lf:
+                    mols = line.split();
+                    indexa = self.inv_dic_mapping[mols[0]]
+                    self.known_actives.append(indexa)
+                    self.__list[indexa].setActive(True)
+                    print("Added known activity for mol",mols[0],"->",indexa)
+        except KeyError as e:
+            raise IOError('Filename within the actives file "'+actives_file+'" not found: '+str(e)) from None
+        # Add all combinations of these to the set of prespecified links
+        for t in [(x,y) for x in self.known_actives for y in self.known_actives]:
+            print("Added prespecified link for ",t)
+            self.prespecified_links.add(t)
 
     def set_MCSmap(self,i,j,MCmap):
         if (i<j):
@@ -947,6 +980,11 @@ class Molecule(object):
         # The variable is defined as private
         self.__name = molname
 
+        # The variable __active saves whether the molecule is a known active
+        # The variable is defined as private
+        self.__active = False
+
+
     def getID(self):
         """
         Get the molecule ID number
@@ -985,6 +1023,26 @@ class Molecule(object):
 
         return self.__name
 
+    def isActive(self):
+        """
+        Get whether the molecule is active
+
+        Returns
+        -------
+           : bool
+           the molecule active status
+
+        """
+
+        return self.__active
+
+    def setActive(self, active):
+        """
+        Set whether the molecule is active
+
+        """
+
+        self.__active=active
 
 class CheckDir(argparse.Action):
     # Classes used to check some of the passed user options in the main function
@@ -1029,7 +1087,8 @@ def startup():
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
                          ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display, 
-                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile)
+                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile, 
+                         ops.known_actives_file, ops.max_dist_from_actives)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
 
@@ -1084,7 +1143,9 @@ parser.add_argument('-d', '--display', default=False, action='store_true', \
 
 graph_group = parser.add_argument_group('Graph setting')
 graph_group.add_argument('-m', '--max', default=6, action=CheckPos, type=int, \
-                         help='The maximum distance used to cluster the graph nodes')
+                         help='The maximum diameter of the graph')
+graph_group.add_argument('-A', '--max-dist-from-actives', default=2, action=CheckPos, type=int, \
+                         help='The maximum distance of any molecule from an active (requires -k)')
 graph_group.add_argument('-c', '--cutoff', default=0.4, action=CheckCutoff, type=float, \
                          help='The Minimum Similarity Score (MSS) used to build the graph')
 graph_group.add_argument('-r', '--radial', default=False, action='store_true', \
@@ -1096,7 +1157,9 @@ graph_group.add_argument('-f', '--fingerprint', default=False, action='store_tru
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
 graph_group.add_argument('-l', '--linksfile', type=str, default='', \
-                          help='Specify a filename listing the molecule files that should be initialised as linked')
+                          help='Specify a filename listing the pairs of molecule files that should be initialised as linked, one per line')
+graph_group.add_argument('-k', '--known-actives-file', type=str, default='', \
+                          help='Specify a filename listing the molecule files that should be initialised as "known actives", one per line')
 
 # ------------------------------------------------------------------
 

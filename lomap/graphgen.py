@@ -90,6 +90,8 @@ class GraphGen(object):
 
         self.maxPathLength = dbase.options.max
 
+        self.maxDistFromActive = dbase.options.max_dist_from_actives
+
         self.similarityScoresLimit = dbase.options.cutoff
 
         if dbase.options.radial:
@@ -102,6 +104,10 @@ class GraphGen(object):
 
         # A set of edges that will be used to save edges that are acyclic for given subgraph
         self.nonCycleEdgesSet = set()
+
+        # A count of the number of nodes that are not within self.maxDistFromActive edges
+        # of an active
+        self.distanceToActiveFailures = 0
 
         # Draw Parameters
 
@@ -221,13 +227,15 @@ class GraphGen(object):
             for i in range(0, self.dbase.nums()):
                 if i == 0:
                     compound_graph.add_node(i, ID=self.dbase[i].getID(),
-                                            fname_comp=os.path.basename(self.dbase[i].getName()))
+                            fname_comp=os.path.basename(self.dbase[i].getName()),
+                            active=self.dbase[i].isActive())
 
                 for j in range(i + 1, self.dbase.nums()):
 
                     if i == 0:
                         compound_graph.add_node(j, ID=self.dbase[j].getID(),
-                                                fname_comp=os.path.basename(self.dbase[j].getName()))
+                            fname_comp=os.path.basename(self.dbase[j].getName()),
+                            active=self.dbase[j].isActive())
 
                     wgt = self.dbase.strict_mtx[i, j]
 
@@ -348,6 +356,7 @@ class GraphGen(object):
             self.nonCycleNodesSet = self.find_non_cyclic_nodes(subgraph)
             self.nonCycleEdgesSet = self.find_non_cyclic_edges(subgraph)
             numberOfComponents = nx.number_connected_components(subgraph)
+            self.distanceToActiveFailures = self.count_distance_to_active_failures(subgraph)
 
             if len(subgraph.edges()) > 2:  # Graphs must have at least 3 edges to be minimzed
 
@@ -361,9 +370,12 @@ class GraphGen(object):
                             if self.check_constraints(subgraph, numberOfComponents) == False:
                                 subgraph.add_edge(edge[0], edge[1], similarity=edge[2], strict_flag=True)
                     else:
+                        logging.info("Trying to remove edge %d-%d" % (edge[0],edge[1]))
                         subgraph.remove_edge(edge[0], edge[1])
                         if self.check_constraints(subgraph, numberOfComponents) == False:
                             subgraph.add_edge(edge[0], edge[1], similarity=edge[2], strict_flag=True)
+                        else:
+                            logging.info("Removed edge %d-%d" % (edge[0],edge[1]))
 
     def add_surrounding_edges(self):
         """
@@ -472,6 +484,10 @@ class GraphGen(object):
             if not self.check_max_distance(subgraph):
                 constraintsMet = False
 
+        if constraintsMet:
+            if not self.check_distance_to_active(subgraph):
+                constraintsMet = False
+
         return constraintsMet
 
     def remains_connected(self, subgraph, numComponents):
@@ -497,7 +513,10 @@ class GraphGen(object):
 
         isConnected = False
 
-        if numComponents == nx.number_connected_components(subgraph): isConnected = True
+        if numComponents == nx.number_connected_components(subgraph): 
+            isConnected = True
+        else:
+            logging.info("Rejecting edge deletion on graph connectivity")
 
         return isConnected
 
@@ -524,7 +543,9 @@ class GraphGen(object):
         hasCovering = True
 
         # Have we increased the number of non-cyclic edges?
-        if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet): hasCovering = False
+        if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet): 
+            hasCovering = False
+            logging.info("Rejecting edge deletion on cycle covering")
 
         return hasCovering
 
@@ -549,9 +570,71 @@ class GraphGen(object):
 
         for node in subgraph:
             eccentricity = nx.eccentricity(subgraph, node)
-            if eccentricity > self.maxPathLength: withinMaxDistance = False
+            if eccentricity > self.maxPathLength: 
+                withinMaxDistance = False
+                logging.info("Rejecting edge deletion on graph diameter for node %d" % (node))
 
         return withinMaxDistance
+
+    def count_distance_to_active_failures(self, subgraph):
+        """
+        Count the number of compounds that don't have a minimum-length path to an active
+        within the specified limit
+
+        Parameters
+        ---------
+        subgraph : NetworkX subgraph obj
+            the subgraph to check for the max distance between nodes
+
+        Returns
+        -------
+        failures : int
+            Number of nodes that are not within the max distance to any active node
+        """
+
+        failures = 0
+
+        hasActives=False
+        for node in subgraph.nodes():
+            if (subgraph.nodes[node]["active"]):
+                hasActives=True
+        if (not hasActives):
+            return 0     # No actives, so don't bother checking
+
+        paths = nx.shortest_path(subgraph)
+        for node in subgraph.nodes():
+            if (not subgraph.nodes[node]["active"]):
+                ok=False
+                for node2 in subgraph.nodes():
+                    if (subgraph.nodes[node2]["active"]):
+                        pathlen = len(paths[node][node2]) - 1   # No. edges is 1 less than no. nodes
+                        if (pathlen <= self.maxDistFromActive): ok=True
+                if (not ok): 
+                    failures = failures + 1
+
+        return failures
+
+    def check_distance_to_active(self, subgraph):
+        """
+        Check to see if we have increased the number of distance-to-active failures
+
+        Parameters
+        ---------
+        subgraph : NetworkX subgraph obj
+            the subgraph to check for the max distance between nodes
+
+        Returns
+        -------
+        ok : bool
+            True if we have not increased the number of failed nodes
+        """
+
+        count = self.count_distance_to_active_failures(subgraph)
+        failed =  (count > self.distanceToActiveFailures)
+        if (failed): logging.info("Rejecting edge deletion on distance-to-actives %d vs %d" % (count,self.distanceToActiveFailures))
+        logging.info("Checking edge deletion on distance-to-actives %d vs %d" % (count,self.distanceToActiveFailures))
+        return not failed
+
 
     def merge_all_subgraphs(self):
         """Generates a single networkx graph object from the subgraphs that have
@@ -758,7 +841,7 @@ class GraphGen(object):
 
             for n in temp_graph:
 
-                id_mol = temp_graph.node[n]['ID']
+                id_mol = temp_graph.nodes[n]['ID']
                 mol = self.dbase[id_mol].getMolecule()
                 max_dist = max_dist_mol(mol)
 
@@ -784,11 +867,11 @@ class GraphGen(object):
                         DrawingOptions.bondLineWidth = 2.5
                         Draw.MolToFile(mol, fname, size=(200, 200), kekulize=False, fitimage=True, imageType='png',
                                        options=DrawingOptions)
-                    temp_graph.node[n]['image'] = fname
-                    # self.resultGraph.node[n]['label'] = ''
-                    temp_graph.node[n]['labelloc'] = 't'
-                    temp_graph.node[n]['penwidth'] = 2.5
-                    # self.resultGraph.node[n]['xlabel'] =  self.resultGraph.node[n]['ID']
+                    temp_graph.nodes[n]['image'] = fname
+                    # self.resultGraph.nodes[n]['label'] = ''
+                    temp_graph.nodes[n]['labelloc'] = 't'
+                    temp_graph.nodes[n]['penwidth'] = 2.5
+                    # self.resultGraph.node[n]['xlabel'] =  self.resultGraph.nodes[n]['ID']
         for u, v, d in temp_graph.edges(data=True):
             if d['strict_flag'] == True:
                 temp_graph[u][v]['color'] = 'blue'
@@ -1026,7 +1109,7 @@ class GraphGen(object):
 
             for each_node in self.resultGraph:
 
-                id_mol = self.resultGraph.node[each_node]['ID']
+                id_mol = self.resultGraph.nodes[each_node]['ID']
                 # skip remove Hs by rdkit if Hs cannot be removed
                 try:
                     mol = AllChem.RemoveHs(self.dbase[id_mol].getMolecule())
@@ -1061,7 +1144,7 @@ class GraphGen(object):
                 p2_1 = nodesize_1 / 2
 
                 a = plt.axes([xa - p2_2, ya - p2_1, nodesize_2, nodesize_1])
-                # self.resultGraph.node[id_mol]['image'] = img_mol
+                # self.resultGraph.nodes[id_mol]['image'] = img_mol
                 # a.imshow(self.resultGraph.node[each_node]['image'])
                 a.imshow(img_mol)
                 a.axis('off')
