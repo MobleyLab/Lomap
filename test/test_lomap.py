@@ -9,7 +9,7 @@ import argparse
 
 
 def executable():
-    return '/home/mark/gui/trunk/buildDependencies/Python/linux-x86_64/bin/lomap'
+    return '/home/mark/.conan/data/Flare-Python/6.0/cresset/Python-3.6/package/90ee443cae5dd5c1b4861766ac14dc6fae231a92/bin/lomap'
 
 def isclose(a,b):
     return (abs(a-b)<1e-5)

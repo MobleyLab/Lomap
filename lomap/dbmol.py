@@ -55,7 +55,6 @@ from lomap import graphgen
 from lomap import mcs
 from rdkit import Chem
 from rdkit import DataStructs
-from rdkit.Chem.Fingerprints import FingerprintMols
 
 __all__ = ['DBMolecules', 'SMatrix', 'Molecule']
 
@@ -75,7 +74,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', output_no_images=False, output_no_graph=False, display=False,
-                 max=6, cutoff=0.4, radial=False, hub=None, fingerprint=False, fast=False, 
+                 max=6, cutoff=0.4, radial=False, hub=None, east=False, 
                  linksfile=None, known_actives_file=None, max_dist_from_actives=2):
 
         """
@@ -157,7 +156,6 @@ class DBMolecules(object):
             output_no_graph_str = ''
             display_str = ''
             radial_str = ''
-            fingerprint_str = ''
             fast_str = ''
             threed_str = ''
             linksfile_str = ''
@@ -168,7 +166,6 @@ class DBMolecules(object):
             parser.set_defaults(output_no_graph=output_no_graph)
             parser.set_defaults(display=display)
             parser.set_defaults(radial=radial)
-            parser.set_defaults(fingerprint=fingerprint)
             parser.set_defaults(fast=fast)
             parser.set_defaults(threed=threed)
             if output:
@@ -186,9 +183,6 @@ class DBMolecules(object):
             if radial:
                 radial_str = '--radial'
 
-            if fingerprint:
-                fingerprint_str = '--fingerprint'
-
             if fast:
                 fast_str = '--fast'
 
@@ -204,7 +198,7 @@ class DBMolecules(object):
             names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fingerprint_str, fast_str, threed_str, linksfile_str, known_actives_file_str)
+                        radial_str, fast_str, threed_str, linksfile_str, known_actives_file_str)
 
             #print("ARGS:",names_str)
             self.options = parser.parse_args(names_str.split())
@@ -435,7 +429,7 @@ class DBMolecules(object):
             return self.mcs_map_store[idx]
         return None
 
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, MCS_map, fingerprint=False):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, MCS_map):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
         by the start index a and the final index b. The matrices are indeed 
@@ -467,16 +461,11 @@ class DBMolecules(object):
             Holds a dict of (index tuple) -> string with the strings being the 
             MCS atom index map between the two molecules
 
-        fingerprint: boolean
-           using the structural fingerprint as the similarity matrix, 
-           not suggested option but currently runs faster than mcss based similarity
-          
         """
 
         # name = multiprocessing.current_process().name
         # print(name)
         # print('a = %d, b = %d' % (a,b))
-        # print('fingerprint=',fingerprint)
         # print('\n') 
 
         def formal_charge(mol):
@@ -555,17 +544,11 @@ class DBMolecules(object):
                         logging.info(50 * '-')
                         logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
 
-                    if not fingerprint:
-                        # Maximum Common Subgraph (MCS) calculation
-                        MC = mcs.MCS(moli, molj, options=self.options)
-                        ml=MC.all_atom_match_list()
-                        self.set_MCSmap(i,j,ml)
-                        MCS_map[(i,j)]=ml
-                    else:
-                        # use the fingerprint as similarity calculation
-                        fps_moli = FingerprintMols.FingerprintMol(moli)
-                        fps_molj = FingerprintMols.FingerprintMol(molj)
-                        fps_tan = DataStructs.FingerprintSimilarity(fps_moli, fps_molj)
+                    # Maximum Common Subgraph (MCS) calculation
+                    MC = mcs.MCS(moli, molj, options=self.options)
+                    ml=MC.all_atom_match_list()
+                    self.set_MCSmap(i,j,ml)
+                    MCS_map[(i,j)]=ml
 
                 except Exception as e:
                     logging.warning(
@@ -581,29 +564,19 @@ class DBMolecules(object):
 
             # The scoring between the two molecules is performed by using different rules.
             # The total score will be the product of all the single rules
-            if not fingerprint:
-                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule() * MC.hybridization_rule()
-                tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
-                tmp_scr *= MC.transmuting_ring_sizes_rule()
-                # Note - no longer using tmcsr rule!
-                strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
-                loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
-                strict_mtx[k] = strict_scr
-                loose_mtx[k] = loose_scr
-                ecr_mtx[k] = strict_scr
-                logging.info(
-                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
-                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
-                        MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
-            else:
-                # for the fingerprint option, currently just use the identical strict and loose mtx
-                strict_scr = fps_tan
-                loose_scr = fps_tan
-                strict_mtx[k] = strict_scr
-                loose_mtx[k] = loose_scr
-                ecr_mtx[k] = strict_scr
-                logging.info(
-                    'MCS molecules: %s - %s the strict scr is %s' % (self[i].getName(), self[j].getName(), strict_scr))
+            tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule() * MC.hybridization_rule()
+            tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
+            tmp_scr *= MC.transmuting_ring_sizes_rule()
+            # Note - no longer using tmcsr rule!
+            strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
+            loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
+            strict_mtx[k] = strict_scr
+            loose_mtx[k] = loose_scr
+            ecr_mtx[k] = strict_scr
+            logging.info(
+                'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
+                  (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
+                    MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
 
             # process prespecified links now and overwrite the existing info
             if (i,j) in self.prespecified_links:
@@ -634,14 +607,11 @@ class DBMolecules(object):
 
         if self.options.parallel == 1:  # Serial execution
             MCS_map = {}
-            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, MCS_map, self.options.fingerprint)
+            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, MCS_map)
             for idx in MCS_map:
               self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
         else:
             # Parallel execution
-            # add the fingerprint option
-            fingerprint = self.options.fingerprint
-
             logging.info('Parallel mode is on')
 
             # Number of selected processes
@@ -682,7 +652,7 @@ class DBMolecules(object):
   
                   # Python multiprocessing allocation
                   p = multiprocessing.Process(target=self.compute_mtx,
-                                              args=(i, j, strict_mtx, loose_mtx, ecr_mtx, MCS_map, fingerprint,))
+                                              args=(i, j, strict_mtx, loose_mtx, ecr_mtx, MCS_map, ))
                   p.start()
                   proc.append(p)
               # End parallel execution
@@ -1087,7 +1057,7 @@ def startup():
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
                          ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display, 
-                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fingerprint, ops.fast, ops.linksfile, 
+                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.linksfile, 
                          ops.known_actives_file, ops.max_dist_from_actives)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
@@ -1152,8 +1122,6 @@ graph_group.add_argument('-r', '--radial', default=False, action='store_true', \
                          help='Using the radial option to build the graph')
 graph_group.add_argument('-b', '--hub', default=None, type=str, \
                          help='Using a radial graph approach with a manually specified hub compound')
-graph_group.add_argument('-f', '--fingerprint', default=False, action='store_true', \
-                         help='Using the fingerprint option to build similarity matrices')
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
 graph_group.add_argument('-l', '--linksfile', type=str, default='', \
