@@ -74,7 +74,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', output_no_images=False, output_no_graph=False, display=False,
-                 max=6, cutoff=0.4, radial=False, hub=None, east=False, 
+                 max=6, cutoff=0.4, radial=False, hub=None, fast=False, 
                  linksfile=None, known_actives_file=None, max_dist_from_actives=2):
 
         """
@@ -195,7 +195,7 @@ class DBMolecules(object):
             if known_actives_file:
                 known_actives_file_str = f'--known-actives-file {known_actives_file}'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s %s' \
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
                         radial_str, fast_str, threed_str, linksfile_str, known_actives_file_str)
