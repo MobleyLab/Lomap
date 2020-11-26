@@ -14,6 +14,8 @@ def executable():
     return '/home/mark/.conan/data/Flare-Python/6.0/cresset/Python-3.6/package/90ee443cae5dd5c1b4861766ac14dc6fae231a92/bin/lomap'
 
 def isclose(a,b):
+    if (abs(a-b)>=1e-5):
+        print("Value",a,"is not close to",b)
     return (abs(a-b)<1e-5)
 
 class TestLomap(unittest.TestCase):
@@ -379,6 +381,47 @@ class TestLomap(unittest.TestCase):
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
         self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+
+    def test_linksfile_scores(self):
+        """ Test a linksfile forcing prespecified scores for some links."""
+        progname=sys.argv[0]
+        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links2.txt','test/linksfile']
+        dbmol.startup()
+        # Check scores
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.77777))    # Forced from linksfile
+        assert(isclose(self.score_for_link('phenyl.sdf','toluyl.sdf'),0.88888))         # Forced from linksfile
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
+        assert(isclose(self.score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+
+    def test_linksfile_scores_force(self):
+        """ Test a linksfile forcing prespecified scores and link inclusion for some links."""
+        progname=sys.argv[0]
+        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links3.txt','test/linksfile']
+        dbmol.startup()
+        # Check scores
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.1))
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.2))
+        assert(isclose(self.score_for_link('phenyl.sdf','toluyl.sdf'),0.3))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.4))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.5))
+        assert(isclose(self.score_for_link('phenylfuran.sdf','toluyl.sdf'),0.6))
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+
 
 if __name__ == '__main__':
     unittest.main()

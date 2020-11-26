@@ -213,11 +213,15 @@ class DBMolecules(object):
         # Hold the MCS index map strings for each molecule pair. Indexed by a tuple of molecule IDs (lowest first)
         self.mcs_map_store = {}
 
-        # Pre-specified links between molecules - a set of molecule index tuples
-        self.prespecified_links = set() 
+        # Pre-specified links between molecules - a map of molecule index tuples to score. 
+        # A value < -1 means "recompute, but force the link to be included"
+        # A negative value (>= -1) means "Use the absolute value as the score, but force the link to be included"
+        # A positive value means "Use this value as the score, but treat the link as normal in the graph calculation"
+        self.prespecified_links = {}
 
         # List of which molecules are "known actives". Note that all pairs of known actives 
-        # are automatically added as prespecified links
+        # are automatically added as prespecified links with a score of -1 (i.e force score to
+        # 1 and force link to be included)
         self.known_actives = []
 
         for mol in self.__list:
@@ -389,11 +393,20 @@ class DBMolecules(object):
             with open(links_file,"r") as lf:
                 for line in lf:
                     mols = line.split();
+                    if (len(mols)<2 or len(mols)>4):
+                        raise IOError('Syntax error in links file parsing line:'+line) 
                     indexa = self.inv_dic_mapping[mols[0]]
                     indexb = self.inv_dic_mapping[mols[1]]
-                    self.prespecified_links.add((indexa,indexb))
-                    self.prespecified_links.add((indexb,indexa))
-                    print("Added prespecified link for mols",mols,"->",(indexa,indexb))
+                    score = -2
+                    if (len(mols)>2):
+                        score = float(mols[2])
+                    if (len(mols)>3):
+                        if (mols[3] != "force"):
+                            raise IOError('Syntax error parsing fourth argument in links file on line:'+line) 
+                        score = -score
+                    self.prespecified_links[(indexa,indexb)]=score
+                    self.prespecified_links[(indexb,indexa)]=score
+                    print("Added prespecified link for mols",mols,"->",(indexa,indexb),"score",score)
         except KeyError as e:
             raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
 
@@ -411,7 +424,7 @@ class DBMolecules(object):
         # Add all combinations of these to the set of prespecified links
         for t in [(x,y) for x in self.known_actives for y in self.known_actives]:
             print("Added prespecified link for ",t)
-            self.prespecified_links.add(t)
+            self.prespecified_links[t]=-1
 
     def set_MCSmap(self,i,j,MCmap):
         if (i<j):
@@ -532,54 +545,59 @@ class DBMolecules(object):
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
 
-            # Change - if a link was prespecified we would just assign it a good score and
-            # continue for efficiency. However, we now want the atom mapping in the output,
-            # so move that check to later
-
-            # The MCS is computed just if the passed molecules have the same charges 
-            if ecr_score or self.options.ecrscore:
-                try:
-                    if self.options.verbose == 'pedantic':
-                        logging.info(50 * '-')
-                        logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
-
-                    # Maximum Common Subgraph (MCS) calculation
-                    MC = mcs.MCS(moli, molj, options=self.options)
-                    ml=MC.all_atom_match_list()
-                    self.set_MCSmap(i,j,ml)
-                    MCS_map[(i,j)]=ml
-
-                except Exception as e:
-                    logging.warning(
-                        'Skipping MCS molecules (exception): %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
-                    logging.info(50 * '-')
-                    continue
+            # If the prespecified links map has this link, and the value is >-1, then
+            # we don't need to compute the score
+            if (i,j) in self.prespecified_links and self.prespecified_links[(i,j)]>=-1:
+                strict_scr = abs(self.prespecified_links[(i,j)])
+                loose_scr = strict_scr
+                logging.info('MCS molecules: %s - %s final score %s set in links file' %
+                      (self[i].getName(), self[j].getName(), strict_scr))
             else:
-                continue
+                # The MCS is computed only if the passed molecules have the same charges 
+                if ecr_score or self.options.ecrscore:
+                    if ecr_score == 0.0 and self.options.ecrscore:
+                        logging.critical('WARNING: Mutation between different charge molecules is enabled')
+                        ecr_score = self.options.ecrscore
 
-            if ecr_score == 0.0 and self.options.ecrscore:
-                logging.critical('WARNING: Mutation between different charge molecules is enabled')
-                ecr_score = self.options.ecrscore
+                    try:
+                        if self.options.verbose == 'pedantic':
+                            logging.info(50 * '-')
+                            logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
 
-            # The scoring between the two molecules is performed by using different rules.
-            # The total score will be the product of all the single rules
-            tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule() * MC.hybridization_rule()
-            tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
-            tmp_scr *= MC.transmuting_ring_sizes_rule()
-            # Note - no longer using tmcsr rule!
-            strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
-            loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
+                        # Maximum Common Subgraph (MCS) calculation
+                        MC = mcs.MCS(moli, molj, options=self.options)
+                        ml=MC.all_atom_match_list()
+                        self.set_MCSmap(i,j,ml)
+                        MCS_map[(i,j)]=ml
+
+                    except Exception as e:
+                        logging.warning(
+                            'Skipping MCS molecules (exception): %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                        logging.info(50 * '-')
+                        continue
+                else:
+                    continue
+
+                # The scoring between the two molecules is performed by using different rules.
+                # The total score will be the product of all the single rules
+                tmp_scr = ecr_score * MC.mncar() * MC.mcsr() * MC.atomic_number_rule() * MC.hybridization_rule()
+                tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
+                tmp_scr *= MC.transmuting_ring_sizes_rule()
+                # Note - no longer using tmcsr rule!
+                strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
+                loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
+                logging.info(
+                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
+                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
+                        MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
+
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
             true_strict_mtx[k] = strict_scr
-            logging.info(
-                'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
-                  (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
-                    MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
 
             # process prespecified links now and overwrite the existing info
-            if (i,j) in self.prespecified_links:
-                print("Molecule pair",i,j,"prespecified - score set to 1")
+            if (i,j) in self.prespecified_links and self.prespecified_links[(i,j)]<0:
+                print("Molecule pair",i,j,"forced to be included in the graph - score set to 1")
                 strict_mtx[k] = 1.0
                 loose_mtx[k] = 1.0
                 # Note that true_strict_mtx holds the original strict_scr value
@@ -1124,7 +1142,11 @@ graph_group.add_argument('-b', '--hub', default=None, type=str, \
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
 graph_group.add_argument('-l', '--links-file', type=str, default='', \
-                          help='Specify a filename listing the pairs of molecule files that should be initialised as linked, one per line')
+                          help='Specify a filename listing the pairs of molecule files that should be initialised as linked.'
+                          'Each line can be "mol1 mol2", which indicates that Lomap should compute the score and mapping '
+                          'but that this link must be used in the final graph, or "mol1 mol2 score", which indicates that '
+                          'Lomap should use the provided score, or "mol1 mol2 score force", which indicates that Lomap '
+                          'should use the provided score and force this link to be used in the final graph.')
 graph_group.add_argument('-k', '--known-actives-file', type=str, default='', \
                           help='Specify a filename listing the molecule files that should be initialised as "known actives", one per line')
 

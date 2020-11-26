@@ -1,0 +1,2 @@
+phenyl.sdf phenylfuran.sdf 0.77777
+phenyl.sdf toluyl.sdf 0.88888
