@@ -2,10 +2,12 @@ import unittest
 from lomap.mcs import MCS
 from rdkit import RDLogger,Chem
 from lomap.dbmol import DBMolecules
+from lomap import dbmol
 import multiprocessing
 import subprocess
 import math
 import argparse
+import sys
 
 
 def executable():
@@ -15,7 +17,8 @@ def isclose(a,b):
     return (abs(a-b)<1e-5)
 
 class TestLomap(unittest.TestCase):
-
+    """ Docstring crap for parser. """
+    """
     def test_insufficient_arguments(self):
         cmd = [executable()]
         error_string = b'error: the following arguments are required: directory'
@@ -324,7 +327,60 @@ class TestLomap(unittest.TestCase):
         # parent2 is the same mol as parent1, except that atoms 34 and 35 were swapped
         assert("51:12" in MC.all_atom_match_list())
         assert("34:11" in MC.all_atom_match_list())
+    """
 
+    def fields_for_link(self, mola, molb):
+        """ Parse the out_score_with_connection.txt file, find the line for mola to molb, and return its fields. """
+        with open('out_score_with_connection.txt','r') as f:
+            for line in f.readlines():
+                fields = line.replace(",","").split()
+                if ((fields[2]==mola and fields[3]==molb) or (fields[3]==mola and fields[2]==molb)):
+                    return fields
+        return []
+
+    def score_for_link(self, mola, molb):
+        return float(self.fields_for_link(mola,molb)[4])
+            
+    """
+    def test_complete_run(self):
+        progname=sys.argv[0]
+        sys.argv=[progname,'--output-no-images','--output-no-graph','test/linksfile']
+        dbmol.startup()
+        # Check scores
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
+        assert(isclose(self.score_for_link('phenyl.sdf','toluyl.sdf'),0.90484))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
+        assert(isclose(self.score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+    """
+
+    def test_linksfile(self):
+        """ Test a linksfile forcing a link from phenyl to phenylfuran. """
+        progname=sys.argv[0]
+        sys.argv=[progname,'--output-no-images','--output-no-graph','--linksfile','test/linksfile/links1.txt','test/linksfile']
+        dbmol.startup()
+        # Check scores
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
+        assert(isclose(self.score_for_link('phenyl.sdf','toluyl.sdf'),0.90484))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
+        assert(isclose(self.score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
 
 if __name__ == '__main__':
     unittest.main()
