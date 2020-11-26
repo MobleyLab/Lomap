@@ -369,13 +369,15 @@ class GraphGen(object):
                             subgraph.remove_edge(edge[0], edge[1])
                             if self.check_constraints(subgraph, numberOfComponents) == False:
                                 subgraph.add_edge(edge[0], edge[1], similarity=edge[2], strict_flag=True)
-                    else:
-                        logging.info("Trying to remove edge %d-%d" % (edge[0],edge[1]))
+                    elif edge[2] < 1.0:  # Don't remove edges with similarity 1
+                        logging.info("Trying to remove edge %d-%d with similarity %f" % (edge[0],edge[1],edge[2]))
                         subgraph.remove_edge(edge[0], edge[1])
                         if self.check_constraints(subgraph, numberOfComponents) == False:
                             subgraph.add_edge(edge[0], edge[1], similarity=edge[2], strict_flag=True)
                         else:
                             logging.info("Removed edge %d-%d" % (edge[0],edge[1]))
+                    else:
+                        logging.info("Skipping edge %d-%d as it has similarity 1" % (edge[0],edge[1]))
 
     def add_surrounding_edges(self):
         """
