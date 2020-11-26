@@ -909,7 +909,7 @@ class GraphGen(object):
         info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "w")
         all_key_id = self.dbase.dic_mapping.keys()
         data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
-        "Index_1", "Index_2", "Filename_1", "Filename_2", "Eff_sim", "Str_sim", "Loose_sim", "Connect")]
+        "Index_1", "Index_2", "Filename_1", "Filename_2", "Str_sim", "Eff_sim", "Loose_sim", "Connect")]
         for i in range(len(all_key_id) - 1):
             for j in range(i + 1, len(all_key_id)):
                 morph_string = None
@@ -930,10 +930,10 @@ class GraphGen(object):
                 # print "Check the filename", Filename_i, Filename_j
                 strict_similarity = self.dbase.strict_mtx[i, j]
                 loose_similarity = self.dbase.loose_mtx[i, j]
-                ecr_similarity = self.dbase.ecr_mtx[i, j]
+                true_strict_similarity = self.dbase.true_strict_mtx[i, j]
                 if connected:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
-                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "Yes",mapString)
+                    i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "Yes",mapString)
                     # generate the morph type, and pick the start ligand based on the similarity
                     if self.lead_index is not None:
                         morph_i = Filename_i.split(".")[0]
@@ -954,7 +954,7 @@ class GraphGen(object):
                         morph_data += morph_string
                 else:
                     new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
-                    i, j, Filename_i, Filename_j, ecr_similarity, strict_similarity, loose_similarity, "No",mapString)
+                    i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "No",mapString)
                 data.append(new_line)
         info_txt.writelines(data)
         if self.lead_index is not None:

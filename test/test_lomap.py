@@ -341,7 +341,6 @@ class TestLomap(unittest.TestCase):
     def score_for_link(self, mola, molb):
         return float(self.fields_for_link(mola,molb)[4])
             
-    """
     def test_complete_run(self):
         progname=sys.argv[0]
         sys.argv=[progname,'--output-no-images','--output-no-graph','test/linksfile']
@@ -360,12 +359,11 @@ class TestLomap(unittest.TestCase):
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
         self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
-    """
 
     def test_linksfile(self):
         """ Test a linksfile forcing a link from phenyl to phenylfuran. """
         progname=sys.argv[0]
-        sys.argv=[progname,'--output-no-images','--output-no-graph','--linksfile','test/linksfile/links1.txt','test/linksfile']
+        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links1.txt','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
@@ -384,4 +382,4 @@ class TestLomap(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-            
+           

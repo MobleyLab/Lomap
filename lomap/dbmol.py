@@ -75,7 +75,7 @@ class DBMolecules(object):
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', output_no_images=False, output_no_graph=False, display=False,
                  max=6, cutoff=0.4, radial=False, hub=None, fast=False, 
-                 linksfile=None, known_actives_file=None, max_dist_from_actives=2):
+                 links_file=None, known_actives_file=None, max_dist_from_actives=2):
 
         """
         Initialization of  the Molecule Database Class
@@ -111,7 +111,7 @@ class DBMolecules(object):
            the maximum diameter of the resulting graph 
         cutoff : float
            the Minimum Similarity Score (MSS) used to build the graph
-        linksfile : str
+        links_file : str
            the name of a file containing links to seed the graph with
         known_actives_file : str
            the name of a file containing mols whose activity is known
@@ -158,7 +158,7 @@ class DBMolecules(object):
             radial_str = ''
             fast_str = ''
             threed_str = ''
-            linksfile_str = ''
+            links_file_str = ''
             known_actives_file_str = ''
 
             parser.set_defaults(output=output)
@@ -189,8 +189,8 @@ class DBMolecules(object):
             if threed:
                 threed_str = '--threed'
 
-            if linksfile:
-                linksfile_str = f'--linksfile {linksfile}'
+            if links_file:
+                links_file_str = f'--links-file {links_file}'
 
             if known_actives_file:
                 known_actives_file_str = f'--known-actives-file {known_actives_file}'
@@ -198,7 +198,7 @@ class DBMolecules(object):
             names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fast_str, threed_str, linksfile_str, known_actives_file_str)
+                        radial_str, fast_str, threed_str, links_file_str, known_actives_file_str)
 
             #print("ARGS:",names_str)
             self.options = parser.parse_args(names_str.split())
@@ -224,8 +224,8 @@ class DBMolecules(object):
             self.dic_mapping[mol.getID()] = mol.getName()
             self.inv_dic_mapping[mol.getName()] = mol.getID()
 
-        if self.options.linksfile and len(self.options.linksfile)>0:
-            self.parse_links_file(self.options.linksfile)
+        if self.options.links_file and len(self.options.links_file)>0:
+            self.parse_links_file(self.options.links_file)
 
         if self.options.known_actives_file and len(self.options.known_actives_file)>0:
             self.parse_known_actives_file(self.options.known_actives_file)
@@ -429,7 +429,7 @@ class DBMolecules(object):
             return self.mcs_map_store[idx]
         return None
 
-    def compute_mtx(self, a, b, strict_mtx, loose_mtx, ecr_mtx, MCS_map):
+    def compute_mtx(self, a, b, strict_mtx, loose_mtx, true_strict_mtx, MCS_map):
         """
         Compute a chunk of the similarity score matrices. The chunk is selected
         by the start index a and the final index b. The matrices are indeed 
@@ -452,10 +452,9 @@ class DBMolecules(object):
            array managed by the different allocated processes. Each process 
            operates on a separate chunk selected by the indexes a and b
 
-        ecr_mtx: python multiprocessing array
-           Originally held the ECR score (charge rule score), but that's useless.
-           Repurposed to hold the strict score *before* that is potentially
-           modified by the prespecified link function.
+        true_strict_mtx: python multiprocessing array
+           Holds the strict score *before* that is potentially
+           modified by the prespecified link function (which sets the link score to 1.0).
 
         MCS_map: dict (multiprocessing)
             Holds a dict of (index tuple) -> string with the strings being the 
@@ -572,7 +571,7 @@ class DBMolecules(object):
             loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
-            ecr_mtx[k] = strict_scr
+            true_strict_mtx[k] = strict_scr
             logging.info(
                 'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' % 
                   (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
@@ -583,7 +582,7 @@ class DBMolecules(object):
                 print("Molecule pair",i,j,"prespecified - score set to 1")
                 strict_mtx[k] = 1.0
                 loose_mtx[k] = 1.0
-                # Note that ecr_mtx holds the original strict_scr value
+                # Note that true_strict_mtx holds the original strict_scr value
                 continue
 
         return
@@ -601,13 +600,13 @@ class DBMolecules(object):
         # which implements a basic class for symmetric matrices
         self.strict_mtx = SMatrix(shape=(self.nums(),))
         self.loose_mtx = SMatrix(shape=(self.nums(),))
-        self.ecr_mtx = SMatrix(shape=(self.nums(),))
+        self.true_strict_mtx = SMatrix(shape=(self.nums(),))
         # The total number of the effective elements present in the symmetric matrix
         l = int(self.nums() * (self.nums() - 1) / 2)
 
         if self.options.parallel == 1:  # Serial execution
             MCS_map = {}
-            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.ecr_mtx, MCS_map)
+            self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.true_strict_mtx, MCS_map)
             for idx in MCS_map:
               self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
         else:
@@ -632,7 +631,7 @@ class DBMolecules(object):
               # At the moment we're using a combination of Array and Manager, which is nasty
               strict_mtx = multiprocessing.Array('d', self.strict_mtx)
               loose_mtx = multiprocessing.Array('d', self.loose_mtx)
-              ecr_mtx = multiprocessing.Array('d', self.ecr_mtx)
+              true_strict_mtx = multiprocessing.Array('d', self.true_strict_mtx)
               MCS_map = manager.dict()
   
               # Chopping the indexes redistributing the remainder
@@ -652,7 +651,7 @@ class DBMolecules(object):
   
                   # Python multiprocessing allocation
                   p = multiprocessing.Process(target=self.compute_mtx,
-                                              args=(i, j, strict_mtx, loose_mtx, ecr_mtx, MCS_map, ))
+                                              args=(i, j, strict_mtx, loose_mtx, true_strict_mtx, MCS_map, ))
                   p.start()
                   proc.append(p)
               # End parallel execution
@@ -662,7 +661,7 @@ class DBMolecules(object):
               # Copying back the results
               self.strict_mtx[:] = strict_mtx[:]
               self.loose_mtx[:] = loose_mtx[:]
-              self.ecr_mtx[:] = ecr_mtx[:]
+              self.true_strict_mtx[:] = true_strict_mtx[:]
               for idx in MCS_map.keys():
                 self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
 
@@ -1057,7 +1056,7 @@ def startup():
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
                          ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display, 
-                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.linksfile, 
+                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.links_file, 
                          ops.known_actives_file, ops.max_dist_from_actives)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
@@ -1124,7 +1123,7 @@ graph_group.add_argument('-b', '--hub', default=None, type=str, \
                          help='Using a radial graph approach with a manually specified hub compound')
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
-graph_group.add_argument('-l', '--linksfile', type=str, default='', \
+graph_group.add_argument('-l', '--links-file', type=str, default='', \
                           help='Specify a filename listing the pairs of molecule files that should be initialised as linked, one per line')
 graph_group.add_argument('-k', '--known-actives-file', type=str, default='', \
                           help='Specify a filename listing the molecule files that should be initialised as "known actives", one per line')
