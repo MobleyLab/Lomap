@@ -906,59 +906,60 @@ class GraphGen(object):
         if self.lead_index is not None:
             morph_txt = open(self.dbase.options.name + "_morph.txt", "w")
             morph_data = "morph_pairs = "
-        info_txt = open(self.dbase.options.name + "_score_with_connection.txt", "w")
-        all_key_id = self.dbase.dic_mapping.keys()
-        data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
-        "Index_1", "Index_2", "Filename_1", "Filename_2", "Str_sim", "Eff_sim", "Loose_sim", "Connect")]
-        for i in range(len(all_key_id) - 1):
-            for j in range(i + 1, len(all_key_id)):
-                morph_string = None
-                connected = False
-                similarity=0
-                try:
-                    edgedata=[d for (u,v,d) in self.resultGraph.edges(data=True) if ((u==i and v==j) or (u==j and v==i))]
-                    similarity = edgedata[0]['similarity']
-                    connected = True
-                except IndexError:
-                    pass
-                Filename_i = self.dbase.dic_mapping[i]
-                Filename_j = self.dbase.dic_mapping[j]
-                MCmap = self.dbase.get_MCSmap(i,j)
-                mapString=""
-                if MCmap is not None:
-                    mapString = MCmap
-                # print "Check the filename", Filename_i, Filename_j
-                strict_similarity = self.dbase.strict_mtx[i, j]
-                loose_similarity = self.dbase.loose_mtx[i, j]
-                true_strict_similarity = self.dbase.true_strict_mtx[i, j]
-                if connected:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
-                    i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "Yes",mapString)
-                    # generate the morph type, and pick the start ligand based on the similarity
-                    if self.lead_index is not None:
-                        morph_i = Filename_i.split(".")[0]
-                        morph_j = Filename_j.split(".")[0]
-                        if i == self.lead_index:
-                            morph_string = "%s > %s, " % (morph_i, morph_j)
-                        elif j == self.lead_index:
-                            morph_string = "%s > %s, " % (morph_j, morph_i)
-                        else:
-                            # compare i and j with the lead compound, and
-                            # pick the one with the higher similarity as the start ligand
-                            similarity_i = self.dbase.strict_mtx[self.lead_index, i]
-                            similarity_j = self.dbase.strict_mtx[self.lead_index, j]
-                            if similarity_i > similarity_j:
+        with open(self.dbase.options.name + "_score_with_connection.txt", "w") as info_txt:
+            all_key_id = self.dbase.dic_mapping.keys()
+            data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
+            "Index_1", "Index_2", "Filename_1", "Filename_2", "Str_sim", "Eff_sim", "Loose_sim", "Connect")]
+            for i in range(len(all_key_id) - 1):
+                for j in range(i + 1, len(all_key_id)):
+                    morph_string = None
+                    connected = False
+                    similarity=0
+                    try:
+                        edgedata=[d for (u,v,d) in self.resultGraph.edges(data=True) if ((u==i and v==j) or (u==j and v==i))]
+                        similarity = edgedata[0]['similarity']
+                        connected = True
+                    except IndexError:
+                        pass
+                    Filename_i = self.dbase.dic_mapping[i]
+                    Filename_j = self.dbase.dic_mapping[j]
+                    MCmap = self.dbase.get_MCSmap(i,j)
+                    mapString=""
+                    if MCmap is not None:
+                        mapString = MCmap
+                    # print "Check the filename", Filename_i, Filename_j
+                    strict_similarity = self.dbase.strict_mtx[i, j]
+                    loose_similarity = self.dbase.loose_mtx[i, j]
+                    true_strict_similarity = self.dbase.true_strict_mtx[i, j]
+                    if connected:
+                        new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
+                        i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "Yes",mapString)
+                        # generate the morph type, and pick the start ligand based on the similarity
+                        if self.lead_index is not None:
+                            morph_i = Filename_i.split(".")[0]
+                            morph_j = Filename_j.split(".")[0]
+                            if i == self.lead_index:
                                 morph_string = "%s > %s, " % (morph_i, morph_j)
-                            else:
+                            elif j == self.lead_index:
                                 morph_string = "%s > %s, " % (morph_j, morph_i)
-                        morph_data += morph_string
-                else:
-                    new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
-                    i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "No",mapString)
-                data.append(new_line)
-        info_txt.writelines(data)
-        if self.lead_index is not None:
-            morph_txt.write(morph_data)
+                            else:
+                                # compare i and j with the lead compound, and
+                                # pick the one with the higher similarity as the start ligand
+                                similarity_i = self.dbase.strict_mtx[self.lead_index, i]
+                                similarity_j = self.dbase.strict_mtx[self.lead_index, j]
+                                if similarity_i > similarity_j:
+                                    morph_string = "%s > %s, " % (morph_i, morph_j)
+                                else:
+                                    morph_string = "%s > %s, " % (morph_j, morph_i)
+                            morph_data += morph_string
+                    else:
+                        new_line = "%-10s,%-10s,%-25s,%-25s,%-15.5f,%-15.5f,%-15.5f,%-10s,%s\n" % (
+                        i, j, Filename_i, Filename_j, true_strict_similarity, strict_similarity, loose_similarity, "No",mapString)
+                    data.append(new_line)
+            info_txt.writelines(data)
+            if self.lead_index is not None:
+                morph_txt.write(morph_data)
+                
 
     def write_graph(self, output_no_images, output_no_graph):
         """

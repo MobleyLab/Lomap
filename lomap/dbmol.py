@@ -540,7 +540,7 @@ class DBMolecules(object):
             moli = self[i].getMolecule()
             molj = self[j].getMolecule()
 
-            # print 'Processing molecules:\n%s\n%s' % (self[i].getName(),self[j].getName())
+            logging.info('Processing molecules: %s-%s' % (self[i].getName(),self[j].getName())
 
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
@@ -700,8 +700,8 @@ class DBMolecules(object):
         if self.options.output:
             try:
                 Gr.write_graph(self.options.output_no_images, self.options.output_no_graph)
-                pickle_f = open(self.options.name + ".pickle", "wb")
-                pickle.dump(Gr, pickle_f)
+                with open(self.options.name + ".pickle", "wb") as pickle_f:
+                    pickle.dump(Gr, pickle_f)
             except Exception as e:
                 logging.error(str(e))
 
