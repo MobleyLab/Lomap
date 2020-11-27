@@ -362,6 +362,26 @@ class TestLomap(unittest.TestCase):
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
         self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
 
+    def test_complete_run_parallel(self):
+        '''Test running in parallel mode with 5 subprocesses.'''
+        progname=sys.argv[0]
+        sys.argv=[progname,'-p','5','--output-no-images','--output-no-graph','test/linksfile']
+        dbmol.startup()
+        # Check scores
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
+        assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
+        assert(isclose(self.score_for_link('phenyl.sdf','toluyl.sdf'),0.90484))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
+        assert(isclose(self.score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
+        assert(isclose(self.score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+
     def test_linksfile(self):
         """ Test a linksfile forcing a link from phenyl to phenylfuran. """
         progname=sys.argv[0]
