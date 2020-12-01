@@ -540,7 +540,7 @@ class DBMolecules(object):
             moli = self[i].getMolecule()
             molj = self[j].getMolecule()
 
-            logging.info('Processing molecules: %s-%s' % (self[i].getName(),self[j].getName())
+            logging.info('Processing molecules: %s-%s' % (self[i].getName(),self[j].getName()))
 
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
