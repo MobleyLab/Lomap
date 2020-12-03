@@ -94,6 +94,8 @@ class GraphGen(object):
 
         self.similarityScoresLimit = dbase.options.cutoff
 
+        self.requireCycleCovering = not dbase.options.allow_tree
+
         if dbase.options.radial:
             self.lead_index = self.pick_lead()
         else:
@@ -478,7 +480,8 @@ class GraphGen(object):
         if not self.remains_connected(subgraph, numComp):
             constraintsMet = False
 
-        if constraintsMet:
+        # The requirement to keep a cycle covering is now optional
+        if constraintsMet and self.requireCycleCovering:
             if not self.check_cycle_covering(subgraph):
                 constraintsMet = False
 

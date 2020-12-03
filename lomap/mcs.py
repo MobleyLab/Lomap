@@ -832,7 +832,7 @@ class MCS(object):
 
             if mismatch:
                 nmismatch+=1
-                print("Hybridization mismatch",moli_a.GetIdx(),moli_a.GetSymbol(),hybi,molj_a.GetIdx(),molj_a.GetSymbol(),hybj)
+                logging.info("Hybridization mismatch",moli_a.GetIdx(),moli_a.GetSymbol(),hybi,molj_a.GetIdx(),molj_a.GetSymbol(),hybj)
 
         hyb_score =  math.exp(-1 * self.beta * nmismatch * penalty_weight)
         logging.info('hybridization score from %d mismatches is %f' %(nmismatch,hyb_score))

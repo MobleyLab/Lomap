@@ -8,6 +8,7 @@ import subprocess
 import math
 import argparse
 import sys
+import logging
 
 
 def executable():
@@ -19,17 +20,18 @@ def isclose(a,b):
     return (abs(a-b)<1e-5)
 
 class TestLomap(unittest.TestCase):
-    """ Docstring crap for parser. """
-    """
+    """ Problem is the executable moves around, so hard to test
     def test_insufficient_arguments(self):
         cmd = [executable()]
         error_string = b'error: the following arguments are required: directory'
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
         assert(error_string in stderr)
+    """
 
     def test_mcsr(self):
         # MolA, molB, 3D?, max3d, mcsr, atomic_number_rule
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         data=[ ('test/transforms/phenyl.sdf','test/transforms/toluyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
                ('test/transforms/phenyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, math.exp(-0.1 * (6 + 7 - 2*6)), 1) ,
                ('test/transforms/toluyl.sdf','test/transforms/chlorophenyl.sdf', False, 1000, 1, math.exp(-0.1 * 0.5)) ,
@@ -67,6 +69,7 @@ class TestLomap(unittest.TestCase):
 
     # Check iter and next
     def test_iter_next(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
                            display=False, max=6, cutoff=0.4, radial=False, hub=None)
         for i in range(0, inst.nums()):
@@ -77,6 +80,7 @@ class TestLomap(unittest.TestCase):
 
     # Check get, set and add
     def test_get_set_add(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
                            display=False, max=6, cutoff=0.4, radial=False, hub=None)
         with self.assertRaises(IndexError):
@@ -91,6 +95,7 @@ class TestLomap(unittest.TestCase):
 
     # Check serial and parallel mode
     def test_serial_parallel(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         db = DBMolecules('test/basic')
         s_strict, s_loose = db.build_matrices()
         db.options.paralell = multiprocessing.cpu_count()
@@ -101,6 +106,7 @@ class TestLomap(unittest.TestCase):
 
 
     def test_read_mol2_files(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         db = DBMolecules('test/basic')
         db.options.directory = 'test/'
         with self.assertRaises(IOError):
@@ -111,6 +117,7 @@ class TestLomap(unittest.TestCase):
     # Test by Max indicates that growing complex heterocycles tends
     # to fail, so only allow growing phenyl, furan and pyrrole
     def test_heterocycle_scores(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('phenylfuran.sdf',1),
                  ('phenylimidazole.sdf',math.exp(-0.1*4)),
                  ('phenylisoxazole.sdf',math.exp(-0.1*4)),
@@ -132,6 +139,7 @@ class TestLomap(unittest.TestCase):
     # Tests by Max indicate that growing a sulfonamide all in one go is 
     # dodgy, so disallow it
     def test_sulfonamide_scores(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('cdk2_lig11.sdf',math.exp(-0.1*4)),
                  ('cdk2_lig1.sdf',1),
                  ('cdk2_lig2.sdf',math.exp(-0.1*4)),
@@ -148,6 +156,7 @@ class TestLomap(unittest.TestCase):
 
     # Test to check symmetry equivalence by matching atomic numbers where possible
     def test_symmetry_matchheavies(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenol.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol3 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
@@ -167,6 +176,7 @@ class TestLomap(unittest.TestCase):
     
     # Test to check symmetry equivalence by matching 3D coordinates rather than atomic numbers
     def test_symmetry_match3d(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenol.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol3 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
@@ -186,6 +196,7 @@ class TestLomap(unittest.TestCase):
 
     # Test to check removing atoms from the MCS when the 3D coords are too far apart
     def test_clip_on_3d(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         mol1 = Chem.MolFromMolFile('test/transforms/chlorophenyl.sdf',sanitize=False, removeHs=False)
         mol2 = Chem.MolFromMolFile('test/transforms/chlorophenyl2.sdf',sanitize=False, removeHs=False)
         lg = RDLogger.logger()
@@ -197,6 +208,7 @@ class TestLomap(unittest.TestCase):
 
     # Test disallowing turning a methyl group (or larger) into a ring atom
     def test_transmuting_methyl_into_ring_rule(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('phenyl.sdf','toluyl3.sdf',1),
                  ('toluyl3.sdf','chlorotoluyl1.sdf',1),
                  ('toluyl3.sdf','phenylfuran.sdf',math.exp(-0.1*4)),
@@ -215,6 +227,7 @@ class TestLomap(unittest.TestCase):
 
     # Test penalising hybridization changes
     def test_hybridization_rule(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('napthyl.sdf','tetrahydronaphthyl.sdf',math.exp(-0.1 * 4))
                  ]
         lg = RDLogger.logger()
@@ -227,6 +240,7 @@ class TestLomap(unittest.TestCase):
 
     # Test disallowing turning a ring into an incompatible ring
     def test_transmuting_ring_sizes_rule(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('phenyl.sdf','phenylcyclopropyl.sdf',1),
                  ('toluyl.sdf','phenylcyclopropyl.sdf',1),  # Disallowed by test_transmuting_methyl_into_ring_rule instead
                  ('phenylcyclopropyl.sdf','phenylcyclobutyl.sdf',0),
@@ -246,6 +260,7 @@ class TestLomap(unittest.TestCase):
 
     # Test getting the mapping string out of the MCS
     def test_mapping_string_heavy(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('phenyl.sdf','toluyl3.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7"),
                  ('toluyl2.sdf','chlorotoluyl1.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:8,8:9"),
                  ('toluyl3.sdf','phenylfuran.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7")
@@ -260,6 +275,7 @@ class TestLomap(unittest.TestCase):
 
     # Test getting the mapping string including hydrogens out of the MCS
     def test_mapping_string_hydrogen(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('phenyl.sdf','toluyl3.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:9,9:10,10:8,11:11,12:17,13:12,14:13,15:14,16:15,17:16"),
                  ('toluyl2.sdf','chlorotoluyl1.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:8,8:9,9:10,10:7,11:11,12:12,13:13,14:14,15:15,16:16,17:17,18:18,19:19,20:20"),
                  ('toluyl3.sdf','phenylfuran.sdf',"0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,9:13,10:14,11:15,12:17,13:18,14:19,15:20,16:21,17:16"),
@@ -275,6 +291,7 @@ class TestLomap(unittest.TestCase):
     
     # Test to check correct handling of chirality
     def test_chirality_handling(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         testdata=[('Chiral1R.sdf','Chiral1S.sdf',6),
                   ('Chiral1R.sdf','Chiral2R.sdf',7),
                   ('Chiral1S.sdf','Chiral2R.sdf',6),
@@ -304,6 +321,7 @@ class TestLomap(unittest.TestCase):
 
     # Test to check correct trimming of rings when 3D coordinate matching is used
     def test_ring_trimming_on_3d_match(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         parent=Chem.MolFromMolFile('test/transforms/phenylcyclopentylmethyl1.sdf',sanitize=False, removeHs=False)
         comp=Chem.MolFromMolFile('test/transforms/phenylcyclopentylmethyl2.sdf',sanitize=False, removeHs=False)
         MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
@@ -311,6 +329,7 @@ class TestLomap(unittest.TestCase):
 
     # Test to check handling of the alpha- vs beta-naphthyl bug
     def test_rdkit_broken_mcs_fix(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         parent=Chem.MolFromMolFile('test/transforms/napthyl2.sdf',sanitize=False, removeHs=False)
         comp=Chem.MolFromMolFile('test/transforms/napthyl3.sdf',sanitize=False, removeHs=False)
         MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
@@ -318,6 +337,7 @@ class TestLomap(unittest.TestCase):
 
     # Test to check handling of mapping to prochiral hydrogens
     def test_mapping_prochiral_hydrogen(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         parent=Chem.MolFromMolFile('test/chiral/tpbs2_lig1.sdf',sanitize=False, removeHs=False)
         parent2=Chem.MolFromMolFile('test/chiral/tpbs2_lig1a.sdf',sanitize=False, removeHs=False)   # Atom ordering changed
         comp=Chem.MolFromMolFile('test/chiral/tpbs2_lig2.sdf',sanitize=False, removeHs=False)
@@ -329,7 +349,6 @@ class TestLomap(unittest.TestCase):
         # parent2 is the same mol as parent1, except that atoms 34 and 35 were swapped
         assert("51:12" in MC.all_atom_match_list())
         assert("34:11" in MC.all_atom_match_list())
-    """
 
     def fields_for_link(self, mola, molb):
         """ Parse the out_score_with_connection.txt file, find the line for mola to molb, and return its fields. """
@@ -344,8 +363,9 @@ class TestLomap(unittest.TestCase):
         return float(self.fields_for_link(mola,molb)[4])
             
     def test_complete_run(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         progname=sys.argv[0]
-        sys.argv=[progname,'--output-no-images','--output-no-graph','test/linksfile']
+        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
@@ -364,8 +384,9 @@ class TestLomap(unittest.TestCase):
 
     def test_complete_run_parallel(self):
         '''Test running in parallel mode with 5 subprocesses.'''
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         progname=sys.argv[0]
-        sys.argv=[progname,'-p','5','--output-no-images','--output-no-graph','test/linksfile']
+        sys.argv=[progname,'-o','-p','5','--output-no-images','--output-no-graph','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
@@ -384,8 +405,9 @@ class TestLomap(unittest.TestCase):
 
     def test_linksfile(self):
         """ Test a linksfile forcing a link from phenyl to phenylfuran. """
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         progname=sys.argv[0]
-        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links1.txt','test/linksfile']
+        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links1.txt','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
@@ -404,8 +426,9 @@ class TestLomap(unittest.TestCase):
 
     def test_linksfile_scores(self):
         """ Test a linksfile forcing prespecified scores for some links."""
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         progname=sys.argv[0]
-        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links2.txt','test/linksfile']
+        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links2.txt','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
@@ -424,8 +447,9 @@ class TestLomap(unittest.TestCase):
 
     def test_linksfile_scores_force(self):
         """ Test a linksfile forcing prespecified scores and link inclusion for some links."""
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
         progname=sys.argv[0]
-        sys.argv=[progname,'--output-no-images','--output-no-graph','--links-file','test/linksfile/links3.txt','test/linksfile']
+        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links3.txt','test/linksfile']
         dbmol.startup()
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.1))
@@ -441,6 +465,19 @@ class TestLomap(unittest.TestCase):
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"Yes")
         self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"Yes")
         self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"Yes")
+
+    def test_no_cycle_cover(self):
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
+        progname=sys.argv[0]
+        sys.argv=[progname,'-o','-T','--output-no-images','--output-no-graph','test/linksfile']
+        dbmol.startup()
+        # Check connections
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenyl.sdf','toluyl.sdf')[7],"Yes")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylcyclobutyl.sdf','toluyl.sdf')[7],"No")
+        self.assertEqual(self.fields_for_link('phenylfuran.sdf','toluyl.sdf')[7],"No")
 
 
 if __name__ == '__main__':

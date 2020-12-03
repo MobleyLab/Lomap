@@ -74,7 +74,7 @@ class DBMolecules(object):
     def __init__(self, directory, parallel=1, verbose='off',
                  time=20, ecrscore=0.0, threed=False, max3d=1000.0, output=False,
                  name='out', output_no_images=False, output_no_graph=False, display=False,
-                 max=6, cutoff=0.4, radial=False, hub=None, fast=False, 
+                 allow_tree=False, max=6, cutoff=0.4, radial=False, hub=None, fast=False, 
                  links_file=None, known_actives_file=None, max_dist_from_actives=2):
 
         """
@@ -107,6 +107,8 @@ class DBMolecules(object):
            a flag used to disable the generation of the output graph (.dot) file
         display : bool
            a flag used to display or not a network made by using matplotlib
+        allow_tree: bool
+           if set, then the final graph does not need a cycle covering and will be a tree
         max : int
            the maximum diameter of the resulting graph 
         cutoff : float
@@ -160,14 +162,8 @@ class DBMolecules(object):
             threed_str = ''
             links_file_str = ''
             known_actives_file_str = ''
+            allow_tree_str = ''
 
-            parser.set_defaults(output=output)
-            parser.set_defaults(output_no_images=output_no_images)
-            parser.set_defaults(output_no_graph=output_no_graph)
-            parser.set_defaults(display=display)
-            parser.set_defaults(radial=radial)
-            parser.set_defaults(fast=fast)
-            parser.set_defaults(threed=threed)
             if output:
                 output_str = '--output'
 
@@ -189,16 +185,19 @@ class DBMolecules(object):
             if threed:
                 threed_str = '--threed'
 
+            if allow_tree:
+                allow_tree_str = '--allow-tree'
+
             if links_file:
                 links_file_str = f'--links-file {links_file}'
 
             if known_actives_file:
                 known_actives_file_str = f'--known-actives-file {known_actives_file}'
 
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s' \
+            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s %s' \
                         % (
                         directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fast_str, threed_str, links_file_str, known_actives_file_str)
+                        radial_str, fast_str, threed_str, allow_tree_str, links_file_str, known_actives_file_str)
 
             #print("ARGS:",names_str)
             self.options = parser.parse_args(names_str.split())
@@ -1074,7 +1073,7 @@ def startup():
     # Molecule DataBase initialized with the passed user options
     db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d, 
                          ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display, 
-                         ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.links_file, 
+                         ops.allow_tree, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.links_file, 
                          ops.known_actives_file, ops.max_dist_from_actives)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
@@ -1097,8 +1096,6 @@ parser = argparse.ArgumentParser(description='Lead Optimization Mapper 2. A prog
                                  prog='LOMAP v. %s' % get_versions()['version'])
 parser.add_argument('directory', action=CheckDir, \
                     help='The mol2/sdf file directory')
-# parser.add_argument('-t', '--time', default=20, action=check_int,type=int,\
-#                     help='Set the maximum time in seconds to perform the mcs search between pair of molecules')
 parser.add_argument('-p', '--parallel', default=1, action=CheckPos, type=int, \
                     help='Set the parallel mode. If an integer number N is specified, N processes will be executed to '
                          'build the similarity matrices')
@@ -1129,6 +1126,9 @@ parser.add_argument('-d', '--display', default=False, action='store_true', \
                     help='Display the generated graph by using Matplotlib')
 
 graph_group = parser.add_argument_group('Graph setting')
+graph_group.add_argument('-T', '--allow-tree', default=False, action='store_true', \
+                        help='Remove the requirement that all molecules be in a cycle, so that the returned '
+                             'graph will be a tree instead.');
 graph_group.add_argument('-m', '--max', default=6, action=CheckPos, type=int, \
                          help='The maximum diameter of the graph')
 graph_group.add_argument('-A', '--max-dist-from-actives', default=2, action=CheckPos, type=int, \
