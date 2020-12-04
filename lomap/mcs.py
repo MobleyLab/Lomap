@@ -832,7 +832,7 @@ class MCS(object):
 
             if mismatch:
                 nmismatch+=1
-                logging.info("Hybridization mismatch",moli_a.GetIdx(),moli_a.GetSymbol(),hybi,molj_a.GetIdx(),molj_a.GetSymbol(),hybj)
+                logging.info("Hybridization mismatch %d %s %d vs %d %s %d",moli_a.GetIdx(),moli_a.GetSymbol(),hybi,molj_a.GetIdx(),molj_a.GetSymbol(),hybj)
 
         hyb_score =  math.exp(-1 * self.beta * nmismatch * penalty_weight)
         logging.info('hybridization score from %d mismatches is %f' %(nmismatch,hyb_score))
@@ -904,8 +904,8 @@ class MCS(object):
             grow6mheterocycle =  rwm.HasSubstructMatch(Chem.MolFromSmarts('[n]1[c,n][c,n][c,n][c,n][c,n]1'))
 
             # Note that growing pyrrole, furan or thiophene is allowed
-            grow5mheterocycle =  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n&X3,s]1[n][c,n][c,n][c,n]1'))
-            grow5mheterocycle |=  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n&X3,s]1[c,n][n][c,n][c,n]1'))
+            grow5mheterocycle =  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n,s]1[n][c,n][c,n][c,n]1'))
+            grow5mheterocycle |=  rwm.HasSubstructMatch(Chem.MolFromSmarts('[o,n,s]1[c,n][n][c,n][c,n]1'))
             return (grow6mheterocycle | grow5mheterocycle)
 
 
