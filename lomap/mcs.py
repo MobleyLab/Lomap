@@ -960,7 +960,7 @@ class MCS(object):
          Rule to prevent turning a ring atom into a ring atom with a different ring size
          (you can grow a ring, but you can't turn a cyclopentyl into a cyclohexyl)
 
-         Hard rule: sets score to zero if violated
+         Hard rule: sets score to near zero if violated
 
         """
         moli=self.__moli_noh
@@ -992,7 +992,7 @@ class MCS(object):
                             if (moli.GetAtomWithIdx(edgeAtom_i).IsInRingSize(ring_size) or molj.GetAtomWithIdx(edgeAtom_j).IsInRingSize(ring_size)):
                                 break
 
-        return 0 if is_bad else 1
+        return 0.1 if is_bad else 1
 
     def heavy_atom_mcs_map(self):
         '''
