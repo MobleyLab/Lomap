@@ -59,13 +59,12 @@ Using
       nx_graph = db_mol.build_graph() 
 """
 
-from lomap.dbmol import DBMolecules
-from lomap.dbmol import SMatrix
-from lomap.dbmol import Molecule
-from lomap.mcs import MCS
+from .dbmol import DBMolecules
+from .dbmol import SMatrix
+from .dbmol import Molecule
+from .mcs import MCS
 
 del dbmol
-del graphgen
 del mcs
 
 from ._version import get_versions

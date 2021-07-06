@@ -51,8 +51,8 @@ from ._version import get_versions
 
 import networkx as nx
 import numpy as np
-from lomap import graphgen
-from lomap import mcs
+from . import graphgen
+from . import mcs
 from rdkit import Chem
 from rdkit import DataStructs
 
