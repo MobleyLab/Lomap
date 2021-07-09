@@ -7,15 +7,15 @@
 Alchemical free energy calculations hold increasing promise 
 as an aid to drug discovery efforts. However, applications of 
 these techniques in discovery projects have been relatively 
-few, partly because of the difficulty of planning and setting up 
+rare, partly because of the difficulty of planning and setting up 
 calculations. The lead optimization mapper (LOMAP) was 
 introduced as an automated algorithm to plan efficient relative 
 free energy calculations between potential ligands within 
 a substantial of compounds. The original LOMAP code was mainly
 based on commercial APIs such as OpenEye and Schrodinger. The aim 
-of this project is to deveop a new version of LOMAP based on free
+of this project is to develop a new version of LOMAP based on free
 avalaible APIs such as RDKit offering the scientific community a 
-free tool to plan in advance binding free energy calculations
+free tool to plan in advance binding free energy calculations.
 
 
 ## Prerequisites
@@ -30,13 +30,18 @@ Authors
 * Gaetano Calabro' <gcalabro@uci.edu>
 * David Mobley <dmobley@uci.edu>
 
+* Mark Mackey
+* Lester Hedges
+* Antonia S J S Mey
+* Jenke Scheen
+
 ## Installation
 
 `python setup.py install`
 
 Usage
 -----
-As a commandline tool it can be simply used as:
+As a commandline tool LOMAP can be simply used as:
 `
 lomap test/basic/
 `
@@ -44,10 +49,10 @@ lomap test/basic/
 For a basic example run:
 `python examples/example.py`
 
-For generating radial graphs with a hub run:
+For generating radial graphs with a hub, run:
 `python examples/example_radial.py`
 
-If you rather use the API directly try:
+If you would rather use the API directly, try:
 
 ```python
 import lomap
