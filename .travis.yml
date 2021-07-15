@@ -1,42 +1,45 @@
 language: python
-
-sudo: false
+matrix:
+  include:
+    - os: linux
+      python: 3.6
+      env:
+        - PYTHON_VER=3.6
+    - os: linux
+      python: 3.5
+      env:
+        - PYTHON_VER=3.5
 
 branches:
   only:
+    - devel
     - master
+    - feat_pytest 
 
+before_install: 
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+  - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
+  - source activate test-env
+  - conda install networkx
+  - conda install numpy
+  - conda install matplotlib
+  - conda install -c rdkit rdkit=2018.03.4
+  - conda install pip pytest
+  - pip install codecov
+install: yes
 
-before_install:
-  - source devtools/travis-ci/install.sh 
-  - export PYTHONUNBUFFERED=true
-
-
-install: true
-
-
-script: 
-  - conda config --add channels ${ORGNAME}
-  - conda build devtools/conda-recipe 
-  - conda create -n _test --yes
-  - source activate _test
-  - conda install --use-local lomap --yes
-  - conda install --yes pip nose
-  - pip install nose-timer
-  - nosetests -v
-
-env:
-  matrix:
-    - CONDA_PY=27
-    - CONDA_PY=34
-
-  global:
-    - ORGNAME="nividic"
-    - PACKAGENAME="lomap"
-
+script:
+  - python setup.py install
+  - pytest -v test/test_lomap.py 
 
 after_success:
   - echo "...DONE..."
-
+  - codecov
 notifications:
   email: false

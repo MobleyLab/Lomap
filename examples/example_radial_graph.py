@@ -3,15 +3,13 @@ import lomap
 import sys
 import networkx as nx
 
-    
 # Create the molecule database by using .mol2 files
 # The DBMolecule class must be created with a valid
 # directory name
         
-db_mol = lomap.DBMolecules('test/basic/', output=True)
-
-# db_mol = lomap.DBMolecules('test/basic/', output=True, display=True)
-
+db_mol = lomap.DBMolecules('../test/radial/', output=True, radial=True )
+#use the radial option with hub ligand set as 
+#db_mol = lomap.DBMolecules('test/radial/', output=True, radial=True, hub="ejm_46.mol2")
     
 # Generate the strict and loose symmetric similarity 
 # score matrices

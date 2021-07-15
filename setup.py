@@ -8,6 +8,7 @@ python setup.py install
 
 import sys,os
 from os.path import relpath, join
+import versioneer
 
 from setuptools import setup, find_packages
 
@@ -29,11 +30,27 @@ potential ligands within a substantial of compounds'
 
 setup(
     name                 = 'lomap',
-    version              = '0.0.0',
+    version              = versioneer.get_version(),
+    cmdclass             = versioneer.get_cmdclass(),
     description          = 'Lead Optimization Mapper 2',
     long_description     = descr,
+    classifiers=[
+            'Development Status :: 3 - Alpha',
+            'Environment :: Console',
+            'Intended Audience :: Science/Research',
+            'Natural Language :: English',
+            'Operating System :: MacOS :: MacOS X',
+            'Operating System :: POSIX :: Linux',
+            'Programming Language :: Python :: 3.5',
+            'Topic :: Scientific/Engineering :: Bio-Informatics',
+            'Topic :: Scientific/Engineering :: Chemistry',
+            'Topic :: Scientific/Engineering :: Mathematics',
+            'Topic :: Scientific/Engineering :: Physics'
+    ],
+    keywords=[ 'alchemical free energy setup', 'perturbation network' ],
     url                  = 'https://github.com/MobleyLab/Lomap',
     author               = 'Gaetano Calabro and David Mobley',
+    maintainer           = 'Antonia Mey and David Mobley',
     author_email         = 'gcalabro -at- uci.edu',
     license              = 'MIT',
     platforms            = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
