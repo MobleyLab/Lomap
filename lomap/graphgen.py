@@ -7,11 +7,11 @@
 LOMAP: Graph generation
 =====
 
-Alchemical free energy calculations hold increasing promise as an aid to drug 
-discovery efforts. However, applications of these techniques in discovery 
-projects have been relatively few, partly because of the difficulty of planning 
-and setting up calculations. The Lead Optimization Mapper (LOMAP) is an 
-automated algorithm to plan efficient relative free energy calculations between 
+Alchemical free energy calculations hold increasing promise as an aid to drug
+discovery efforts. However, applications of these techniques in discovery
+projects have been relatively few, partly because of the difficulty of planning
+and setting up calculations. The Lead Optimization Mapper (LOMAP) is an
+automated algorithm to plan efficient relative free energy calculations between
 potential ligands within a substantial of compounds.
 
 """
@@ -22,8 +22,8 @@ potential ligands within a substantial of compounds.
 #
 # Authors: Dr Gaetano Calabro' and Dr David Mobley
 #
-# This part of the code has been originally made by Jonathan Redmann, 
-# and Christopher Summa at Summa Lab, Dept. of Computer Science, 
+# This part of the code has been originally made by Jonathan Redmann,
+# and Christopher Summa at Summa Lab, Dept. of Computer Science,
 # University of New Orleans and it has just been adapded to the new Lomap code
 #
 # This library is free software; you can redistribute it and/or
@@ -77,13 +77,13 @@ class GraphGen(object):
 
         """
         Inizialization function
-    
+
         Parameters
         ----------
 
         dbase : dbase object
             the molecule container
-       
+
         """
 
         self.dbase = dbase
@@ -128,7 +128,7 @@ class GraphGen(object):
 
         # The following Section has been strongly copied/adapted from the original implementation
 
-        # Generate a list related to the disconnected graphs present in the initial graph 
+        # Generate a list related to the disconnected graphs present in the initial graph
         if dbase.options.fast and dbase.options.radial:
             # only enable the fast map option if use the radial option
             self.initialSubgraphList = self.generate_initial_subgraph_list(fast_map=True)
@@ -209,15 +209,15 @@ class GraphGen(object):
     def generate_initial_subgraph_list(self, fast_map=False):
 
         """
-        This function generates a starting graph connecting with edges all the 
-        compounds with a positive strict similarity score  
-        
+        This function generates a starting graph connecting with edges all the
+        compounds with a positive strict similarity score
+
         Returns
         -------
-        
+
         initialSubgraphList : list of NetworkX graph
-            the list of connected component graphs     
-        
+            the list of connected component graphs
+
         """
         compound_graph = nx.Graph()
 
@@ -262,18 +262,18 @@ class GraphGen(object):
     def generate_subgraph_scores_lists(self, subgraphList):
 
         """
-        This function generate a list of lists where each inner list is the 
-        weights of each edge in a given subgraph in the subgraphList, 
-        sorted from lowest to highest 
+        This function generate a list of lists where each inner list is the
+        weights of each edge in a given subgraph in the subgraphList,
+        sorted from lowest to highest
 
-        
+
         Returns
         -------
-        
+
         subgraphScoresLists : list of lists
-            each list contains a tuple with the graph node indexes and their 
+            each list contains a tuple with the graph node indexes and their
             similatiry as weigth
-        
+
         """
 
         subgraphScoresLists = []
@@ -291,10 +291,10 @@ class GraphGen(object):
 
     def remove_edges_below_hard_limit(self):
         """
-        
-        This function removes edges below the set hard limit from each subGraph 
+
+        This function removes edges below the set hard limit from each subGraph
         and from each weightsList
-        
+
         """
 
         totalEdges = 0
@@ -318,15 +318,15 @@ class GraphGen(object):
 
     def generate_working_subgraphs_list(self):
         """
-        After the deletition of the edges that have a weigth less than the 
-        selected threshould the subgraph maybe disconnected and a new master 
+        After the deletition of the edges that have a weigth less than the
+        selected threshould the subgraph maybe disconnected and a new master
         list of connected subgraphs is genereted
-        
+
         Returns
         -------
-        
+
         workingSubgraphsList : list of lists
-            each list contains a tuple with the graph node indexes and their 
+            each list contains a tuple with the graph node indexes and their
             similatiry as weigth
 
         """
@@ -410,7 +410,7 @@ class GraphGen(object):
     def find_non_cyclic_nodes(self, subgraph):
         """
         Generates a list of nodes of the subgraph that are not in a cycle
-         
+
         Parameters
         ---------
         subgraph : NetworkX subgraph obj
@@ -420,7 +420,7 @@ class GraphGen(object):
         -------
         missingNodesSet : set of graph nodes
             the set of graph nodes that are not in a cycle
-        
+
         """
 
         missingNodesSet = set()
@@ -439,7 +439,7 @@ class GraphGen(object):
         """
         Generates a set of edges of the subgraph that are not in a cycle (called
         "bridges" in networkX terminology).
-         
+
         Parameters
         ---------
         subgraph : NetworkX subgraph obj
@@ -449,7 +449,7 @@ class GraphGen(object):
         -------
         missingEdgesSet : set of graph edges
             the set of edges that are not in a cycle
-        
+
         """
 
         missingEdgesSet = set(nx.bridges(subgraph))
@@ -459,13 +459,13 @@ class GraphGen(object):
     def check_constraints(self, subgraph, numComp):
         """
         Determine if the given subgraph still meets the constraints
-        
+
 
         Parameters
         ----------
         subgraph : NetworkX subgraph obj
-             the subgraph to check for the constraints 
-        
+             the subgraph to check for the constraints
+
         numComp : int
             the number of connected componets
 
@@ -497,17 +497,17 @@ class GraphGen(object):
 
     def remains_connected(self, subgraph, numComponents):
         """
-        Determine if the subgraph remains connected after an edge has been 
+        Determine if the subgraph remains connected after an edge has been
         removed
-        
+
         Parameters
         ---------
         subgraph : NetworkX subgraph obj
             the subgraph to check for connection after the edge deletition
-        
+
         numComp : int
             the number of connected componets
-        
+
         Returns
         -------
         isConnected : bool
@@ -518,7 +518,7 @@ class GraphGen(object):
 
         isConnected = False
 
-        if numComponents == nx.number_connected_components(subgraph): 
+        if numComponents == nx.number_connected_components(subgraph):
             isConnected = True
         else:
             logging.info("Rejecting edge deletion on graph connectivity")
@@ -532,7 +532,7 @@ class GraphGen(object):
         increased, but we also care if the number of acyclic edges (bridges) has increased.
         Note that if the number of acyclic edges hasn't increased, then the number of
         acyclic nodes hasn't either, so that test is included in the edges test.
-        
+
         Parameters
         ---------
         subgraph : NetworkX subgraph obj
@@ -548,7 +548,7 @@ class GraphGen(object):
         hasCovering = True
 
         # Have we increased the number of non-cyclic edges?
-        if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet): 
+        if self.find_non_cyclic_edges(subgraph).difference(self.nonCycleEdgesSet):
             hasCovering = False
             logging.info("Rejecting edge deletion on cycle covering")
 
@@ -556,7 +556,7 @@ class GraphGen(object):
 
     def check_max_distance(self, subgraph):
         """
-        Check to see if the graph has paths from all compounds to all other 
+        Check to see if the graph has paths from all compounds to all other
         compounds within the specified limit
 
         Parameters
@@ -567,7 +567,7 @@ class GraphGen(object):
         Returns
         -------
         withinMaxDistance : bool
-            True if the subgraph has all the nodes within the specified 
+            True if the subgraph has all the nodes within the specified
             max distance
         """
 
@@ -575,7 +575,7 @@ class GraphGen(object):
 
         for node in subgraph:
             eccentricity = nx.eccentricity(subgraph, node)
-            if eccentricity > self.maxPathLength: 
+            if eccentricity > self.maxPathLength:
                 withinMaxDistance = False
                 logging.info("Rejecting edge deletion on graph diameter for node %d" % (node))
 
@@ -614,7 +614,7 @@ class GraphGen(object):
                     if (subgraph.nodes[node2]["active"]):
                         pathlen = len(paths[node][node2]) - 1   # No. edges is 1 less than no. nodes
                         if (pathlen <= self.maxDistFromActive): ok=True
-                if (not ok): 
+                if (not ok):
                     failures = failures + 1
 
         return failures
@@ -665,7 +665,7 @@ class GraphGen(object):
 
         Adds edges to the resultGraph to connect as many components of the final
         graph possible
-        
+
         """
 
         connectSuccess = self.connect_graph_components_brute_force()
@@ -683,10 +683,10 @@ class GraphGen(object):
 
     def connect_graph_components_brute_force(self):
         """
-        Adds edges to the resultGraph to connect all components that can be 
-        connected, only one edge is added per component, to form a tree like 
+        Adds edges to the resultGraph to connect all components that can be
+        connected, only one edge is added per component, to form a tree like
         structure between the different components of the resultGraph
-        
+
         Returns
         -------
         bool
@@ -753,7 +753,7 @@ class GraphGen(object):
         """
         Adds a second edge between each of the (former) components of the
         resultGraph to try to provide cycles between (former) components
-        
+
         Returns
         -------
         bool
@@ -964,12 +964,12 @@ class GraphGen(object):
             info_txt.writelines(data)
             if self.lead_index is not None:
                 morph_txt.write(morph_data)
-                
+
 
     def write_graph(self, output_no_images, output_no_graph):
         """
 
-        This function writes to a file the final generated NetworkX graph as 
+        This function writes to a file the final generated NetworkX graph as
         .dot and the .ps files. The mapping between molecule IDs and compounds
         name is saved as text file
 
@@ -1010,7 +1010,7 @@ class GraphGen(object):
     def draw(self):
         """
         This function plots the NetworkX graph by using Matplotlib
-        
+
         """
 
         logging.info('\nDrawing....')
@@ -1044,7 +1044,7 @@ class GraphGen(object):
         width = int(p.stdout.split()[1].split(b'x')[0])
         height = int(p.stdout.split()[1].split(b'x')[1])
 
-        # Canvas scale factor 
+        # Canvas scale factor
         scale_canvas = 0.75
 
         # Canvas resolution
