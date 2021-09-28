@@ -1,5 +1,4 @@
-[![Anaconda Badge](https://anaconda.org/nividic/lomap/badges/version.svg)](https://anaconda.org/nividic/lomap)
-[![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=master)](https://travis-ci.org/MobleyLab/Lomap)
+[![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=main)](https://travis-ci.org/MobleyLab/Lomap)
 [![codecov](https://codecov.io/gh/MobleyLab/Lomap/branch/devel/graph/badge.svg)](https://codecov.io/gh/MobleyLab/Lomap)
 
 
@@ -99,4 +98,9 @@ strict, loose = db_mol.build_matrices()
 nx_graph = db_mol.build_graph() 
 ```
 
+## Changelog
+- 2021-09-28: Switched default branch from `master` to `main`, bringing LOMAP back to functionality thanks to the good work of the Cresset and Michel lab folks, especially Lester Hedges, Jenke Scheen and Mark Mackey. Additional detail in [this PR](https://github.com/MobleyLab/Lomap/pull/54). Also removed link to conda from this README.md since no conda package is currently being built.
+
+## Releases
+ 
 
