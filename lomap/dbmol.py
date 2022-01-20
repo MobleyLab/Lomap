@@ -1067,14 +1067,49 @@ class CheckEcrscore(argparse.Action):
 
 
 def startup():
+    # This is the CLI entrypoint
     # Options and arguments passed by the user
     ops = parser.parse_args()
 
+    _startup_inner(directory=ops.directory, parallel=ops.parallel, verbose=ops.verbose, time=ops.time,
+                   ecrscore=ops.ecrscore, threed=ops.threed, max3d=ops.max3d,
+                   output=ops.output, name=ops.name, output_no_images=ops.output_no_images,
+                   output_no_graph=ops.output_no_graph, display=ops.display,
+                   allow_tree=ops.allow_tree, max=ops.max, max_dist_from_actives=ops.max_dist_from_actives,
+                   cutoff=ops.cutoff, radial=ops.radial, hub=ops.hub, fast=ops.fast, links_file=ops.links_file,
+                   known_actives_file=ops.known_actives_file,
+                   )
+
+
+def _startup_inner(
+        directory,  # TODO: Should really constant out the CLI constants to keep this DRY
+        parallel=1,
+        verbose='info',
+        time=20,
+        ecrscore=0.0,
+        threed=False,
+        max3d=1000,
+        output=True,
+        name='out',
+        output_no_images=False,
+        output_no_graph=False,
+        display=False,
+        allow_tree=False,
+        max=6,
+        max_dist_from_actives=2,
+        cutoff=0.4,
+        radial=False,
+        hub=None,
+        fast=False,
+        links_file='',
+        known_actives_file=''):
+    # Inside function of CLI interface, for start of "library" like calling
+
     # Molecule DataBase initialized with the passed user options
-    db_mol = DBMolecules(ops.directory, ops.parallel, ops.verbose, ops.time, ops.ecrscore, ops.threed, ops.max3d,
-                         ops.output, ops.name, ops.output_no_images, ops.output_no_graph, ops.display,
-                         ops.allow_tree, ops.max, ops.cutoff, ops.radial, ops.hub, ops.fast, ops.links_file,
-                         ops.known_actives_file, ops.max_dist_from_actives)
+    db_mol = DBMolecules(directory, parallel, verbose, time, ecrscore, threed, max3d,
+                         output, name, output_no_images, output_no_graph, display,
+                         allow_tree, max, cutoff, radial, hub, fast, links_file,
+                         known_actives_file, max_dist_from_actives)
     # Similarity score linear array generation
     strict, loose = db_mol.build_matrices()
 

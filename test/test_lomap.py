@@ -14,10 +14,6 @@ import sys
 import logging
 
 
-def executable():
-    return '/home/mark/.conan/data/Flare-Python/6.0/cresset/Python-3.6/package/90ee443cae5dd5c1b4861766ac14dc6fae231a92/bin/lomap'
-
-
 def isclose(a,b):
     if (abs(a-b)>=1e-5):
         print("Value",a,"is not close to",b)
@@ -411,9 +407,17 @@ class TestLomap(unittest.TestCase):
             
     def test_complete_run(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','test/linksfile']
-        dbmol.startup()
+
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            output=True,
+            directory=_rf('linksfile/'),
+            output_no_images=True,
+            output_no_graph=True,
+        )
+
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
         assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
@@ -432,9 +436,17 @@ class TestLomap(unittest.TestCase):
     def test_complete_run_parallel(self):
         '''Test running in parallel mode with 5 subprocesses.'''
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','-p','5','--output-no-images','--output-no-graph','test/linksfile']
-        dbmol.startup()
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','-p','5','--output-no-images','--output-no-graph','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            directory=_rf('linksfile/'),
+            output=True,
+            parallel=5,
+            output_no_images=True,
+            output_no_graph=True,
+        )
+
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
         assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
@@ -453,9 +465,18 @@ class TestLomap(unittest.TestCase):
     def test_linksfile(self):
         """ Test a linksfile forcing a link from phenyl to phenylfuran. """
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links1.txt','test/linksfile']
-        dbmol.startup()
+
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links1.txt','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            directory=_rf('linksfile/'),
+            output=True,
+            output_no_images=True,
+            output_no_graph=True,
+            links_file=_rf('linksfile/links1.txt'),
+        )
+
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
         assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
@@ -474,9 +495,18 @@ class TestLomap(unittest.TestCase):
     def test_linksfile_scores(self):
         """ Test a linksfile forcing prespecified scores for some links."""
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links2.txt','test/linksfile']
-        dbmol.startup()
+
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links2.txt','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            directory=_rf('linksfile/'),
+            output=True,
+            output_no_images=True,
+            output_no_graph=True,
+            links_file=_rf('linksfile/links2.txt'),
+        )
+
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
         assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.77777))    # Forced from linksfile
@@ -495,9 +525,18 @@ class TestLomap(unittest.TestCase):
     def test_linksfile_scores_force(self):
         """ Test a linksfile forcing prespecified scores and link inclusion for some links."""
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links3.txt','test/linksfile']
-        dbmol.startup()
+
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','--links-file','test/linksfile/links3.txt','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            directory=_rf('linksfile/'),
+            output=True,
+            output_no_images=True,
+            output_no_graph=True,
+            links_file=_rf('linksfile/links3.txt'),
+        )
+
         # Check scores
         assert(isclose(self.score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.1))
         assert(isclose(self.score_for_link('phenyl.sdf','phenylfuran.sdf'),0.2))
@@ -515,9 +554,17 @@ class TestLomap(unittest.TestCase):
 
     def test_no_cycle_cover(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        progname=sys.argv[0]
-        sys.argv=[progname,'-o','-T','--output-no-images','--output-no-graph','test/linksfile']
-        dbmol.startup()
+
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','-T','--output-no-images','--output-no-graph','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            directory=_rf('linksfile/'),
+            output=True,
+            allow_tree=True,
+            output_no_images=True,
+            output_no_graph=True,
+        )
         # Check connections
         self.assertEqual(self.fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7],"Yes")
         self.assertEqual(self.fields_for_link('phenyl.sdf','phenylfuran.sdf')[7],"Yes")
