@@ -203,7 +203,7 @@ class DBMolecules(object):
             self.options = parser.parse_args(names_str.split())
 
         # Internal list container used to store the loaded molecule objects
-        self.__list = self.read_molecule_files()
+        self._list = self.read_molecule_files()
 
         # Dictionary which holds the mapping between the generated molecule IDs and molecule file names
         self.dic_mapping = {}
@@ -223,7 +223,7 @@ class DBMolecules(object):
         # 1 and force link to be included)
         self.known_actives = []
 
-        for mol in self.__list:
+        for mol in self._list:
             self.dic_mapping[mol.getID()] = mol.getName()
             self.inv_dic_mapping[mol.getName()] = mol.getID()
 
@@ -234,7 +234,7 @@ class DBMolecules(object):
             self.parse_known_actives_file(self.options.known_actives_file)
 
         # Index used to perform index selection by using __iter__ function
-        self.__ci = 0
+        self._ci = 0
 
         # Symmetric matrices used to store the mcs scoring. The matrices are subclasses of numpy
         self.strict_mtx = SMatrix(shape=(0,))
@@ -254,19 +254,19 @@ class DBMolecules(object):
         Select the molecule during an iteration
         """
 
-        if self.__ci > len(self.__list) - 1:
-            self.__ci = 0
+        if self._ci > len(self._list) - 1:
+            self._ci = 0
             raise StopIteration
         else:
-            self.__ci = self.__ci + 1
-            return self.__list[self.__ci - 1]
+            self._ci = self._ci + 1
+            return self._list[self._ci - 1]
 
     def __getitem__(self, index):
         """
         Slicing and index selection function
         """
 
-        return self.__list[index]
+        return self._list[index]
 
     def __setitem__(self, index, molecule):
         """
@@ -285,7 +285,7 @@ class DBMolecules(object):
         if not isinstance(molecule, Molecule):
             raise ValueError('The passed molecule is not a Molecule object')
 
-        self.__list[index] = molecule
+        self._list[index] = molecule
 
     def __add__(self, molecule):
 
@@ -301,14 +301,14 @@ class DBMolecules(object):
         if not isinstance(molecule, Molecule):
             raise ValueError('The passed molecule is not a Molecule object')
 
-            self.__list.append(molecule)
+            self._list.append(molecule)
 
     def nums(self):
         """
         This function recovers the total number of molecules currently stored in
         the molecule database
         """
-        return len(self.__list)
+        return len(self._list)
 
     def read_molecule_files(self):
         """
@@ -416,7 +416,7 @@ class DBMolecules(object):
                     mols = line.split();
                     indexa = self.inv_dic_mapping[mols[0]]
                     self.known_actives.append(indexa)
-                    self.__list[indexa].setActive(True)
+                    self._list[indexa].setActive(True)
                     print("Added known activity for mol",mols[0],"->",indexa)
         except KeyError as e:
             raise IOError('Filename within the actives file "'+actives_file+'" not found: '+str(e)) from None
