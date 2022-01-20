@@ -65,7 +65,7 @@ jobs:
           mamba list
 
       - name: Test the package
-        run: pytest -vv test/test_lomap.py 
+        run: pytest -vv 
 
       - name: Codecov
         uses: codecov/codecov-action@v1
