@@ -86,8 +86,8 @@ class DBMolecules(object):
            the mol2/sdf directory file name
         parallel : int
            the number of cores used to generate the similarity score matrices
-        verbose : bool
-           verbose mode
+        verbose : str
+           verbose mode, one of 'off'/'info'/'pedantic'
         time : int
            the maximum time in seconds used to perform the MCS search
         ecrscore: float
@@ -120,87 +120,62 @@ class DBMolecules(object):
         max_dist_from_actives : int
             The maximum number of links from any molecule to an active
 
-
         """
-
         # Set the Logging
         if verbose == 'off':
             logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-
-        if verbose == 'info':
+        elif verbose == 'info':
             logging.basicConfig(format='%(message)s', level=logging.INFO)
-
-        if verbose == 'pedantic':
+        elif verbose == 'pedantic':
             logging.basicConfig(format='%(message)s', level=logging.DEBUG)
             # logging.basicConfig(format='%(levelname)s:\t%(message)s', level=logging.DEBUG)
 
-        if __name__ == '__main__':
-            self.options = parser.parse_args()
+        if not isinstance(output, bool):
+            raise TypeError('The output flag is not a bool type')
+        elif not isinstance(output_no_images, bool):
+            raise TypeError('The output_no_images flag is not a bool type')
+        elif not isinstance(output_no_graph, bool):
+            raise TypeError('The output_no_graph flag is not a bool type')
+        elif not isinstance(display, bool):
+            raise TypeError('The display flag is not a bool type')
+        elif not isinstance(radial, bool):
+            raise TypeError('The radial flag is not a bool type')
 
-        else:
+        self.options = dict()
+        CheckDir._check_directory(directory)
+        self.options['directory'] = directory
+        CheckPos._check(parallel)
+        self.options['parallel'] = parallel
+        self.options['verbose'] = verbose
 
-            if not isinstance(output, bool):
-                raise TypeError('The output flag is not a bool type')
+        # MCS settings
+        CheckPos._check(time)
+        self.options['time'] = time
+        CheckEcrscore._check(ecrscore)
+        self.options['ecrscore'] = ecrscore
+        self.options['threed'] = bool(threed)
+        self.options['max3d'] = max3d
 
-            if not isinstance(output_no_images, bool):
-                raise TypeError('The output_no_images flag is not a bool type')
+        # Output settings
+        self.options['output'] = bool(output)
+        self.options['name'] = name
+        self.options['output_no_images'] = bool(output_no_images)
+        self.options['output_no_graph'] = bool(output_no_graph)
+        self.options['display'] = bool(display)
 
-            if not isinstance(output_no_graph, bool):
-                raise TypeError('The output_no_graph flag is not a bool type')
-
-            if not isinstance(display, bool):
-                raise TypeError('The display flag is not a bool type')
-
-            if not isinstance(radial, bool):
-                raise TypeError('The radial flag is not a bool type')
-            output_str = ''
-            output_no_images_str = ''
-            output_no_graph_str = ''
-            display_str = ''
-            radial_str = ''
-            fast_str = ''
-            threed_str = ''
-            links_file_str = ''
-            known_actives_file_str = ''
-            allow_tree_str = ''
-
-            if output:
-                output_str = '--output'
-
-            if output_no_images:
-                output_no_images_str = '--output-no-images'
-
-            if output_no_graph:
-                output_no_graph_str = '--output-no-graph'
-
-            if display:
-                display_str = '--display'
-
-            if radial:
-                radial_str = '--radial'
-
-            if fast:
-                fast_str = '--fast'
-
-            if threed:
-                threed_str = '--threed'
-
-            if allow_tree:
-                allow_tree_str = '--allow-tree'
-
-            if links_file:
-                links_file_str = f'--links-file {links_file}'
-
-            if known_actives_file:
-                known_actives_file_str = f'--known-actives-file {known_actives_file}'
-
-            names_str = '%s --parallel %s --verbose %s --time %s --ecrscore %s --max3d %s --name %s --max %s --max-dist-from-actives %s --cutoff %s --hub %s %s %s %s %s %s %s %s %s %s %s' \
-                        % (
-                        directory, parallel, verbose, time, ecrscore, max3d, name, max, max_dist_from_actives, cutoff, hub, output_str, display_str, output_no_images_str, output_no_graph_str,
-                        radial_str, fast_str, threed_str, allow_tree_str, links_file_str, known_actives_file_str)
-
-            #print("ARGS:",names_str)
-            self.options = parser.parse_args(names_str.split())
+        # Graph settings
+        self.options['allow_tree'] = bool(allow_tree)
+        CheckPos._check(max)
+        self.options['max'] = max
+        CheckPos._check(max_dist_from_actives)
+        self.options['max_dist_from_actives'] = max_dist_from_actives
+        CheckCutoff._check(cutoff)
+        self.options['cutoff'] = cutoff
+        self.options['radial'] = bool(radial)
+        self.options['hub'] = str(hub)
+        self.options['fast'] = bool(fast)
+        self.options['links_file'] = links_file
+        self.options['known_actives_file'] = known_actives_file
 
         # Internal list container used to store the loaded molecule objects
         self._list = self.read_molecule_files()
@@ -227,11 +202,11 @@ class DBMolecules(object):
             self.dic_mapping[mol.getID()] = mol.getName()
             self.inv_dic_mapping[mol.getName()] = mol.getID()
 
-        if self.options.links_file and len(self.options.links_file)>0:
-            self.parse_links_file(self.options.links_file)
+        if self.options['links_file']:
+            self.parse_links_file(self.options['links_file'])
 
-        if self.options.known_actives_file and len(self.options.known_actives_file)>0:
-            self.parse_known_actives_file(self.options.known_actives_file)
+        if self.options['known_actives_file']:
+            self.parse_known_actives_file(self.options['known_actives_file'])
 
         # Index used to perform index selection by using __iter__ function
         self._ci = 0
@@ -331,13 +306,13 @@ class DBMolecules(object):
         logging.info(30 * '-')
 
         # The .mol2 and .sdf file formats are the only supported so far
-        mol_fnames = glob.glob(self.options.directory + "/*.mol2")
-        mol_fnames += glob.glob(self.options.directory + "/*.sdf")
+        mol_fnames = glob.glob(self.options['directory'] + "/*.mol2")
+        mol_fnames += glob.glob(self.options['directory'] + "/*.sdf")
 
         mol_fnames.sort()
 
         if len(mol_fnames) < 2:
-            raise IOError('The directory %s must contain at least two mol2/sdf files' % self.options.directory)
+            raise IOError(f'The directory {self.options["directory"]} must contain at least two mol2/sdf files')
 
         print_cnt = 0
         mol_id_cnt = 0
@@ -553,13 +528,13 @@ class DBMolecules(object):
                       (self[i].getName(), self[j].getName(), strict_scr))
             else:
                 # The MCS is computed only if the passed molecules have the same charges
-                if ecr_score or self.options.ecrscore:
-                    if ecr_score == 0.0 and self.options.ecrscore:
+                if ecr_score or self.options['ecrscore']:
+                    if ecr_score == 0.0 and self.options['ecrscore']:
                         logging.critical('WARNING: Mutation between different charge molecules is enabled')
-                        ecr_score = self.options.ecrscore
+                        ecr_score = self.options['ecrscore']
 
                     try:
-                        if self.options.verbose == 'pedantic':
+                        if self.options['verbose'] == 'pedantic':
                             logging.info(50 * '-')
                             logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
 
@@ -621,7 +596,7 @@ class DBMolecules(object):
         # The total number of the effective elements present in the symmetric matrix
         l = int(self.nums() * (self.nums() - 1) / 2)
 
-        if self.options.parallel == 1:  # Serial execution
+        if self.options['parallel'] == 1:  # Serial execution
             MCS_map = {}
             self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.true_strict_mtx, MCS_map)
             for idx in MCS_map:
@@ -631,7 +606,7 @@ class DBMolecules(object):
             logging.info('Parallel mode is on')
 
             # Number of selected processes
-            num_proc = self.options.parallel
+            num_proc = self.options['parallel']
 
             delta = int(l / num_proc)
             rem = l % num_proc
@@ -696,10 +671,10 @@ class DBMolecules(object):
         Gr = graphgen.GraphGen(self)
 
         # Writing the results is files
-        if self.options.output:
+        if self.options['output']:
             try:
-                Gr.write_graph(self.options.output_no_images, self.options.output_no_graph)
-                with open(self.options.name + ".pickle", "wb") as pickle_f:
+                Gr.write_graph(self.options['output_no_images'], self.options['output_no_graph'])
+                with open(self.options['name'] + ".pickle", "wb") as pickle_f:
                     pickle.dump(Gr, pickle_f)
             except Exception as e:
                 logging.error(str(e))
@@ -710,7 +685,7 @@ class DBMolecules(object):
         # print self.Graph.nodes(data=True)
 
         # Display the graph by using Matplotlib
-        if self.options.display:
+        if self.options['display']:
             Gr.draw()
 
         return self.Graph
@@ -723,7 +698,7 @@ class DBMolecules(object):
         """
 
         try:
-            file_txt = open(self.options.name + '.txt', 'w')
+            file_txt = open(self.options['name'] + '.txt', 'w')
         except Exception:
             raise IOError('It was not possible to write out the mapping file')
         file_txt.write('#ID\tFileName\n')
@@ -731,12 +706,6 @@ class DBMolecules(object):
             file_txt.write('%d\t%s\n' % (key, self.dic_mapping[key]))
 
         file_txt.close()
-
-    # *************************
-
-
-# Symmetric  Class
-# *************************
 
 
 class SMatrix(np.ndarray):
@@ -912,12 +881,6 @@ class SMatrix(np.ndarray):
 
         return n
 
-    # *************************
-
-
-# Molecule Class
-# *************************
-
 
 class Molecule(object):
     """
@@ -1030,39 +993,55 @@ class Molecule(object):
 
         self.__active=active
 
+
 class CheckDir(argparse.Action):
     # Classes used to check some of the passed user options in the main function
     # Class used to check the input directory
-    def __call__(self, parser, namespace, directory, option_string=None):
+    @classmethod
+    def _check_directory(cls, directory):
         if not os.path.isdir(directory):
-            raise argparse.ArgumentTypeError('The directory name is not a valid path: %s' % directory)
-        if os.access(directory, os.R_OK):
-            setattr(namespace, self.dest, directory)
-        else:
-            raise argparse.ArgumentTypeError('The directory name is not readable: %s' % directory)
+            raise argparse.ArgumentTypeError(f'The directory name is not a valid path: {directory}')
+        if not os.access(directory, os.R_OK):
+            raise argparse.ArgumentTypeError(f'The directory name is not readable: {directory}')
+
+    def __call__(self, parser, namespace, directory, option_string=None):
+        self._check_directory(directory)
+        setattr(namespace, self.dest, directory)
 
 
 class CheckPos(argparse.Action):
     # Class used to check the parallel, time and max user options
-    def __call__(self, parser, namespace, value, option_string=None):
+    @classmethod
+    def _check(cls, value):
         if value < 1:
-            raise argparse.ArgumentTypeError('%s is not a positive integer number' % value)
+            raise argparse.ArgumentTypeError(f'{value} is not a positive integer number')
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        self._check(value)
         setattr(namespace, self.dest, value)
 
 
 class CheckCutoff(argparse.Action):
     # Class used to check the cutoff user option
-    def __call__(self, parser, namespace, value, option_string=None):
+    @classmethod
+    def _check(cls, value):
         if not isinstance(value, float) or value < 0.0:
-            raise argparse.ArgumentTypeError('%s is not a positive real number' % value)
+            raise argparse.ArgumentTypeError(f'{value} is not a positive real number')
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        self._check(value)
         setattr(namespace, self.dest, value)
 
 
 class CheckEcrscore(argparse.Action):
     # Class used to check the handicap user option
-    def __call__(self, parser, namespace, value, option_string=None):
+    @classmethod
+    def _check(cls, value):
         if not isinstance(value, float) or value < 0.0 or value > 1.0:
-            raise argparse.ArgumentTypeError('%s is not a real number in the range [0.0, 1.0]' % value)
+            raise argparse.ArgumentTypeError(f'{value} is not a real number in the range [0.0, 1.0]')
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        self._check(value)
         setattr(namespace, self.dest, value)
 
 

@@ -88,15 +88,15 @@ class GraphGen(object):
 
         self.dbase = dbase
 
-        self.maxPathLength = dbase.options.max
+        self.maxPathLength = dbase.options['max']
 
-        self.maxDistFromActive = dbase.options.max_dist_from_actives
+        self.maxDistFromActive = dbase.options['max_dist_from_actives']
 
-        self.similarityScoresLimit = dbase.options.cutoff
+        self.similarityScoresLimit = dbase.options['cutoff']
 
-        self.requireCycleCovering = not dbase.options.allow_tree
+        self.requireCycleCovering = not dbase.options['allow_tree']
 
-        if dbase.options.radial:
+        if dbase.options['radial']:
             self.lead_index = self.pick_lead()
         else:
             self.lead_index = None
@@ -129,7 +129,7 @@ class GraphGen(object):
         # The following Section has been strongly copied/adapted from the original implementation
 
         # Generate a list related to the disconnected graphs present in the initial graph
-        if dbase.options.fast and dbase.options.radial:
+        if dbase.options['fast'] and dbase.options['radial']:
             # only enable the fast map option if use the radial option
             self.initialSubgraphList = self.generate_initial_subgraph_list(fast_map=True)
         else:
@@ -150,7 +150,7 @@ class GraphGen(object):
         # Remove edges, whose removal does not violate constraints, from the subgraphs,
         # starting with lowest similarity score first
 
-        if dbase.options.fast and dbase.options.radial:
+        if dbase.options['fast'] and dbase.options['radial']:
             # if we use the fast and radial option, just need to add the surrounding edges from the initial graph
             self.resultGraph = self.add_surrounding_edges()
             # after adding the surround edges, some subgraphs may merge into a larger graph and so need to update the
@@ -183,15 +183,15 @@ class GraphGen(object):
     def pick_lead(self):
         if (self.dbase.nums() * (self.dbase.nums() - 1) / 2) != self.dbase.strict_mtx.size:
             raise ValueError("There are errors in the similarity score matrices")
-        if not self.dbase.options.hub == "None":
+        if not self.dbase.options['hub'] == "None":
             # hub radial option. Use the provided reference compound as a hub
             hub_index = None
             for i in range(0, self.dbase.nums()):
-                if os.path.basename(self.dbase[i].getName()) == self.dbase.options.hub:
+                if os.path.basename(self.dbase[i].getName()) == self.dbase.options['hub']:
                     hub_index = i
             if hub_index is None:
-                logging.info(
-                    "Warning: the specified center ligand %s is not in the ligand database, will not use the radial option." % self.dbase.options.hub)
+                logging.info(f"Warning: the specified center ligand {self.dbase.options['hub']} is not in the "
+                             "ligand database, will not use the radial option.")
             return hub_index
         else:
             # complete radial option. Pick the compound with the highest total similarity to all other compounds to use as a hub
@@ -889,18 +889,18 @@ class GraphGen(object):
             if self.edge_labels:
                 temp_graph[u][v]['label'] = round(d['similarity'],2)
 
-        nx.nx_agraph.write_dot(temp_graph, self.dbase.options.name + '_tmp.dot')
+        nx.nx_agraph.write_dot(temp_graph, self.dbase.options['name'] + '_tmp.dot')
 
-        cmd = 'dot -Tpng ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.png'
-
-        os.system(cmd)
-        cmd = 'dot -Teps ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.eps'
+        cmd = 'dot -Tpng ' + self.dbase.options['name'] + '_tmp.dot -o ' + self.dbase.options['name'] + '.png'
 
         os.system(cmd)
-        cmd = 'dot -Tpdf ' + self.dbase.options.name + '_tmp.dot -o ' + self.dbase.options.name + '.pdf'
+        cmd = 'dot -Teps ' + self.dbase.options['name'] + '_tmp.dot -o ' + self.dbase.options['name'] + '.eps'
 
         os.system(cmd)
-        os.remove(self.dbase.options.name + '_tmp.dot')
+        cmd = 'dot -Tpdf ' + self.dbase.options['name'] + '_tmp.dot -o ' + self.dbase.options['name'] + '.pdf'
+
+        os.system(cmd)
+        os.remove(self.dbase.options['name'] + '_tmp.dot')
         shutil.rmtree(directory_name, ignore_errors=True)
 
     # The function to output the score and connectivity txt file
@@ -909,9 +909,9 @@ class GraphGen(object):
         # pass the lead compound index if the radial option is on and generate the
         # morph type of output required by FESetup
         if self.lead_index is not None:
-            morph_txt = open(self.dbase.options.name + "_morph.txt", "w")
+            morph_txt = open(self.dbase.options['name'] + "_morph.txt", "w")
             morph_data = "morph_pairs = "
-        with open(self.dbase.options.name + "_score_with_connection.txt", "w") as info_txt:
+        with open(self.dbase.options['name'] + "_score_with_connection.txt", "w") as info_txt:
             all_key_id = self.dbase.dic_mapping.keys()
             data = ["%-10s,%-10s,%-25s,%-25s,%-15s,%-15s,%-15s,%-10s\n" % (
             "Index_1", "Index_2", "Filename_1", "Filename_2", "Str_sim", "Eff_sim", "Loose_sim", "Connect")]
@@ -981,13 +981,13 @@ class GraphGen(object):
             self.layout_info()
         except Exception as e:
             traceback.print_exc()
-            raise IOError("%s: %s.txt" % (str(e), self.dbase.options.name))
+            raise IOError("%s: %s.txt" % (str(e), self.dbase.options['name']))
 
         try:
             if not output_no_images:
                 self.generate_depictions()
             if not output_no_graph:
-                nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options.name + '.dot')
+                nx.nx_agraph.write_dot(self.resultGraph, self.dbase.options['name'] + '.dot')
         except Exception as e:
             traceback.print_exc()
             raise IOError('Problems during the file generation: %s' % str(e))
@@ -996,10 +996,10 @@ class GraphGen(object):
 
         log = 'The following files have been generated:'
         if not output_no_graph:
-            log += f'\n{self.dbase.options.name}.dot\tGraph file'
+            log += f'\n{self.dbase.options["name"]}.dot\tGraph file'
         if not output_no_images:
-            log += f'\n{self.dbase.options.name}.png\tPng file'
-        log += f'\n{self.dbase.options.name}.txt\tMapping Text file'
+            log += f'\n{self.dbase.options["name"]}.png\tPng file'
+        log += f'\n{self.dbase.options["name"]}.txt\tMapping Text file'
 
         logging.info(30 * '-')
 

@@ -100,18 +100,17 @@ class TestLomap(unittest.TestCase):
     # Check iter and next
     def test_iter_next(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
+        inst = DBMolecules(_rf('basic/'), parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
                            display=False, max=6, cutoff=0.4, radial=False, hub=None)
         for i in range(0, inst.nums()):
             inst.next()
         with self.assertRaises(StopIteration):
             inst.next()
 
-
     # Check get, set and add
     def test_get_set_add(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        inst = DBMolecules('test/basic/', parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
+        inst = DBMolecules(_rf('basic/'), parallel=1, verbose='off', output=False, time=20, ecrscore=0.0, name='out',
                            display=False, max=6, cutoff=0.4, radial=False, hub=None)
         with self.assertRaises(IndexError):
             inst.__getitem__(inst.nums()+1)
@@ -122,26 +121,23 @@ class TestLomap(unittest.TestCase):
         with self.assertRaises(ValueError):
             inst.__add__('no_mol_obj')
 
-
     # Check serial and parallel mode
     def test_serial_parallel(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        db = DBMolecules('test/basic')
+        db = DBMolecules(_rf('basic/'))
         s_strict, s_loose = db.build_matrices()
-        db.options.paralell = multiprocessing.cpu_count()
+        db.options['parallel'] = multiprocessing.cpu_count()
         p_strict, p_loose = db.build_matrices()
         
-        assert (all(s_strict == p_strict))
-        assert (all(s_loose == p_loose))
-
+        assert (s_strict == p_strict).all()
+        assert (s_loose == p_loose).all()
 
     def test_read_mol2_files(self):
         logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
-        db = DBMolecules('test/basic')
-        db.options.directory = 'test/'
+        db = DBMolecules(_rf('basic/'))
+        db.options['directory'] = _rf('')
         with self.assertRaises(IOError):
             db.read_molecule_files()
-
 
     # Test which heterocycles I can grow (growing off a phenyl)
     # Test by Max indicates that growing complex heterocycles tends
