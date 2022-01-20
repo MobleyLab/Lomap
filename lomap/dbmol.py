@@ -301,7 +301,7 @@ class DBMolecules(object):
         if not isinstance(molecule, Molecule):
             raise ValueError('The passed molecule is not a Molecule object')
 
-            self._list.append(molecule)
+        self._list.append(molecule)
 
     def nums(self):
         """
