@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - "main"
+  schedule:
+    # nightly tests at 2:42
+    - cron: "42 2 * * *"
+  push:
+    branches:
+      - main
+
+concurrency:
+  # Probably overly cautious group naming.
+  # Commits to develop/master will cancel each other, but PRs will only cancel
+  # commits within the same PR
+  group: "${{ github.ref }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}, RDKit ${{ matrix.rdkit-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8, 3.9, "3.10"]
+        rdkit-version: ["2021.09", "2021.03", "2018.03.4"]
+        os: [ubuntu-latest, macos-11]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Additional info about the build
+        run: |
+          uname -a
+          df -h
+          ulimit -a
+
+      # More info on options: https://github.com/conda-incubator/setup-miniconda
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          environment-file: devtools/conda-envs/CI_env.yaml
+          channels: conda-forge
+          activate-environment: test
+          auto-update-conda: true
+          auto-activate-base: false
+          show-channel-urls: true
+          channel-priority: true
+      - name: Refine test environment
+        run: mamba install rdkit=${{ matrix.rdkit-version }}
+
+      - name: Install package
+        run: python -m pip install --no-deps -v .
+
+      - name: Environment Information
+        run: |
+          mamba info -a
+          mamba list
+
+      - name: Test the package
+        run: pytest -vv test/test_lomap.py 
+
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
