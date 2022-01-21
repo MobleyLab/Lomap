@@ -401,33 +401,34 @@ def score_for_link(mola, molb):
     return float(fields_for_link(mola,molb)[4])
 
 
-def test_complete_run():
-    logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
+def test_complete_run(tmpdir):
+    with tmpdir.as_cwd():
+        logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
-    #progname=sys.argv[0]
-    #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','test/linksfile']
-    #dbmol.startup()
-    dbmol._startup_inner(
-        output=True,
-        directory=_rf('linksfile/'),
-        output_no_images=True,
-        output_no_graph=True,
-    )
+        #progname=sys.argv[0]
+        #sys.argv=[progname,'-o','--output-no-images','--output-no-graph','test/linksfile']
+        #dbmol.startup()
+        dbmol._startup_inner(
+            output=True,
+            directory=_rf('linksfile/'),
+            output_no_images=True,
+            output_no_graph=True,
+        )
 
-    # Check scores
-    assert isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'), 0.67032)
-    assert isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'), 0.60653)
-    assert isclose(score_for_link('phenyl.sdf','toluyl.sdf'), 0.90484)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'), 0.40657)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'), 0.33287)
-    assert isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'), 0.54881)
-    # Check connections
-    assert fields_for_link('phenyl.sdf',' phenylcyclobutyl.sdf')[7] == "Yes"
-    assert fields_for_link('phenyl.sdf', 'phenylfuran.sdf')[7] == "No"
-    assert fields_for_link('phenyl.sdf', 'toluyl.sdf')[7] == "Yes"
-    assert fields_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf')[7] == "Yes"
-    assert fields_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf')[7] == "No"
-    assert fields_for_link('phenylfuran.sdf', 'toluyl.sdf')[7] == "Yes"
+        # Check scores
+        assert isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'), 0.67032)
+        assert isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'), 0.60653)
+        assert isclose(score_for_link('phenyl.sdf','toluyl.sdf'), 0.90484)
+        assert isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'), 0.40657)
+        assert isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'), 0.33287)
+        assert isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'), 0.54881)
+        # Check connections
+        assert fields_for_link('phenyl.sdf',' phenylcyclobutyl.sdf')[7] == "Yes"
+        assert fields_for_link('phenyl.sdf', 'phenylfuran.sdf')[7] == "No"
+        assert fields_for_link('phenyl.sdf', 'toluyl.sdf')[7] == "Yes"
+        assert fields_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf')[7] == "Yes"
+        assert fields_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf')[7] == "No"
+        assert fields_for_link('phenylfuran.sdf', 'toluyl.sdf')[7] == "Yes"
 
 
 def test_complete_run_parallel():
