@@ -389,7 +389,7 @@ def test_insufficient_arguments(self):
 
 def fields_for_link(mola, molb):
     """ Parse the out_score_with_connection.txt file, find the line for mola to molb, and return its fields. """
-    with open(_rf('out_score_with_connection.txt'),'r') as f:
+    with open('out_score_with_connection.txt', 'r') as f:
         for line in f.readlines():
             fields = line.replace(",","").split()
             if (fields[2] == mola and fields[3] == molb) or (fields[3] == mola and fields[2] == molb):
@@ -401,7 +401,13 @@ def score_for_link(mola, molb):
     return float(fields_for_link(mola,molb)[4])
 
 
-def test_complete_run():
+@pytest.fixture
+def in_tmpdir(tmpdir):
+    with tmpdir.as_cwd():
+        yield
+
+
+def test_complete_run(in_tmpdir):
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
     #progname=sys.argv[0]
@@ -430,7 +436,7 @@ def test_complete_run():
     assert fields_for_link('phenylfuran.sdf', 'toluyl.sdf')[7] == "Yes"
 
 
-def test_complete_run_parallel():
+def test_complete_run_parallel(in_tmpdir):
     '''Test running in parallel mode with 5 subprocesses.'''
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
     #progname=sys.argv[0]
@@ -460,7 +466,7 @@ def test_complete_run_parallel():
     assert fields_for_link('phenylfuran.sdf','toluyl.sdf')[7] == "Yes"
 
 
-def test_linksfile():
+def test_linksfile(in_tmpdir):
     """ Test a linksfile forcing a link from phenyl to phenylfuran. """
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
@@ -491,7 +497,7 @@ def test_linksfile():
     assert fields_for_link('phenylfuran.sdf','toluyl.sdf')[7] == "Yes"
 
 
-def test_linksfile_scores():
+def test_linksfile_scores(in_tmpdir):
     """ Test a linksfile forcing prespecified scores for some links."""
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
@@ -522,7 +528,7 @@ def test_linksfile_scores():
     assert fields_for_link('phenylfuran.sdf' == 'toluyl.sdf')[7],"Yes"
 
 
-def test_linksfile_scores_force():
+def test_linksfile_scores_force(in_tmpdir):
     """ Test a linksfile forcing prespecified scores and link inclusion for some links."""
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
@@ -553,7 +559,7 @@ def test_linksfile_scores_force():
     assert fields_for_link('phenylfuran.sdf','toluyl.sdf')[7] == "Yes"
 
 
-def test_no_cycle_cover():
+def test_no_cycle_cover(in_tmpdir):
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
 
     #progname=sys.argv[0]
