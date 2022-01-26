@@ -1251,7 +1251,7 @@ if "__main__" == __name__:
 
     # MCS calculation
     try:
-        MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='pedantic', max3d=5, threed=True))
+        MC = MCS(mola, molb, time=20, verbose='pedantic', max3d=5, threed=True)
         #MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
         #MC = MCS(mola, molb)
     except Exception:
