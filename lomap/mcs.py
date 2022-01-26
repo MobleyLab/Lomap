@@ -630,21 +630,6 @@ class MCS(object):
 
         return
 
-    def get_map(self):
-        """
-
-        This function is used to return a list of pairs of atom indexes generated
-        by the mapping between the two molecules used to calculate the MCS.
-        The calculated mapping is performed without considering hydrogens
-
-        Returns
-        -------
-        pair of indexes related to the atom mapping
-
-        """
-
-        return self.__map_moli_molj
-
     @staticmethod
     def getMapping(moli, molj, hydrogens=False, fname=None, time_out=150):
 
