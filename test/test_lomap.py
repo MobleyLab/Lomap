@@ -53,7 +53,7 @@ def test_mcsr(fn1, fn2, max3d_arg, threed_arg, exp_mcsr, exp_atnum):
 
     mola = Chem.MolFromMolFile(fn1, sanitize=False, removeHs=False)
     molb = Chem.MolFromMolFile(fn1, sanitize=False, removeHs=False)
-    MC = MCS(mola, molb, argparse.Namespace(time=20, verbose='info', max3d=max3d_arg, threed=threed_arg))
+    MC = MCS(mola, molb, time=20, verbose='info', max3d=max3d_arg, threed=threed_arg)
     mcsr = MC.mcsr()
     mncar = MC.mncar()
     atnum = MC.atomic_number_rule()
@@ -181,9 +181,9 @@ def test_symmetry_match3d():
     mol3 = Chem.MolFromMolFile(_rf('transforms/chlorophenyl2.sdf'), sanitize=False, removeHs=False)
     lg = RDLogger.logger()
     lg.setLevel(RDLogger.CRITICAL)
-    MCS1 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
-    MCS2 = MCS(mol2,mol3,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
-    MCS3 = MCS(mol1,mol3,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
+    MCS1 = MCS(mol1, mol2, time=20, verbose='info', max3d=1000, threed=True)
+    MCS2 = MCS(mol2, mol3, time=20, verbose='info', max3d=1000, threed=True)
+    MCS3 = MCS(mol1, mol3, time=20, verbose='info', max3d=1000, threed=True)
     assert MCS1.mcs_mol.GetNumHeavyAtoms() == 9
     # MCS1 and MCS2 are the same as in the matchheavies case, but MCS3 gives a diffrent answer
     assert [int(at.GetProp('to_moli')) for at in MCS1.mcs_mol.GetAtoms()] == [0, 5, 4, 3, 2, 1, 7, 6, 9]
@@ -201,8 +201,8 @@ def test_clip_on_3d():
     mol2 = Chem.MolFromMolFile(_rf('transforms/chlorophenyl2.sdf'), sanitize=False, removeHs=False)
     lg = RDLogger.logger()
     lg.setLevel(RDLogger.CRITICAL)
-    MCS1 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=1000, threed=True))
-    MCS2 = MCS(mol1,mol2,options=argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
+    MCS1 = MCS(mol1, mol2, time=20, verbose='info', max3d=1000, threed=True)
+    MCS2 = MCS(mol1, mol2, time=20, verbose='info', max3d=2, threed=True)
     assert MCS1.mcs_mol.GetNumHeavyAtoms() == 9
     assert MCS2.mcs_mol.GetNumHeavyAtoms() == 8
 
@@ -247,11 +247,11 @@ def test_hybridization_rule(fn1, fn2, expected):
     (_rf('transforms/phenyl.sdf'), _rf('transforms/phenylcyclopropyl.sdf'), 1),
     (_rf('transforms/toluyl.sdf'), _rf('transforms/phenylcyclopropyl.sdf'), 1),
     # Disallowed by test_transmuting_methyl_into_ring_rule instead
-    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclobutyl.sdf'), 0),
-    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclopentyl.sdf'), 0),
-    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclononyl.sdf'), 0),
-    (_rf('transforms/phenylcyclobutyl.sdf'), _rf('transforms/phenylcyclopentyl.sdf'), 0),
-    (_rf('transforms/phenylcyclobutyl.sdf'), _rf('transforms/phenylcyclononyl.sdf'), 0),
+    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclobutyl.sdf'), 0.1),
+    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclopentyl.sdf'), 0.1),
+    (_rf('transforms/phenylcyclopropyl.sdf'), _rf('transforms/phenylcyclononyl.sdf'), 0.1),
+    (_rf('transforms/phenylcyclobutyl.sdf'), _rf('transforms/phenylcyclopentyl.sdf'), 0.1),
+    (_rf('transforms/phenylcyclobutyl.sdf'), _rf('transforms/phenylcyclononyl.sdf'), 0.1),
     (_rf('transforms/phenylcyclopentyl.sdf'), _rf('transforms/phenylcyclononyl.sdf'), 1),
 ])
 # Test disallowing turning a ring into an incompatible ring
@@ -339,7 +339,7 @@ def test_chirality_handling(fn1, fn2, expected):
 
     parent = Chem.MolFromMolFile(fn1, sanitize=False, removeHs=False)
     comp = Chem.MolFromMolFile(fn2, sanitize=False, removeHs=False)
-    MC = MCS(parent, comp, argparse.Namespace(time=20, verbose='info', max3d=5, threed=True))
+    MC = MCS(parent, comp, time=20, verbose='info', max3d=5, threed=True)
     assert MC.mcs_mol.GetNumHeavyAtoms() == expected, 'Fail on chiral MCS size for ' + fn1 + ' ' + fn2
 
 
@@ -348,7 +348,7 @@ def test_ring_trimming_on_3d_match():
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
     parent=Chem.MolFromMolFile(_rf('transforms/phenylcyclopentylmethyl1.sdf'), sanitize=False, removeHs=False)
     comp=Chem.MolFromMolFile(_rf('transforms/phenylcyclopentylmethyl2.sdf'), sanitize=False, removeHs=False)
-    MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=2, threed=True))
+    MC=MCS(parent, comp, time=20, verbose='info', max3d=2, threed=True)
     assert MC.mcs_mol.GetNumHeavyAtoms() == 9, 'Fail on ring trim on 3D match'
 
 
@@ -357,7 +357,7 @@ def test_rdkit_broken_mcs_fix():
     logging.basicConfig(format='%(message)s', level=logging.CRITICAL)
     parent=Chem.MolFromMolFile(_rf('transforms/napthyl2.sdf'),sanitize=False, removeHs=False)
     comp=Chem.MolFromMolFile(_rf('transforms/napthyl3.sdf'),sanitize=False, removeHs=False)
-    MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=0, threed=False))
+    MC=MCS(parent, comp, time=20, verbose='info', max3d=0, threed=False)
     assert MC.mcs_mol.GetNumHeavyAtoms() < 25, 'Fail on detecting broken RDkit MCS on fused ring'
 
 
@@ -367,11 +367,11 @@ def test_mapping_prochiral_hydrogen():
     parent=Chem.MolFromMolFile(_rf('chiral/tpbs2_lig1.sdf'), sanitize=False, removeHs=False)
     parent2=Chem.MolFromMolFile(_rf('chiral/tpbs2_lig1a.sdf'), sanitize=False, removeHs=False)   # Atom ordering changed
     comp=Chem.MolFromMolFile(_rf('chiral/tpbs2_lig2.sdf'), sanitize=False, removeHs=False)
-    MC=MCS(parent,comp, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+    MC=MCS(parent, comp, time=20, verbose='info', max3d=3, threed=True)
     # Check that the correct prochiral hydrogen matches the bridging carbons
     assert "51:12" in MC.all_atom_match_list()
     assert "35:11" in MC.all_atom_match_list()
-    MC=MCS(parent2,comp, argparse.Namespace(time=20, verbose='info', max3d=3, threed=True))
+    MC=MCS(parent2, comp, time=20, verbose='info', max3d=3, threed=True)
     # parent2 is the same mol as parent1, except that atoms 34 and 35 were swapped
     assert "51:12" in MC.all_atom_match_list()
     assert "34:11" in MC.all_atom_match_list()
