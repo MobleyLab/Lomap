@@ -13,7 +13,7 @@ Authors: Gaetano Calabro' <gcalabro@uci.edu>
          David Mobley     <dmobley@uci.edu>
 
 
-Licence: LGPL
+Licence: MIT
 
 URL: https://github.com/nividic/Lomap
 

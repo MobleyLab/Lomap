@@ -48,6 +48,6 @@ test:
    
 about:
   home: https://github.com/MobleyLab/Lomap
-  license: LGPL
+  license: MIT
   license_file: LICENCE.txt
   summary: Alchemical free-energy calculations planner
