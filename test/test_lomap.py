@@ -12,12 +12,6 @@ import logging
 import pytest
 
 
-def isclose(a,b):
-    if (abs(a-b)>=1e-5):
-        print("Value",a,"is not close to",b)
-    return (abs(a-b)<1e-5)
-
-
 def _rf(fn):
     # get path to file from inside lomap installation
     f = pkg_resources.resource_filename('lomap', 'test/' + fn)
@@ -60,8 +54,8 @@ def test_mcsr(fn1, fn2, max3d_arg, threed_arg, exp_mcsr, exp_atnum):
     strict = MC.tmcsr(strict_flag=True)
     loose = MC.tmcsr(strict_flag=False)
 
-    assert(isclose(mcsr, exp_mcsr))
-    assert(isclose(atnum, exp_atnum))
+    assert mcsr == pytest.approx(exp_mcsr)
+    assert atnum == exp_atnum
 
 
 def test_iter_next():
@@ -240,7 +234,8 @@ def test_hybridization_rule(fn1, fn2, expected):
     parent=Chem.MolFromMolFile(fn1, sanitize=False, removeHs=False)
     comp=Chem.MolFromMolFile(fn2, sanitize=False, removeHs=False)
     MC=MCS(parent,comp)
-    assert isclose(MC.hybridization_rule(1.0), expected)
+
+    assert MC.hybridization_rule(1.0) ==  pytest.approx(expected)
 
 
 @pytest.mark.parametrize('fn1, fn2, expected', [
@@ -421,12 +416,12 @@ def test_complete_run(in_tmpdir):
     )
 
     # Check scores
-    assert isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'), 0.67032)
-    assert isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'), 0.60653)
-    assert isclose(score_for_link('phenyl.sdf','toluyl.sdf'), 0.90484)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'), 0.40657)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'), 0.33287)
-    assert isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'), 0.54881)
+    assert score_for_link('phenyl.sdf', 'phenylcyclobutyl.sdf') == pytest.approx(0.67032)
+    assert score_for_link('phenyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.60653)
+    assert score_for_link('phenyl.sdf', 'toluyl.sdf') == pytest.approx(0.90484)
+    assert score_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.40657)
+    assert score_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf') == pytest.approx(0.33287)
+    assert score_for_link('phenylfuran.sdf', 'toluyl.sdf') == pytest.approx(0.54881)
     # Check connections
     assert fields_for_link('phenyl.sdf',' phenylcyclobutyl.sdf')[7] == "Yes"
     assert fields_for_link('phenyl.sdf', 'phenylfuran.sdf')[7] == "No"
@@ -451,12 +446,12 @@ def test_complete_run_parallel(in_tmpdir):
     )
 
     # Check scores
-    assert isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032)
-    assert isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653)
-    assert isclose(score_for_link('phenyl.sdf','toluyl.sdf'),0.90484)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287)
-    assert isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881)
+    assert score_for_link('phenyl.sdf', 'phenylcyclobutyl.sdf') == pytest.approx(0.67032)
+    assert score_for_link('phenyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.60653)
+    assert score_for_link('phenyl.sdf', 'toluyl.sdf') == pytest.approx(0.90484)
+    assert score_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.40657)
+    assert score_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf') == pytest.approx(0.33287)
+    assert score_for_link('phenylfuran.sdf', 'toluyl.sdf') == pytest.approx(0.54881)
     # Check connections
     assert fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7] == "Yes"
     assert fields_for_link('phenyl.sdf','phenylfuran.sdf')[7] == "No"
@@ -482,12 +477,12 @@ def test_linksfile(in_tmpdir):
     )
 
     # Check scores
-    assert(isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
-    assert(isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'),0.60653))
-    assert(isclose(score_for_link('phenyl.sdf','toluyl.sdf'),0.90484))
-    assert(isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
-    assert(isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
-    assert(isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+    assert score_for_link('phenyl.sdf', 'phenylcyclobutyl.sdf') == pytest.approx(0.67032)
+    assert score_for_link('phenyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.60653)
+    assert score_for_link('phenyl.sdf', 'toluyl.sdf') == pytest.approx(0.90484)
+    assert score_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.40657)
+    assert score_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf') == pytest.approx(0.33287)
+    assert score_for_link('phenylfuran.sdf', 'toluyl.sdf') == pytest.approx(0.54881)
     # Check connections
     assert fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7] == "Yes"
     assert fields_for_link('phenyl.sdf','phenylfuran.sdf')[7] == "Yes"
@@ -513,12 +508,12 @@ def test_linksfile_scores(in_tmpdir):
     )
 
     # Check scores
-    assert(isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.67032))
-    assert(isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'),0.77777))    # Forced from linksfile
-    assert(isclose(score_for_link('phenyl.sdf','toluyl.sdf'),0.88888))         # Forced from linksfile
-    assert(isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.40657))
-    assert(isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.33287))
-    assert(isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'),0.54881))
+    assert score_for_link('phenyl.sdf', 'phenylcyclobutyl.sdf') == pytest.approx(0.67032)
+    assert score_for_link('phenyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.77777)  # Forced from linksfile
+    assert score_for_link('phenyl.sdf', 'toluyl.sdf') == pytest.approx(0.88888)  # Forced from linksfile
+    assert score_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.40657)
+    assert score_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf') == pytest.approx(0.33287)
+    assert score_for_link('phenylfuran.sdf', 'toluyl.sdf') == pytest.approx(0.54881)
     # Check connections
     assert fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7] == "Yes"
     assert fields_for_link('phenyl.sdf','phenylfuran.sdf')[7] == "No"
@@ -544,12 +539,12 @@ def test_linksfile_scores_force(in_tmpdir):
     )
 
     # Check scores
-    assert isclose(score_for_link('phenyl.sdf','phenylcyclobutyl.sdf'),0.1)
-    assert isclose(score_for_link('phenyl.sdf','phenylfuran.sdf'),0.2)
-    assert isclose(score_for_link('phenyl.sdf','toluyl.sdf'),0.3)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','phenylfuran.sdf'),0.4)
-    assert isclose(score_for_link('phenylcyclobutyl.sdf','toluyl.sdf'),0.5)
-    assert isclose(score_for_link('phenylfuran.sdf','toluyl.sdf'),0.6)
+    assert score_for_link('phenyl.sdf', 'phenylcyclobutyl.sdf') == pytest.approx(0.1)
+    assert score_for_link('phenyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.2)
+    assert score_for_link('phenyl.sdf', 'toluyl.sdf') == pytest.approx(0.3)
+    assert score_for_link('phenylcyclobutyl.sdf', 'phenylfuran.sdf') == pytest.approx(0.4)
+    assert score_for_link('phenylcyclobutyl.sdf', 'toluyl.sdf') == pytest.approx(0.5)
+    assert score_for_link('phenylfuran.sdf', 'toluyl.sdf') == pytest.approx(0.6)
     # Check connections
     assert fields_for_link('phenyl.sdf','phenylcyclobutyl.sdf')[7] == "Yes"
     assert fields_for_link('phenyl.sdf','phenylfuran.sdf')[7] == "Yes"
