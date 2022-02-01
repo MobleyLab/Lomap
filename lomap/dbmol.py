@@ -22,23 +22,7 @@ potential ligands within a substantial of compounds.
 #
 # Authors: Dr Gaetano Calabro' and Dr David Mobley
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, see http://www.gnu.org/licenses/
 # *****************************************************************************
-
-# ****************
-# MODULE IMPORTS
-# ****************
 
 import argparse
 import glob
@@ -59,9 +43,46 @@ from rdkit import DataStructs
 __all__ = ['DBMolecules', 'SMatrix', 'Molecule']
 
 
-# *************************
-# Molecule Database Class
-# *************************
+def formal_charge(mol):
+    try:
+        # Assume mol2
+        total_charge_mol = sum(float(a.GetProp('_TriposPartialCharge')) for a in mol.GetAtoms())
+    except KeyError:
+        # wasn't mol2, so assume SDF with correct formal charge props for mols
+        total_charge_mol = sum(a.GetFormalCharge() for a in mol.GetAtoms())
+
+    return total_charge_mol
+
+
+def ecr(mol_i, mol_j):
+    """
+    This function computes the similarity score between the passed molecules
+    by using the EleCtrostatic Rule (ECR)
+
+    Parameters
+    ----------
+    mol_i : Rdkit molecule object
+       the first molecules used to calculate the ECR rule
+    mol_j : Rdkit molecule object
+       the second molecules used to calculate the ECR rule
+
+    Returns
+    -------
+    scr_ecr: float
+        the calculated similarity score (1 if mol_i and mol_j have the
+        same total charges, 0  otherwire)
+
+    """
+    total_charge_mol_i = formal_charge(mol_i)
+    total_charge_mol_j = formal_charge(mol_j)
+
+    if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
+        scr_ecr = 1.0
+    else:
+        scr_ecr = 0.0
+
+    return scr_ecr
+
 
 class DBMolecules(object):
     """
@@ -364,54 +385,54 @@ class DBMolecules(object):
 
     def parse_links_file(self, links_file):
         try:
-            with open(links_file,"r") as lf:
+            with open(links_file, "r") as lf:
                 for line in lf:
                     mols = line.split();
-                    if (len(mols)<2 or len(mols)>4):
-                        raise IOError('Syntax error in links file parsing line:'+line)
+                    if (len(mols) < 2 or len(mols) > 4):
+                        raise IOError('Syntax error in links file parsing line:' + line)
                     indexa = self.inv_dic_mapping[mols[0]]
                     indexb = self.inv_dic_mapping[mols[1]]
                     score = -2
-                    if (len(mols)>2):
+                    if (len(mols) > 2):
                         score = float(mols[2])
-                    if (len(mols)>3):
+                    if (len(mols) > 3):
                         if (mols[3] != "force"):
-                            raise IOError('Syntax error parsing fourth argument in links file on line:'+line)
+                            raise IOError('Syntax error parsing fourth argument in links file on line:' + line)
                         score = -score
-                    self.prespecified_links[(indexa,indexb)]=score
-                    self.prespecified_links[(indexb,indexa)]=score
-                    print("Added prespecified link for mols",mols,"->",(indexa,indexb),"score",score)
+                    self.prespecified_links[(indexa, indexb)] = score
+                    self.prespecified_links[(indexb, indexa)] = score
+                    print("Added prespecified link for mols", mols, "->", (indexa, indexb), "score", score)
         except KeyError as e:
-            raise IOError('Filename within the links file "'+links_file+'" not found: '+str(e)) from None
+            raise IOError('Filename within the links file "' + links_file + '" not found: ' + str(e)) from None
 
     def parse_known_actives_file(self, actives_file):
         try:
-            with open(actives_file,"r") as lf:
+            with open(actives_file, "r") as lf:
                 for line in lf:
-                    mols = line.split();
+                    mols = line.split()
                     indexa = self.inv_dic_mapping[mols[0]]
                     self.known_actives.append(indexa)
                     self._list[indexa].setActive(True)
-                    print("Added known activity for mol",mols[0],"->",indexa)
+                    logging.info(f"Added known activity for mol {mols[0]} -> {indexa}")
         except KeyError as e:
-            raise IOError('Filename within the actives file "'+actives_file+'" not found: '+str(e)) from None
+            raise IOError('Filename within the actives file "' + actives_file + '" not found: ' + str(e)) from None
         # Add all combinations of these to the set of prespecified links
         for t in [(x,y) for x in self.known_actives for y in self.known_actives]:
-            print("Added prespecified link for ",t)
+            logging.info(f"Added prespecified link for {t}")
             self.prespecified_links[t]=-1
 
-    def set_MCSmap(self,i,j,MCmap):
-        if (i<j):
-            idx=(i,j)
+    def set_MCSmap(self, i, j, MCmap):
+        if (i < j):
+            idx = (i, j)
         else:
-            idx=(j,i)
-        self.mcs_map_store[idx]=MCmap
+            idx = (j, i)
+        self.mcs_map_store[idx] = MCmap
 
-    def get_MCSmap(self,i,j):
-        if (i<j):
-            idx=(i,j)
+    def get_MCSmap(self, i, j):
+        if (i < j):
+            idx = (i, j)
         else:
-            idx=(j,i)
+            idx = (j, i)
         if idx in self.mcs_map_store:
             return self.mcs_map_store[idx]
         return None
@@ -454,50 +475,6 @@ class DBMolecules(object):
         # print('a = %d, b = %d' % (a,b))
         # print('\n')
 
-        def formal_charge(mol):
-            total_charge_mol = 0.0
-
-            try:
-                # Assume mol2
-                total_charge_mol=sum([float(a.GetProp('_TriposPartialCharge')) for a in mol.GetAtoms()])
-            except:
-                # wasn't mol2, so assume SDF with correct formal charge props for mols
-                total_charge_mol=sum([a.GetFormalCharge() for a in mol.GetAtoms()])
-
-            return total_charge_mol
-
-
-
-        def ecr(mol_i, mol_j):
-            """
-            This function computes the similarity score between the passed molecules
-            by using the EleCtrostatic Rule (ECR)
-
-            Parameters
-            ----------
-            mol_i : Rdkit molecule object
-               the first molecules used to calculate the ECR rule
-            mol_j : Rdkit molecule object
-               the second molecules used to calculate the ECR rule
-
-            Returns
-            -------
-            scr_ecr: float
-                the calculated similarity score (1 if mol_i and mol_j have the
-                same total charges, 0  otherwire)
-
-            """
-
-            total_charge_mol_i = formal_charge(mol_i)
-            total_charge_mol_j = formal_charge(mol_j)
-
-            if abs(total_charge_mol_j - total_charge_mol_i) < 1e-3:
-                scr_ecr = 1.0
-            else:
-                scr_ecr = 0.0
-
-            return scr_ecr
-
         # Total number of loaded molecules
         n = self.nums()
 
@@ -514,18 +491,18 @@ class DBMolecules(object):
             moli = self[i].getMolecule()
             molj = self[j].getMolecule()
 
-            logging.info('Processing molecules: %s-%s' % (self[i].getName(),self[j].getName()))
+            logging.info('Processing molecules: %s-%s' % (self[i].getName(), self[j].getName()))
 
             # The Electrostatic score rule is calculated
             ecr_score = ecr(moli, molj)
 
             # If the prespecified links map has this link, and the value is >-1, then
             # we don't need to compute the score
-            if (i,j) in self.prespecified_links and self.prespecified_links[(i,j)]>=-1:
-                strict_scr = abs(self.prespecified_links[(i,j)])
+            if (i, j) in self.prespecified_links and self.prespecified_links[(i, j)] >= -1:
+                strict_scr = abs(self.prespecified_links[(i, j)])
                 loose_scr = strict_scr
-                logging.info('MCS molecules: %s - %s final score %s set in links file' %
-                      (self[i].getName(), self[j].getName(), strict_scr))
+                logging.info(f'MCS molecules: {self[i].getName()} - {self[i].getName()} '
+                             'final score {strict_scr} set in links file')
             else:
                 # The MCS is computed only if the passed molecules have the same charges
                 if ecr_score or self.options['ecrscore']:
@@ -536,17 +513,19 @@ class DBMolecules(object):
                     try:
                         if self.options['verbose'] == 'pedantic':
                             logging.info(50 * '-')
-                            logging.info('MCS molecules: %s - %s' % (self[i].getName(), self[j].getName()))
+                            logging.info(f'MCS molecules: {self[i].getName()} - {self[j].getName()}')
 
                         # Maximum Common Subgraph (MCS) calculation
-                        MC = mcs.MCS(moli, molj, options=self.options)
-                        ml=MC.all_atom_match_list()
-                        self.set_MCSmap(i,j,ml)
-                        MCS_map[(i,j)]=ml
+                        MC = mcs.MCS(moli, molj, time=self.options['time'], verbose=self.options['verbose'],
+                                     threed=self.options['threed'], max3d=self.options['max3d'])
+                        ml = MC.all_atom_match_list()
+                        self.set_MCSmap(i, j, ml)
+                        MCS_map[(i, j)] = ml
 
                     except Exception as e:
                         logging.warning(
-                            'Skipping MCS molecules (exception): %s - %s\t\n\n%s' % (self[i].getName(), self[j].getName(), e))
+                            f'Skipping MCS molecules (exception): {self[i].getName()} - {self[j].getName()}\t\n\n'
+                            f'{e}')
                         logging.info(50 * '-')
                         continue
                 else:
@@ -558,20 +537,16 @@ class DBMolecules(object):
                 tmp_scr *= MC.sulfonamides_rule() * MC.heterocycles_rule() * MC.transmuting_methyl_into_ring_rule()
                 tmp_scr *= MC.transmuting_ring_sizes_rule()
                 # Note - no longer using tmcsr rule!
-                strict_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=True)
-                loose_scr = tmp_scr * 1 #  MC.tmcsr(strict_flag=False)
-                logging.info(
-                    'MCS molecules: %s - %s final score %s from ecr %s mncar %s mcsr %s tmcsr %s anum %s sulf %s het %s RingMe %s' %
-                      (self[i].getName(), self[j].getName(), strict_scr, ecr_score, MC.mncar(),MC.mcsr(),MC.tmcsr(strict_flag=True),
-                        MC.atomic_number_rule(),MC.sulfonamides_rule(),MC.heterocycles_rule(),MC.transmuting_methyl_into_ring_rule()))
+                strict_scr = tmp_scr * 1  # MC.tmcsr(strict_flag=True)
+                loose_scr = tmp_scr * 1  # MC.tmcsr(strict_flag=False)
 
             strict_mtx[k] = strict_scr
             loose_mtx[k] = loose_scr
             true_strict_mtx[k] = strict_scr
 
             # process prespecified links now and overwrite the existing info
-            if (i,j) in self.prespecified_links and self.prespecified_links[(i,j)]<0:
-                print("Molecule pair",i,j,"forced to be included in the graph - score set to 1")
+            if (i, j) in self.prespecified_links and self.prespecified_links[(i, j)] < 0:
+                print(f"Molecule pair {i} {j} forced to be included in the graph - score set to 1")
                 strict_mtx[k] = 1.0
                 loose_mtx[k] = 1.0
                 # Note that true_strict_mtx holds the original strict_scr value
@@ -600,7 +575,7 @@ class DBMolecules(object):
             MCS_map = {}
             self.compute_mtx(0, l - 1, self.strict_mtx, self.loose_mtx, self.true_strict_mtx, MCS_map)
             for idx in MCS_map:
-              self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
+                self.set_MCSmap(idx[0], idx[1], MCS_map[idx])
         else:
             # Parallel execution
             logging.info('Parallel mode is on')
@@ -619,43 +594,43 @@ class DBMolecules(object):
 
             with multiprocessing.Manager() as manager:
 
-              # Shared memory array used by the different allocated processes
-              # At the moment we're using a combination of Array and Manager, which is nasty
-              strict_mtx = multiprocessing.Array('d', self.strict_mtx)
-              loose_mtx = multiprocessing.Array('d', self.loose_mtx)
-              true_strict_mtx = multiprocessing.Array('d', self.true_strict_mtx)
-              MCS_map = manager.dict()
+                # Shared memory array used by the different allocated processes
+                # At the moment we're using a combination of Array and Manager, which is nasty
+                strict_mtx = multiprocessing.Array('d', self.strict_mtx)
+                loose_mtx = multiprocessing.Array('d', self.loose_mtx)
+                true_strict_mtx = multiprocessing.Array('d', self.true_strict_mtx)
+                MCS_map = manager.dict()
 
-              # Chopping the indexes redistributing the remainder
-              for k in range(0, kmax):
+                # Chopping the indexes redistributing the remainder
+                for k in range(0, kmax):
 
-                  spc = delta + int(int(rem / (k + 1)) > 0)
+                    spc = delta + int(int(rem / (k + 1)) > 0)
 
-                  if k == 0:
-                      i = 0
-                  else:
-                      i = j + 1
+                    if k == 0:
+                        i = 0
+                    else:
+                        i = j + 1
 
-                  if k != kmax - 1:
-                      j = i + spc - 1
-                  else:
-                      j = l - 1
+                    if k != kmax - 1:
+                        j = i + spc - 1
+                    else:
+                        j = l - 1
 
-                  # Python multiprocessing allocation
-                  p = multiprocessing.Process(target=self.compute_mtx,
-                                              args=(i, j, strict_mtx, loose_mtx, true_strict_mtx, MCS_map, ))
-                  p.start()
-                  proc.append(p)
-              # End parallel execution
-              for p in proc:
-                  p.join()
+                    # Python multiprocessing allocation
+                    p = multiprocessing.Process(target=self.compute_mtx,
+                                                args=(i, j, strict_mtx, loose_mtx, true_strict_mtx, MCS_map,))
+                    p.start()
+                    proc.append(p)
+                # End parallel execution
+                for p in proc:
+                    p.join()
 
-              # Copying back the results
-              self.strict_mtx[:] = strict_mtx[:]
-              self.loose_mtx[:] = loose_mtx[:]
-              self.true_strict_mtx[:] = true_strict_mtx[:]
-              for idx in MCS_map.keys():
-                self.set_MCSmap(idx[0],idx[1],MCS_map[idx])
+                # Copying back the results
+                self.strict_mtx[:] = strict_mtx[:]
+                self.loose_mtx[:] = loose_mtx[:]
+                self.true_strict_mtx[:] = true_strict_mtx[:]
+                for idx in MCS_map.keys():
+                    self.set_MCSmap(idx[0], idx[1], MCS_map[idx])
 
         return self.strict_mtx, self.loose_mtx
 
@@ -933,7 +908,6 @@ class Molecule(object):
         # The variable is defined as private
         self.__active = False
 
-
     def getID(self):
         """
         Get the molecule ID number
@@ -991,7 +965,7 @@ class Molecule(object):
 
         """
 
-        self.__active=active
+        self.__active = active
 
 
 class CheckDir(argparse.Action):
@@ -1141,8 +1115,8 @@ parser.add_argument('-d', '--display', default=False, action='store_true', \
 
 graph_group = parser.add_argument_group('Graph setting')
 graph_group.add_argument('-T', '--allow-tree', default=False, action='store_true', \
-                        help='Remove the requirement that all molecules be in a cycle, so that the returned '
-                             'graph will be a tree instead.');
+                         help='Remove the requirement that all molecules be in a cycle, so that the returned '
+                              'graph will be a tree instead.');
 graph_group.add_argument('-m', '--max', default=6, action=CheckPos, type=int, \
                          help='The maximum diameter of the graph')
 graph_group.add_argument('-A', '--max-dist-from-actives', default=2, action=CheckPos, type=int, \
@@ -1156,13 +1130,13 @@ graph_group.add_argument('-b', '--hub', default=None, type=str, \
 graph_group.add_argument('-a', '--fast', default=False, action='store_true', \
                          help='Using the fast graphing when the lead compound is specified')
 graph_group.add_argument('-l', '--links-file', type=str, default='', \
-                          help='Specify a filename listing the pairs of molecule files that should be initialised as linked.'
-                          'Each line can be "mol1 mol2", which indicates that Lomap should compute the score and mapping '
-                          'but that this link must be used in the final graph, or "mol1 mol2 score", which indicates that '
-                          'Lomap should use the provided score, or "mol1 mol2 score force", which indicates that Lomap '
-                          'should use the provided score and force this link to be used in the final graph.')
+                         help='Specify a filename listing the pairs of molecule files that should be initialised as linked.'
+                              'Each line can be "mol1 mol2", which indicates that Lomap should compute the score and mapping '
+                              'but that this link must be used in the final graph, or "mol1 mol2 score", which indicates that '
+                              'Lomap should use the provided score, or "mol1 mol2 score force", which indicates that Lomap '
+                              'should use the provided score and force this link to be used in the final graph.')
 graph_group.add_argument('-k', '--known-actives-file', type=str, default='', \
-                          help='Specify a filename listing the molecule files that should be initialised as "known actives", one per line')
+                         help='Specify a filename listing the molecule files that should be initialised as "known actives", one per line')
 
 # ------------------------------------------------------------------
 
