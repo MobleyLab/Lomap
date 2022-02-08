@@ -6,6 +6,6 @@ dependencies:
   - numpy
   - matplotlib
   - rdkit
-  - boost-cpp =1.68.0
+  - boost-cpp
   - pytest
   - codecov
