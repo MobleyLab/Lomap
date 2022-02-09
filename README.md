@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=main)](https://travis-ci.org/MobleyLab/Lomap)
-[![codecov](https://codecov.io/gh/MobleyLab/Lomap/branch/devel/graph/badge.svg)](https://codecov.io/gh/MobleyLab/Lomap)
+[![CI](https://github.com/OpenFreeEnergy/Lomap/actions/workflows/CI.yaml/badge.svg)](https://github.com/OpenFreeEnergy/Lomap/actions/workflows/CI.yaml)
 
 
 # Lomap

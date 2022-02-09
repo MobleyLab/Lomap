@@ -29,8 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9, "3.10"]
-        rdkit-version: ["2021.09", "2021.03", "2018.03.4"]
+        python-version: [3.8, 3.9]
+        rdkit-version: ["2021"]
         os: [ubuntu-latest, macos-11]
 
     steps:
@@ -57,7 +57,7 @@ jobs:
         run: mamba install rdkit=${{ matrix.rdkit-version }}
 
       - name: Install package
-        run: python -m pip install --no-deps -v .
+        run: python -m pip install --no-deps -v -e .
 
       - name: Environment Information
         run: |
@@ -65,7 +65,7 @@ jobs:
           mamba list
 
       - name: Test the package
-        run: pytest -vv test/test_lomap.py 
+        run: pytest -vv 
 
       - name: Codecov
         uses: codecov/codecov-action@v1

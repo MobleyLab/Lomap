@@ -1,0 +1,11 @@
+name: test
+channels:
+  - conda-forge
+dependencies:
+  - networkx
+  - numpy
+  - matplotlib
+  - rdkit
+  - boost-cpp
+  - pytest
+  - codecov
