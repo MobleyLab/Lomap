@@ -574,8 +574,8 @@ class MCS(object):
 
         # Get maps of the atom correspondences between the no hydrogen
         # molecules and the original molecules
-        self._map_moli_noh = _heavy_to_all_pos_remap(self._moli_noh, moli)
-        self._map_molj_noh = _heavy_to_all_pos_remap(self._molj_noh, molj)
+        self._map_moli_noh = self._heavy_to_all_pos_remap(self._moli_noh, moli)
+        self._map_molj_noh = self._heavy_to_all_pos_remap(self._molj_noh, molj)
 
         # MCS calculation. In RDKit the MCS is a smart string. Ring atoms are
         # always mapped in ring atoms.
