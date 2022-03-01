@@ -449,9 +449,20 @@ class MCS(object):
             map_mcs_mol_to_moli_sub = list(zip(mcsi_sub, moli_sub))
 
             # Clear all properties as we may call this function more than once
+            # Here are all the properties we use:
+            # `to_moli` and `to_molj`: this gives the atom correspondence
+            # between the mcs molecule and the heavy atom only moli and molj
+            # molecules.
+            # `to_moli_all` and `to_molj_all`: this gives the atom
+            # correspondence between the mc molecules and the input (pre
+            # removal of hydrogens) molecules.
+            # `to_mcs` this gives the correspondence between the full
+            # (including hydrogens) molecule and the mcs molecule
             for a in self.mcs_mol.GetAtoms():
                 a.ClearProp('to_moli')
+                a.ClearProp('to_moli_all')
                 a.ClearProp('to_molj')
+                a.ClearProp('to_molj_all')
             for a in self.moli.GetAtoms():
                 a.ClearProp('to_mcs')
             for a in self.molj.GetAtoms():
@@ -459,8 +470,12 @@ class MCS(object):
 
             # An RDkit atomic property is defined to store the mapping to moli
             for idx in map_mcs_mol_to_moli_sub:
-                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_moli', str(idx[1]))
-                self.moli.GetAtomWithIdx(idx[1]).SetProp('to_mcs', str(idx[0]))
+                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp(
+                        'to_moli', str(idx[1]))
+                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp(
+                        'to_moli_all', str(self._map_moli_noh[idx[1]]))
+                self.moli.GetAtomWithIdx(self._map_moli_noh[idx[1]]).SetProp(
+                        'to_mcs', str(idx[0]))
 
             mcsj_sub = tuple(range(self.mcs_mol.GetNumAtoms()))
 
@@ -472,8 +487,12 @@ class MCS(object):
 
             # An RDkit atomic property is defined to store the mapping to molj
             for idx in map_mcs_mol_to_molj_sub:
-                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp('to_molj', str(idx[1]))
-                self.molj.GetAtomWithIdx(idx[1]).SetProp('to_mcs', str(idx[0]))
+                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp(
+                        'to_molj', str(idx[1]))
+                self.mcs_mol.GetAtomWithIdx(idx[0]).SetProp(
+                        'to_molj_all', str(self._map_molj_noh[idx[1]]))
+                self.molj.GetAtomWithIdx(self._map_molj_noh[idx[1]]).SetProp(
+                        'to_mcs', str(idx[0]))
 
             # For each mcs atom we save its original index in a specified
             # property. This could be very useful in the code development
@@ -552,6 +571,11 @@ class MCS(object):
 
             Chem.SanitizeMol(self._moli_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
             Chem.SanitizeMol(self._molj_noh, sanitizeOps=Chem.SanitizeFlags.SANITIZE_SETAROMATICITY)
+
+        # Get maps of the atom correspondences between the no hydrogen
+        # molecules and the original molecules
+        self._map_moli_noh = self._heavy_to_all_pos_remap(self._moli_noh, moli)
+        self._map_molj_noh = self._heavy_to_all_pos_remap(self._molj_noh, molj)
 
         # MCS calculation. In RDKit the MCS is a smart string. Ring atoms are
         # always mapped in ring atoms.
@@ -636,6 +660,34 @@ class MCS(object):
             lg.setLevel(RDLogger.WARNING)
 
         return
+
+    @staticmethod
+    def _heavy_to_all_pos_remap(heavy_mol, all_mol, tolerance=0.5):
+        """
+        Convenience method to map a molecule without hydrogens
+        (`heavy_mol`) back to it's pre RemoveHs version (`all_mol`).
+
+        Parameters
+        ----------
+        heavy_mol : RDKit molecule object
+            Heavy atom molecule version of `all_mol`.
+        all_mol : RDKit molecule object
+            Molecule with all atoms present (i.e. pre-RemoveHs).
+        tolerance : float
+            Maximum deviation acceptable between corresponding atoms.
+        """
+        mapping = {}
+        for at in heavy_mol.GetAtoms():
+            best = tolerance
+            at_idx = at.GetIdx()
+            pos = heavy_mol.GetConformer().GetAtomPosition(at_idx)
+            for at2 in all_mol.GetAtoms():
+                at2_idx = at2.GetIdx()
+                pos2 = all_mol.GetConformer().GetAtomPosition(at2_idx)
+                if (pos - pos2).Length() < best:
+                    best = (pos - pos2).Length()
+                    mapping[at_idx] = at2_idx
+        return mapping
 
     @staticmethod
     def getMapping(moli, molj, hydrogens=False, fname=None, time_out=150):
@@ -1123,15 +1175,22 @@ class MCS(object):
         moli=self.moli
         molj=self.molj
 
-        maplist=self.heavy_atom_mcs_map()
+        heavy_maplist = self.heavy_atom_mcs_map()
+
+        maplist = []
+
+        for entry in heavy_maplist:
+            new_entry = (self._map_moli_noh[entry[0]],
+                         self._map_molj_noh[entry[1]])
+            maplist.append(new_entry)
 
         # OK, this is painful, as the MCS only includes heavies. We now need to match up
         # hydrogens hanging off the MCS
 
         # Iterate over all atoms in the MCS
         for at in self.mcs_mol.GetAtoms():
-            moli_idx = int(at.GetProp('to_moli'))
-            molj_idx = int(at.GetProp('to_molj'))
+            moli_idx = int(at.GetProp('to_moli_all'))
+            molj_idx = int(at.GetProp('to_molj_all'))
             attached_i = get_attached_atoms_not_in_mcs(moli,moli_idx)
             attached_j = get_attached_atoms_not_in_mcs(molj,molj_idx)
 
