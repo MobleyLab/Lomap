@@ -1175,12 +1175,13 @@ class MCS(object):
         moli=self.moli
         molj=self.molj
 
-        heavy_maplist=self.heavy_atom_mcs_map()
+        heavy_maplist = self.heavy_atom_mcs_map()
 
         maplist = []
 
         for entry in heavy_maplist:
-            new_entry = (self._map_moli_noh[entry[0]], self._map_molj_noh[entry[1]])
+            new_entry = (self._map_moli_noh[entry[0]],
+                         self._map_molj_noh[entry[1]])
             maplist.append(new_entry)
 
         # OK, this is painful, as the MCS only includes heavies. We now need to match up
