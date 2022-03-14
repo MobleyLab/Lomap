@@ -2,6 +2,15 @@
 CHANGELOG
 *********
 
+2.0.0
+=====
+- Breaking changes: replaced usage of argparse.Namespace as input to class inits (e.g. MCS) in favour of dicts.
+- Renamed various dunderscore variables to single underscore
+- Fixed bug in explicit hydrogen atom mappings
+- Rewrote tests in pytest, using fixtures to iterate over cases
+- Added regression tests for MCS class
+
+
 1.0.0
 =====
 
