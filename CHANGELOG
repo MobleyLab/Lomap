@@ -2,13 +2,6 @@
 CHANGELOG
 *********
 
-0.0.x
-=====
-
-Internal Alpha version
-----------------------
-- Basic functionality of preparing a Perturbation map for alchemical free energy calculations
-
 1.0.0
 =====
 
@@ -17,3 +10,10 @@ Internal Alpha version
 - improved visualisation of output networks
 - better enforcement of PEP8 style python
 - no longer support for python 2.7
+
+0.0.x
+=====
+
+Internal Alpha version
+----------------------
+- Basic functionality of preparing a Perturbation map for alchemical free energy calculations
