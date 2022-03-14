@@ -16,11 +16,6 @@ if sys.argv[-1] == 'setup.py':
     print("To install, run 'python setup.py install'")
     print()
 
-if sys.version_info[:2] < (2, 7):
-    print("Lomap requires Python 2.7 or later (%d.%d detected)." %
-          sys.version_info[:2])
-    sys.exit(-1)
-
 
 descr = """
 The Lead Optimization Mapper (LOMAP) is an automated algorithm
@@ -41,7 +36,7 @@ setup(
             'Natural Language :: English',
             'Operating System :: MacOS :: MacOS X',
             'Operating System :: POSIX :: Linux',
-            'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.8',
             'Topic :: Scientific/Engineering :: Bio-Informatics',
             'Topic :: Scientific/Engineering :: Chemistry',
             'Topic :: Scientific/Engineering :: Mathematics',
