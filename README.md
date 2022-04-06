@@ -1,3 +1,7 @@
+# LOMAP is now maintained by Open Free Energy!
+
+## Please file issues and pull requests at [https://github.com/OpenFreeEnergy/Lomap](https://github.com/OpenFreeEnergy/Lomap).
+
 [![Build Status](https://travis-ci.org/MobleyLab/Lomap.svg?branch=main)](https://travis-ci.org/MobleyLab/Lomap)
 [![codecov](https://codecov.io/gh/MobleyLab/Lomap/branch/devel/graph/badge.svg)](https://codecov.io/gh/MobleyLab/Lomap)
 
